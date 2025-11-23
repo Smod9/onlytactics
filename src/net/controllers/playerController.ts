@@ -7,6 +7,7 @@ import {
 } from '@/net/topics'
 import { SubscriberController } from './subscriberController'
 import type { PlayerInput, RaceRole, RaceState } from '@/types/race'
+import type { ControlUpdate } from './types'
 import type { RaceStore } from '@/state/raceStore'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
@@ -67,10 +68,25 @@ export class PlayerController extends SubscriberController {
     if (this.failoverTimer) clearInterval(this.failoverTimer)
   }
 
-  updateLocalInput(partial: Pick<PlayerInput, 'desiredHeadingDeg'>) {
+  updateLocalInput(update: ControlUpdate) {
+    if (update.spin === 'full') {
+      const payload: PlayerInput = {
+        boatId: identity.boatId,
+        desiredHeadingDeg: this.currentInput.desiredHeadingDeg,
+        spin: 'full',
+        tClient: Date.now(),
+      }
+      console.debug('[inputs] sent', payload)
+      this.mqtt.publish(inputsTopic(identity.boatId), payload, { qos: 0 })
+      this.lastPublished = undefined
+      return
+    }
+    if (typeof update.desiredHeadingDeg !== 'number') {
+      return
+    }
     this.currentInput = {
       ...this.currentInput,
-      ...partial,
+      desiredHeadingDeg: update.desiredHeadingDeg,
       tClient: Date.now(),
     }
     this.store.upsertInput(this.currentInput)

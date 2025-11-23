@@ -18,9 +18,21 @@ import {
 } from '@/net/topics'
 import { BaseController } from './baseController'
 import { raceStore, RaceStore } from '@/state/raceStore'
-import type { ChatMessage, PlayerInput, RaceEvent, RaceRole } from '@/types/race'
+import type {
+  ChatMessage,
+  PlayerInput,
+  RaceEvent,
+  RaceRole,
+} from '@/types/race'
 import { identity } from '@/net/identity'
 import { replayRecorder } from '@/replay/manager'
+import { SPIN_HOLD_SECONDS } from '@/logic/constants'
+import { normalizeDeg } from '@/logic/physics'
+
+const createEventId = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `event-${Date.now()}-${Math.random().toString(16).slice(2)}`
 
 export class HostController extends BaseController {
   private loop: HostLoop
@@ -28,6 +40,8 @@ export class HostController extends BaseController {
   private publishTimer?: number
 
   private lastInputTs = new Map<string, number>()
+
+  private activeSpins = new Map<string, number[]>()
 
   constructor(private store: RaceStore = raceStore) {
     super()
@@ -63,6 +77,7 @@ export class HostController extends BaseController {
   protected onStop() {
     this.loop.stop()
     if (this.publishTimer) clearInterval(this.publishTimer)
+    this.cancelActiveSpins()
     this.mqtt.publish(hostTopic, null, { retain: true })
   }
 
@@ -74,11 +89,26 @@ export class HostController extends BaseController {
     )
   }
 
-  updateLocalInput(update: { desiredHeadingDeg: number }) {
-    const payload = {
+  updateLocalInput(update: { desiredHeadingDeg?: number; spin?: 'full' }) {
+    const now = Date.now()
+    if (update.spin === 'full') {
+      const boat = this.store.getState().boats[identity.boatId]
+      const heading = boat?.desiredHeadingDeg ?? boat?.headingDeg ?? 0
+      const payload: PlayerInput = {
+        boatId: identity.boatId,
+        desiredHeadingDeg: heading,
+        spin: 'full',
+        tClient: now,
+      }
+      console.debug('[inputs] sent', payload)
+      this.mqtt.publish(inputsTopic(payload.boatId), payload, { qos: 0 })
+      return
+    }
+    if (typeof update.desiredHeadingDeg !== 'number') return
+    const payload: PlayerInput = {
       boatId: identity.boatId,
       desiredHeadingDeg: update.desiredHeadingDeg,
-      tClient: Date.now(),
+      tClient: now,
     }
     console.debug('[inputs] sent', payload)
     this.mqtt.publish(inputsTopic(payload.boatId), payload, { qos: 0 })
@@ -124,12 +154,103 @@ export class HostController extends BaseController {
     if (lastTs === input.tClient) return
     this.lastInputTs.set(input.boatId, input.tClient)
 
+    if (input.spin === 'full') {
+      console.debug('[inputs] spin requested', input)
+      this.queueSpin(input.boatId)
+      return
+    }
+
+    if (this.activeSpins.has(input.boatId)) {
+      return
+    }
+
+    if (typeof input.desiredHeadingDeg !== 'number') {
+      return
+    }
+
     console.debug('[inputs] received', {
       boatId: input.boatId,
       desiredHeadingDeg: input.desiredHeadingDeg,
       tClient: input.tClient,
     })
     this.store.upsertInput(input)
+  }
+
+  private queueSpin(boatId: string) {
+    if (this.activeSpins.has(boatId)) return
+    const state = this.store.getState()
+    const boat = state.boats[boatId]
+    if (!boat) return
+    const origin = boat.desiredHeadingDeg ?? boat.headingDeg
+    const headings = [
+      origin + 120,
+      origin + 240,
+      origin,
+    ].map((deg) => normalizeDeg(deg))
+    let delay = 0
+    const timers: number[] = headings.map((heading, index) => {
+      const timer = window.setTimeout(() => {
+        this.injectHeading(boatId, heading)
+        if (index === headings.length - 1) {
+          this.finishSpin(boatId)
+        }
+      }, delay)
+      delay += SPIN_HOLD_SECONDS * 1000
+      return timer
+    })
+    this.activeSpins.set(boatId, timers)
+  }
+
+  private injectHeading(boatId: string, heading: number) {
+    const payload: PlayerInput = {
+      boatId,
+      desiredHeadingDeg: normalizeDeg(heading),
+      tClient: Date.now(),
+    }
+    this.lastInputTs.set(boatId, payload.tClient)
+    console.debug('[inputs] spin step', payload)
+    this.store.upsertInput(payload)
+  }
+
+  private finishSpin(boatId: string) {
+    const timers = this.activeSpins.get(boatId)
+    if (timers) {
+      timers.forEach((timer) => clearTimeout(timer))
+      this.activeSpins.delete(boatId)
+    }
+    this.clearPenalty(boatId)
+  }
+
+  private clearPenalty(boatId: string) {
+    let cleared = false
+    let boatName: string | undefined
+    let remaining = 0
+    this.store.patchState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boatName = boat.name
+      if (boat.penalties > 0) {
+        boat.penalties -= 1
+        cleared = true
+      }
+      boat.fouled = boat.penalties > 0
+      remaining = boat.penalties
+    })
+    if (!cleared || !boatName) return
+    const event: RaceEvent = {
+      eventId: createEventId(),
+      kind: 'rule_hint',
+      ruleId: 'other',
+      boats: [boatId],
+      t: this.store.getState().t,
+      message: `${boatName} completed a 360° spin and cleared a penalty (${remaining} remaining)`,
+    }
+    this.publishEvents([event])
+  }
+
+  private cancelActiveSpins() {
+    this.activeSpins.forEach((timers) => timers.forEach((id) => clearTimeout(id)))
+    this.activeSpins.clear()
   }
 }
 

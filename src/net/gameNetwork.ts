@@ -47,6 +47,10 @@ export class GameNetwork {
     this.controller?.updateLocalInput?.({ desiredHeadingDeg: this.latestHeadingDeg })
   }
 
+  requestSpin() {
+    this.controller?.updateLocalInput?.({ spin: 'full' })
+  }
+
   private async setRole(role: RaceRole) {
     this.controller?.stop()
     if (role === 'host') {

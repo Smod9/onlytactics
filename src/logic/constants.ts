@@ -10,4 +10,5 @@ export const HEADING_STEP_DEG = 5
 export const STALL_DURATION_S = 3
 export const STALL_SPEED_FACTOR = 0.35
 export const DEFAULT_SHEET = 0.75
+export const SPIN_HOLD_SECONDS = 2
 

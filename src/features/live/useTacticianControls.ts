@@ -62,7 +62,9 @@ export const useTacticianControls = (
       }
 
       const key = event.code ?? event.key
-      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown'].includes(key)) return
+      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS'].includes(key)) {
+        return
+      }
       if (event.repeat) {
         event.preventDefault()
         return
@@ -137,6 +139,11 @@ export const useTacticianControls = (
             tackSign * desiredAbs,
           )
           sendHeading(heading)
+          break
+        }
+        case 'KeyS': {
+          event.preventDefault()
+          networkRef.current?.requestSpin()
           break
         }
         default:

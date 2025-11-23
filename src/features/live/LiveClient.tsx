@@ -102,8 +102,20 @@ export const LiveClient = () => {
           </button>
         )}
         {playerBoat && (
-          <div className="speed-readout">
-            SPD {playerBoat.speed.toFixed(2)} kts
+          <div className="player-actions">
+            <div className="speed-readout">
+              SPD {playerBoat.speed.toFixed(2)} kts
+            </div>
+            {playerBoat.penalties > 0 && (
+              <button
+                type="button"
+                className="spin-button"
+                onClick={() => network.requestSpin()}
+                title="Perform a 360° spin (also clears one penalty if you have any)"
+              >
+                360° Spin (S)
+              </button>
+            )}
           </div>
         )}
         <div className="event-list">

@@ -188,6 +188,35 @@ button {
   color: #4af6c2;
 }
 
+.player-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.spin-button {
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.45rem;
+  border: 1px solid #b974ff;
+  background: linear-gradient(135deg, rgba(71, 30, 109, 0.9), rgba(48, 18, 87, 0.95));
+  color: #f8ecff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.spin-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.spin-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #2f3650;
+  background: rgba(18, 24, 40, 0.8);
+  color: #6b7190;
+}
+
 .countdown-status {
   font-size: 0.9rem;
   color: #f5a524;

@@ -1,6 +1,7 @@
-import type { PlayerInput } from '@/types/race'
-
-export type ControlUpdate = Pick<PlayerInput, 'desiredHeadingDeg'>
+export type ControlUpdate = {
+  desiredHeadingDeg?: number
+  spin?: 'full'
+}
 
 export interface Controller {
   start(): Promise<void>

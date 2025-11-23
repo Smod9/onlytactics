@@ -1,0 +1,41 @@
+import type { RaceRole } from '@/types/race'
+import { useRoster } from '@/state/rosterStore'
+
+type Props = {
+  role: RaceRole
+}
+
+export const RosterPanel = ({ role }: Props) => {
+  const roster = useRoster()
+  if (!roster.entries.length) {
+    return (
+      <div className="roster-panel">
+        <h3>Players</h3>
+        <p className="roster-empty">Waiting for participants…</p>
+      </div>
+    )
+  }
+  return (
+    <div className="roster-panel">
+      <h3>Players ({role})</h3>
+      <ul>
+        {roster.entries.map((entry) => {
+          const isHost = entry.role === 'host'
+          return (
+            <li
+              key={entry.clientId}
+              className={`roster-entry${isHost ? ' host' : ''}${
+                entry.status === 'online' ? '' : ' offline'
+              }`}
+            >
+              <span className="name">{entry.name}</span>
+              {isHost && <span className="badge">Host</span>}
+              <span className="role">{entry.role}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
