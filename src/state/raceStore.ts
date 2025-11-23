@@ -49,7 +49,22 @@ export class RaceStore {
 
   appendEvents = (events: RaceEvent[]) => {
     if (!events.length) return
-    this.recentEvents = [...this.recentEvents.slice(-20), ...events]
+    const nextEvents: RaceEvent[] = []
+    events.forEach((event) => {
+      if (
+        this.recentEvents.some(
+          (existing) =>
+            existing.kind === event.kind &&
+            existing.message === event.message &&
+            Math.abs(existing.t - event.t) < 0.5,
+        )
+      ) {
+        return
+      }
+      nextEvents.push(event)
+    })
+    if (!nextEvents.length) return
+    this.recentEvents = [...this.recentEvents.slice(-20), ...nextEvents]
     this.emit()
   }
 

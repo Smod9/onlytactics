@@ -20,6 +20,7 @@ export const appEnv = {
   tickRateHz: toNumber(rawEnv.VITE_TICK_RATE, 10),
   hostFailoverMs: toNumber(rawEnv.VITE_HOST_FAILOVER_MS, 4000),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 30),
+  penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),

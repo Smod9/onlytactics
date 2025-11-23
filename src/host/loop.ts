@@ -19,7 +19,7 @@ export class HostLoop {
 
   constructor(
     private store: RaceStore = raceStore,
-    private rules = new RulesEngine(),
+    private rules = new RulesEngine(appEnv.penaltyCooldownSeconds),
     private tickRate = appEnv.tickRateHz,
     private options: HostLoopOptions = {},
   ) {
