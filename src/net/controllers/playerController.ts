@@ -77,7 +77,7 @@ export class PlayerController extends SubscriberController {
       ...partial,
       tClient: Date.now(),
     }
-    this.store.upsertInput(this.currentInput, identity.clientName)
+    this.store.upsertInput(this.currentInput, identity.clientName ?? undefined)
   }
 
   protected onState(snapshot: RaceState) {
@@ -89,7 +89,7 @@ export class PlayerController extends SubscriberController {
         ...this.currentInput,
         desiredHeadingDeg: boat.desiredHeadingDeg ?? boat.headingDeg,
       }
-      this.store.upsertInput(this.currentInput, identity.clientName)
+      this.store.upsertInput(this.currentInput, identity.clientName ?? undefined)
     }
   }
 

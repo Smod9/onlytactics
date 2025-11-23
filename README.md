@@ -32,3 +32,4 @@ There are no sheet/trim controls in v1—boat speed comes entirely from angle-to
 - `npm run lint` – ESLint
 - `npm run format` – Prettier
 - `npm run preview` – preview the production build locally
+- `npm run deploy` – build and push the contents of `dist/` to [Only Tactics on Surge](https://onlytactics.surge.sh)
