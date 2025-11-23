@@ -36,7 +36,8 @@ const boatPairKey = (rule: RuleId, a: string, b: string) =>
   `${rule}:${[a, b].sort().join(':')}`
 
 export class RulesEngine {
-  private cooldowns = new Map<string, number>()
+  private pairCooldowns = new Map<string, number>()
+  private offenderCooldowns = new Map<string, number>()
 
   constructor(private cooldownSeconds = 5) {}
 
@@ -128,10 +129,16 @@ export class RulesEngine {
     otherBoatId: string,
     resolution: RuleResolution,
   ) {
-    const key = boatPairKey(ruleId, offenderId, otherBoatId)
-    const expiry = this.cooldowns.get(key) ?? 0
-    if (expiry > state.t) return []
-    this.cooldowns.set(key, state.t + this.cooldownSeconds)
+    const pairKey = boatPairKey(ruleId, offenderId, otherBoatId)
+    const offenderKey = `${ruleId}:${offenderId}`
+    const pairExpiry = this.pairCooldowns.get(pairKey) ?? 0
+    if (pairExpiry > state.t) return []
+
+    const offenderExpiry = this.offenderCooldowns.get(offenderKey) ?? 0
+    if (offenderExpiry > state.t) return []
+
+    this.pairCooldowns.set(pairKey, state.t + this.cooldownSeconds)
+    this.offenderCooldowns.set(offenderKey, state.t + this.cooldownSeconds)
     return [resolution]
   }
 }

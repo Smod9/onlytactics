@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Text } from 'pixi.js'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
+import { identity } from '@/net/identity'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 
@@ -53,23 +54,24 @@ class BoatView {
     this.sail.fill()
   }
 
-  update(boat: BoatState, mapToScreen: ScreenMapper, scale: number) {
+  update(boat: BoatState, mapToScreen: ScreenMapper, scale: number, isPlayer = false) {
     const { x, y } = mapToScreen(boat.pos)
     this.container.position.set(x, y)
     this.container.scale.set(scale)
     this.container.rotation = degToRad(boat.headingDeg)
-    this.nameTag.text = `${boat.name} (${boat.penalties})`
-    if (boat.overEarly || boat.fouled) {
+    this.nameTag.text = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
+    if (boat.overEarly || boat.fouled || boat.penalties > 0) {
       this.nameTag.style.fill = '#ff6b6b'
     } else {
       this.nameTag.style.fill = '#ffffff'
     }
-    this.drawProjection(boat, scale)
+    this.drawProjection(boat, scale, isPlayer)
   }
 
-  private drawProjection(boat: BoatState, scale: number) {
+  private drawProjection(boat: BoatState, scale: number, isPlayer: boolean) {
     this.projection.clear()
-    const length = Math.max(40, boat.speed * 6) / Math.max(scale, 0.0001)
+    const baseLength = Math.max(40, boat.speed * 6)
+    const length = (isPlayer ? baseLength * 4 : baseLength) / Math.max(scale, 0.0001)
     this.projection
       .setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.3 })
       .moveTo(0, -10)
@@ -261,7 +263,8 @@ export class RaceScene {
         this.boats.set(boat.id, view)
         this.boatLayer.addChild(view.container)
       }
-      this.boats.get(boat.id)?.update(boat, map, scale)
+      const isPlayer = boat.id === identity.boatId
+      this.boats.get(boat.id)?.update(boat, map, scale, isPlayer)
     })
 
     // cleanup

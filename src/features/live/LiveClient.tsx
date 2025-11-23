@@ -96,9 +96,9 @@ export const LiveClient = () => {
           <button
             type="button"
             className="start-sequence"
-            onClick={() => network.armCountdown(15)}
+            onClick={() => network.armCountdown(appEnv.countdownSeconds)}
           >
-            Start 15s Sequence
+            Start {appEnv.countdownSeconds}s Sequence
           </button>
         )}
         {playerBoat && (
@@ -107,12 +107,18 @@ export const LiveClient = () => {
           </div>
         )}
         <div className="event-list">
-          {events.slice(-5).map((event) => (
-            <div key={event.eventId} className="event-item">
-              <span className="event-kind">{event.kind}</span>
-              <span className="event-message">{event.message}</span>
-            </div>
-          ))}
+          {events
+            .slice()
+            .reverse()
+            .slice(0, 10)
+            .map((event, index) => (
+              <div key={event.eventId} className="event-item">
+                <span className="event-kind">
+                  #{events.length - index} {event.kind}
+                </span>
+                <span className="event-message">{event.message}</span>
+              </div>
+            ))}
           {!events.length && <p>No rule events yet.</p>}
         </div>
         <RosterPanel role={role} />

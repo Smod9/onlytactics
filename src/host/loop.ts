@@ -1,5 +1,5 @@
 import { stepRaceState, clamp as physicsClamp } from '@/logic/physics'
-import { RulesEngine } from '@/logic/rules'
+import { RulesEngine, type RuleResolution } from '@/logic/rules'
 import { cloneRaceState } from '@/state/factories'
 import { raceStore, RaceStore } from '@/state/raceStore'
 import type { RaceEvent, RaceState } from '@/types/race'
@@ -36,6 +36,7 @@ export class HostLoop {
   private ocsBoats = new Set<string>()
 
   private courseSideSign?: number
+  private penaltyHistory = new Map<string, number>()
 
   start() {
     if (this.timer) return
@@ -62,11 +63,14 @@ export class HostLoop {
     const countdownHeld = next.phase === 'prestart' && !next.countdownArmed
     if (!countdownHeld) {
       stepRaceState(next, inputs, dt)
+    } else if (next.phase === 'prestart' && !next.countdownArmed) {
+      next.t = -30
     }
     this.applyWindOscillation(next, dt)
 
     const startEvents = this.updateStartLine(next)
-    const resolutions = this.rules.evaluate(next)
+    const rawResolutions = this.rules.evaluate(next)
+    const resolutions = this.filterPenalties(rawResolutions, next.t)
     resolutions.forEach((violation) => {
       const offender = next.boats[violation.offenderId]
       if (offender) offender.penalties += 1
@@ -180,6 +184,18 @@ export class HostLoop {
     }
 
     return events
+  }
+
+  private filterPenalties(resolutions: RuleResolution[], currentTime: number) {
+    return resolutions.filter((violation) => {
+      const key = `${violation.offenderId}:${violation.ruleId}`
+      const last = this.penaltyHistory.get(key)
+      if (last !== undefined && currentTime - last < 10) {
+        return false
+      }
+      this.penaltyHistory.set(key, currentTime)
+      return true
+    })
   }
 }
 

@@ -51,7 +51,7 @@ export const createBoatState = (
   }
 }
 
-export const createInitialRaceState = (raceId: string): RaceState => {
+export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds ?? 30): RaceState => {
   const boats = ['Alpha', 'Bravo'].map((name, idx) => createBoatState(name, idx))
   const baselineWind = appEnv.baselineWindDeg
   const defaultMarks: Vec2[] = [
@@ -62,7 +62,7 @@ export const createInitialRaceState = (raceId: string): RaceState => {
     defaultLeewardGate.right,
   ]
   return {
-    t: -15,
+    t: -countdown,
     meta: createRaceMeta(raceId),
     wind: {
       directionDeg: baselineWind,
