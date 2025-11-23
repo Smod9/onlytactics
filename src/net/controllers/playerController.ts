@@ -9,6 +9,7 @@ import { SubscriberController } from './subscriberController'
 import type { PlayerInput, RaceRole, RaceState } from '@/types/race'
 import type { ControlUpdate } from './types'
 import type { RaceStore } from '@/state/raceStore'
+import { quantizeHeading } from '@/logic/physics'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
 type PresencePayload = {
@@ -17,6 +18,9 @@ type PresencePayload = {
   name?: string
   role?: RaceRole
 }
+
+const formatHeadingLabel = (deg?: number) =>
+  typeof deg === 'number' ? `${quantizeHeading(deg)}°` : 'n/a'
 
 export class PlayerController extends SubscriberController {
   private currentInput: PlayerInput = {
@@ -76,7 +80,10 @@ export class PlayerController extends SubscriberController {
         spin: 'full',
         tClient: Date.now(),
       }
-      console.debug('[inputs] sent', payload)
+      console.debug('[inputs] sent', {
+        ...payload,
+        headingText: formatHeadingLabel(payload.desiredHeadingDeg),
+      })
       this.mqtt.publish(inputsTopic(identity.boatId), payload, { qos: 0 })
       this.lastPublished = undefined
       return
@@ -84,9 +91,10 @@ export class PlayerController extends SubscriberController {
     if (typeof update.desiredHeadingDeg !== 'number') {
       return
     }
+    const quantizedHeading = quantizeHeading(update.desiredHeadingDeg)
     this.currentInput = {
       ...this.currentInput,
-      desiredHeadingDeg: update.desiredHeadingDeg,
+      desiredHeadingDeg: quantizedHeading,
       tClient: Date.now(),
     }
     this.store.upsertInput(this.currentInput)
@@ -97,9 +105,10 @@ export class PlayerController extends SubscriberController {
     super.onState(snapshot)
     const boat = snapshot.boats[identity.boatId]
     if (boat) {
+      const desiredHeading = quantizeHeading(boat.desiredHeadingDeg ?? boat.headingDeg)
       this.currentInput = {
         ...this.currentInput,
-        desiredHeadingDeg: boat.desiredHeadingDeg ?? boat.headingDeg,
+        desiredHeadingDeg: desiredHeading,
       }
       this.lastPublished = { ...this.currentInput }
       this.store.upsertInput(this.currentInput)
@@ -115,7 +124,10 @@ export class PlayerController extends SubscriberController {
     if (!hasChanged) return
 
     this.lastPublished = { ...this.currentInput }
-    console.debug('[inputs] sent', this.currentInput)
+    console.debug('[inputs] sent', {
+      ...this.currentInput,
+      headingText: formatHeadingLabel(this.currentInput.desiredHeadingDeg),
+    })
     this.mqtt.publish(inputsTopic(this.currentInput.boatId), this.currentInput, { qos: 0 })
   }
 

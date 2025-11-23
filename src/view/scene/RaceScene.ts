@@ -135,7 +135,7 @@ export class RaceScene {
 
   private mapToScreen(): ScreenMapper {
     const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / 800
+    const scale = Math.min(width, height) / 600
     return (value: Vec2) => ({
       x: width / 2 + value.x * scale,
       y: height / 2 + value.y * scale,
@@ -254,7 +254,7 @@ export class RaceScene {
   private drawBoats(state: RaceState) {
     const map = this.mapToScreen()
     const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / 1200
+    const scale = Math.min(width, height) / 900
     const seen = new Set<string>()
     Object.values(state.boats).forEach((boat) => {
       seen.add(boat.id)

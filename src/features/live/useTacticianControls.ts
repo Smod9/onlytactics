@@ -8,7 +8,7 @@ import {
   apparentWindAngleSigned,
   computeVmgAngles,
   headingFromAwa,
-  normalizeDeg,
+  quantizeHeading,
 } from '@/logic/physics'
 import {
   HEADING_STEP_DEG,
@@ -88,10 +88,12 @@ export const useTacticianControls = (
       const absAwa = Math.abs(awa)
       const vmgAngles = computeVmgAngles(state.wind.speed)
 
+      const lastRounded = quantizeHeading(lastHeading)
+
       const sendHeading = (heading: number) => {
-        const normalized = normalizeDeg(heading)
-        if (Math.abs(angleDiff(normalized, lastHeading)) < 0.01) return
-        networkRef.current?.updateDesiredHeading(normalized)
+        const rounded = quantizeHeading(heading)
+        if (rounded === lastRounded) return
+        networkRef.current?.updateDesiredHeading(rounded)
         event.preventDefault()
       }
 

@@ -23,6 +23,12 @@ export const normalizeDeg = (deg: number) => {
   return wrapped < 0 ? wrapped + 360 : wrapped
 }
 
+export const quantizeHeading = (deg: number) => {
+  const rounded = Math.round(normalizeDeg(deg))
+  const wrapped = rounded % 360
+  return wrapped < 0 ? wrapped + 360 : wrapped
+}
+
 export const angleDiff = (targetDeg: number, currentDeg: number) => {
   let diff = targetDeg - currentDeg
   diff = ((diff + 180) % 360 + 360) % 360 - 180

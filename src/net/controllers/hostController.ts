@@ -150,9 +150,13 @@ export class HostController extends BaseController {
   }
 
   private handleInput(input: PlayerInput) {
+    const timestamp =
+      typeof input.tClient === 'number' ? input.tClient : Number(input.tClient ?? 0)
+    if (!Number.isFinite(timestamp)) return
+
     const lastTs = this.lastInputTs.get(input.boatId)
-    if (lastTs === input.tClient) return
-    this.lastInputTs.set(input.boatId, input.tClient)
+    if (lastTs === timestamp) return
+    this.lastInputTs.set(input.boatId, timestamp)
 
     if (input.spin === 'full') {
       console.debug('[inputs] spin requested', input)
@@ -171,9 +175,12 @@ export class HostController extends BaseController {
     console.debug('[inputs] received', {
       boatId: input.boatId,
       desiredHeadingDeg: input.desiredHeadingDeg,
-      tClient: input.tClient,
+      tClient: timestamp,
     })
-    this.store.upsertInput(input)
+    this.store.upsertInput({
+      ...input,
+      tClient: timestamp,
+    })
   }
 
   private queueSpin(boatId: string) {

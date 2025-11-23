@@ -1,5 +1,5 @@
 import type { RaceRole } from '@/types/race'
-import { normalizeDeg } from '@/logic/physics'
+import { quantizeHeading } from '@/logic/physics'
 import { HostController } from './controllers/hostController'
 import { PlayerController } from './controllers/playerController'
 import { SpectatorController } from './controllers/spectatorController'
@@ -43,7 +43,7 @@ export class GameNetwork {
   }
 
   updateDesiredHeading(headingDeg: number) {
-    this.latestHeadingDeg = normalizeDeg(headingDeg)
+    this.latestHeadingDeg = quantizeHeading(headingDeg)
     this.controller?.updateLocalInput?.({ desiredHeadingDeg: this.latestHeadingDeg })
   }
 

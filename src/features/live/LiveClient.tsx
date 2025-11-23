@@ -23,7 +23,7 @@ export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const [network] = useState(() => new GameNetwork())
-  const [showDebug, setShowDebug] = useState(appEnv.debugHud)
+  const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [needsName, setNeedsName] = useState(!identity.clientName)
 
