@@ -78,13 +78,18 @@ export const useTacticianControls = (
       const boat = state.boats[identity.boatId]
       if (!boat) return
 
+      const lastHeadingRef = raceRef.current.boats[identity.boatId]?.desiredHeadingDeg
+      const lastHeading = lastHeadingRef ?? boat.desiredHeadingDeg ?? boat.headingDeg
+
       const awa = apparentWindAngleSigned(boat.headingDeg, state.wind.directionDeg)
       const tackSign = awa >= 0 ? 1 : -1
       const absAwa = Math.abs(awa)
       const vmgAngles = computeVmgAngles(state.wind.speed)
 
       const sendHeading = (heading: number) => {
-        networkRef.current?.updateDesiredHeading(normalizeDeg(heading))
+        const normalized = normalizeDeg(heading)
+        if (Math.abs(angleDiff(normalized, lastHeading)) < 0.01) return
+        networkRef.current?.updateDesiredHeading(normalized)
         event.preventDefault()
       }
 

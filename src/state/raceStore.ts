@@ -1,6 +1,6 @@
 import { appEnv } from '@/config/env'
 import type { ChatMessage, PlayerInput, RaceEvent, RaceState } from '@/types/race'
-import { cloneRaceState, createBoatState, createInitialRaceState } from './factories'
+import { cloneRaceState, createInitialRaceState } from './factories'
 
 type Listener = () => void
 
@@ -37,19 +37,15 @@ export class RaceStore {
     return () => this.listeners.delete(listener)
   }
 
-  upsertInput = (input: PlayerInput, name?: string) => {
-    if (!this.state.boats[input.boatId]) {
-      this.addBoat(input.boatId, name)
-    } else if (name) {
-      this.patchState((draft) => {
-        const boat = draft.boats[input.boatId]
-        if (boat) boat.name = name
-      })
-    }
+  upsertInput = (input: PlayerInput) => {
     this.latestInputs[input.boatId] = input
   }
 
-  consumeInputs = () => ({ ...this.latestInputs })
+  consumeInputs = () => {
+    const snapshot = { ...this.latestInputs }
+    this.latestInputs = {}
+    return snapshot
+  }
 
   appendEvents = (events: RaceEvent[]) => {
     if (!events.length) return
@@ -86,13 +82,6 @@ export class RaceStore {
     this.listeners.forEach((listener) => listener())
   }
 
-  private addBoat(boatId: string, name?: string) {
-    this.patchState((draft) => {
-      const index = Object.keys(draft.boats).length
-      const boatName = name ?? `Boat ${index + 1}`
-      draft.boats[boatId] = createBoatState(boatName, index, boatId)
-    })
-  }
 }
 
 export const raceStore = new RaceStore(createInitialRaceState(appEnv.raceId))

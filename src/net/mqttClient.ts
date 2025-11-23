@@ -125,11 +125,14 @@ export class GameMqttClient {
     return { endpoint, options }
   }
 
-  publish(topic: string, payload: unknown, options?: { retain?: boolean }) {
+  publish(
+    topic: string,
+    payload: unknown,
+    options?: { retain?: boolean; qos?: 0 | 1 | 2 },
+  ) {
     if (!this.client) return
-    // console.log('publishing message to topic', topic, payload)
     this.client.publish(topic, toBuffer(payload), {
-      qos: 1,
+      qos: options?.qos ?? 1,
       retain: options?.retain ?? false,
     })
   }

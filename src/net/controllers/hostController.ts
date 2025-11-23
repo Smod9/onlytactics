@@ -8,6 +8,7 @@ type PresencePayload = {
 import { HostLoop } from '@/host/loop'
 import { createBoatState } from '@/state/factories'
 import {
+  inputsTopic,
   inputsWildcard,
   stateTopic,
   eventsTopic,
@@ -26,6 +27,8 @@ export class HostController extends BaseController {
 
   private publishTimer?: number
 
+  private lastInputTs = new Map<string, number>()
+
   constructor(private store: RaceStore = raceStore) {
     super()
     this.loop = new HostLoop(this.store, undefined, undefined, {
@@ -41,7 +44,7 @@ export class HostController extends BaseController {
     this.loop.start()
     this.track(
       this.mqtt.subscribe<PlayerInput>(inputsWildcard, (input) =>
-        this.store.upsertInput(input),
+        this.handleInput(input),
       ),
     )
     this.track(
@@ -72,11 +75,13 @@ export class HostController extends BaseController {
   }
 
   updateLocalInput(update: { desiredHeadingDeg: number }) {
-    this.store.upsertInput({
+    const payload = {
       boatId: identity.boatId,
       desiredHeadingDeg: update.desiredHeadingDeg,
       tClient: Date.now(),
-    })
+    }
+    console.debug('[inputs] sent', payload)
+    this.mqtt.publish(inputsTopic(payload.boatId), payload, { qos: 0 })
   }
 
   private startStatePublisher() {
@@ -112,6 +117,19 @@ export class HostController extends BaseController {
         boat.name = name
       }
     })
+  }
+
+  private handleInput(input: PlayerInput) {
+    const lastTs = this.lastInputTs.get(input.boatId)
+    if (lastTs === input.tClient) return
+    this.lastInputTs.set(input.boatId, input.tClient)
+
+    console.debug('[inputs] received', {
+      boatId: input.boatId,
+      desiredHeadingDeg: input.desiredHeadingDeg,
+      tClient: input.tClient,
+    })
+    this.store.upsertInput(input)
   }
 }
 

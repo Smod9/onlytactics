@@ -32,10 +32,6 @@ export class PlayerController extends SubscriberController {
 
   private lastPublished?: PlayerInput
 
-  private lastPublishMs = 0
-
-  private static readonly HEARTBEAT_MS = 4000
-
   private currentHostId?: string
 
   private hostOnline = false
@@ -77,7 +73,7 @@ export class PlayerController extends SubscriberController {
       ...partial,
       tClient: Date.now(),
     }
-    this.store.upsertInput(this.currentInput, identity.clientName ?? undefined)
+    this.store.upsertInput(this.currentInput)
   }
 
   protected onState(snapshot: RaceState) {
@@ -89,24 +85,22 @@ export class PlayerController extends SubscriberController {
         ...this.currentInput,
         desiredHeadingDeg: boat.desiredHeadingDeg ?? boat.headingDeg,
       }
-      this.store.upsertInput(this.currentInput, identity.clientName ?? undefined)
+      this.lastPublished = { ...this.currentInput }
+      this.store.upsertInput(this.currentInput)
     }
   }
 
   private flushInput() {
-    const now = Date.now()
     const hasChanged =
       !this.lastPublished ||
       this.lastPublished.boatId !== this.currentInput.boatId ||
       this.lastPublished.desiredHeadingDeg !== this.currentInput.desiredHeadingDeg
 
-    if (!hasChanged && now - this.lastPublishMs < PlayerController.HEARTBEAT_MS) {
-      return
-    }
+    if (!hasChanged) return
 
     this.lastPublished = { ...this.currentInput }
-    this.lastPublishMs = now
-    this.mqtt.publish(inputsTopic(this.currentInput.boatId), this.currentInput)
+    console.debug('[inputs] sent', this.currentInput)
+    this.mqtt.publish(inputsTopic(this.currentInput.boatId), this.currentInput, { qos: 0 })
   }
 
   private handleHostAnnouncement(payload?: HostAnnouncement) {
@@ -163,7 +157,7 @@ export class PlayerController extends SubscriberController {
   }
 
   private canPromote() {
-    return true
+    return false
   }
 }
 
