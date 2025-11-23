@@ -11,6 +11,7 @@ import { raceStore, RaceStore } from '@/state/raceStore'
 import type { ChatMessage, PlayerInput, RaceEvent } from '@/types/race'
 import { identity } from '@/net/identity'
 import { replayRecorder } from '@/replay/manager'
+import { appEnv } from '@/config/env'
 
 export class HostController extends BaseController {
   private loop: HostLoop
@@ -25,8 +26,8 @@ export class HostController extends BaseController {
     })
   }
 
-  protected onStart() {
-    this.claimHost()
+  protected async onStart() {
+    await this.claimHost()
     replayRecorder.reset()
     replayRecorder.start(this.store.getState())
     this.loop.start()
@@ -48,7 +49,10 @@ export class HostController extends BaseController {
     if (this.publishTimer) clearInterval(this.publishTimer)
   }
 
-  private claimHost() {
+  private async claimHost() {
+    if (appEnv.clientRole !== 'host') {
+      return
+    }
     this.mqtt.publish(
       hostTopic,
       { clientId: identity.clientId, updatedAt: Date.now() },

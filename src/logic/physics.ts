@@ -19,15 +19,14 @@ export const degToRad = (deg: number) => (deg * Math.PI) / 180
 export const radToDeg = (rad: number) => (rad * 180) / Math.PI
 
 export const normalizeDeg = (deg: number) => {
-  let d = deg % 360
-  if (d < 0) d += 360
-  return d
+  const wrapped = deg % 360
+  return wrapped < 0 ? wrapped + 360 : wrapped
 }
 
 export const angleDiff = (targetDeg: number, currentDeg: number) => {
-  let diff = (targetDeg - currentDeg + 540) % 360
-  diff = diff < 0 ? diff + 360 : diff
-  return diff > 180 ? diff - 360 : diff
+  let diff = targetDeg - currentDeg
+  diff = ((diff + 180) % 360 + 360) % 360 - 180
+  return diff
 }
 
 export const headingFromAwa = (windDirDeg: number, awaDeg: number) =>
@@ -39,7 +38,7 @@ const apparentWindAngle = (boatHeadingDeg: number, windDirDeg: number) =>
 const polarTargetSpeed = (awaDeg: number, windSpeed: number, sheet: number) => {
   const awa = Math.abs(awaDeg)
   const normalized = clamp((awa - 30) / 150, 0, 1)
-  const efficiency = Math.cos(normalized * Math.PI)
+  const efficiency = Math.cos(normalized * (Math.PI / 2))
   const sheetEffect = 0.5 + 0.5 * clamp(sheet, 0, 1)
   const target = windSpeed * efficiency * sheetEffect * 1.05
   return clamp(target, 0, MAX_SPEED_KTS)

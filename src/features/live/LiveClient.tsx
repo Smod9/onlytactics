@@ -6,10 +6,12 @@ import { GameNetwork } from '@/net/gameNetwork'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
+import { DebugPanel } from './DebugPanel'
 
 export const LiveClient = () => {
   const events = useRaceEvents()
   const [network] = useState(() => new GameNetwork())
+  const [showDebug, setShowDebug] = useState(appEnv.debugHud)
 
   useEffect(() => {
     void network.start()
@@ -26,8 +28,9 @@ export const LiveClient = () => {
 
   return (
     <div className="live-client">
-      <PixiStage />
-      <aside className="hud-panel">
+      <div className="live-main">
+        <PixiStage />
+        <aside className="hud-panel">
         <h2>Race Feed</h2>
         <p>
           Race <strong>{appEnv.raceId}</strong> as <strong>{role}</strong>
@@ -62,7 +65,20 @@ export const LiveClient = () => {
             </ul>
           </div>
         )}
+        <button
+          type="button"
+          className="debug-toggle"
+          onClick={() => setShowDebug((value) => !value)}
+        >
+          {showDebug ? 'Hide Debug' : 'Show Debug'}
+        </button>
       </aside>
+      </div>
+      {showDebug && (
+        <div className="debug-dock">
+          <DebugPanel />
+        </div>
+      )}
     </div>
   )
 }
