@@ -1,17 +1,27 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
-import { useRaceEvents } from '@/state/hooks'
+import { useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
 import { DebugPanel } from './DebugPanel'
+import { identity, setBoatId } from '@/net/identity'
 
 export const LiveClient = () => {
   const events = useRaceEvents()
+  const race = useRaceState()
   const [network] = useState(() => new GameNetwork())
   const [showDebug, setShowDebug] = useState(appEnv.debugHud)
+
+  const defaultBoatId = useMemo(() => Object.keys(race.boats)[0], [race.boats])
+
+  useEffect(() => {
+    if (defaultBoatId && !race.boats[identity.boatId]) {
+      setBoatId(defaultBoatId)
+    }
+  }, [defaultBoatId, race.boats])
 
   useEffect(() => {
     void network.start()
