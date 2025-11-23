@@ -1,35 +1,23 @@
 # Sailing Simulator Frontend
 
-This is the browser client for the sailing race rules trainer. It includes the PixiJS scene, MQTT networking, replay tooling, and a tiny development MQTT broker to keep everything self-contained.
+This is the browser client for the sailing race rules trainer. It includes the PixiJS scene, MQTT networking, replay tooling, and connects to a shared CloudAMQP (RabbitMQ) broker.
 
 ## Getting started
 
 ```bash
 cd frontend
 npm install
-cp env.example .env    # adjust values if needed
-npm run dev            # starts Vite + a local MQTT broker
+cp env.example .env    # adjust values if needed (contains CloudAMQP defaults)
+npm run dev            # starts Vite and connects to the remote broker
 ```
 
-`npm run dev` now launches two processes:
+`VITE_MQTT_URL` defaults to the shared CloudAMQP instance:
 
-- `vite` – the usual React/Pixi dev server
-- `broker` – a lightweight MQTT broker (TCP 1883 + WS 9001) powered by `aedes`
+```
+amqps://ykmhctpq:aj_D4WmGyuhpBNRsobEQUas4Uvs8y-c7@gorilla.lmq.cloudamqp.com/ykmhctpq
+```
 
-The app's default `VITE_MQTT_URL` already points to `ws://localhost:9001`, so the development broker is used automatically.
-
-### Skipping or customizing the broker
-
-Set `DEV_BROKER_DISABLED=1 npm run dev` if you want to connect to a different broker while still using the dev server.
-
-Environment overrides while running `npm run dev`:
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `DEV_BROKER_TCP_PORT` | `1883` | TCP listener for native MQTT clients |
-| `DEV_BROKER_WS_PORT` | `9001` | WebSocket endpoint used by the app |
-
-You can also run the broker standalone with `npm run broker`.
+If you need to use a different broker, update `VITE_MQTT_URL` in your `.env` and restart `npm run dev`. No local broker is required anymore.
 
 ## Tactician controls
 

@@ -26,6 +26,7 @@ export type BoatState = {
   penalties: number
   stallTimer: number
   overEarly: boolean
+  fouled: boolean
 }
 
 export type RaceMeta = {

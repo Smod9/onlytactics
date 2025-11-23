@@ -70,6 +70,16 @@ export class HostLoop {
     })
     const events = [...startEvents, ...this.rules.toEvents(next, resolutions)]
 
+    Object.values(next.boats).forEach((boat) => {
+      boat.fouled = false
+    })
+    resolutions.forEach((violation) => {
+      violation.boats.forEach((boatId) => {
+        const boat = next.boats[boatId]
+        if (boat) boat.fouled = violation.offenderId === boatId
+      })
+    })
+
     this.store.setState(next)
     this.store.appendEvents(events)
     this.options.onEvents?.(events)

@@ -59,7 +59,11 @@ class BoatView {
     this.container.scale.set(scale)
     this.container.rotation = degToRad(boat.headingDeg)
     this.nameTag.text = `${boat.name} (${boat.penalties})`
-    this.nameTag.style.fill = boat.overEarly ? '#ff6b6b' : '#ffffff'
+    if (boat.overEarly || boat.fouled) {
+      this.nameTag.style.fill = '#ff6b6b'
+    } else {
+      this.nameTag.style.fill = '#ffffff'
+    }
     this.drawProjection(boat, scale)
   }
 

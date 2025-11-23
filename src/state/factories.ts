@@ -43,6 +43,7 @@ const createBoatState = (name: string, index: number): BoatState => {
     speed: 0,
     stallTimer: 0,
     overEarly: false,
+    fouled: false,
   }
 }
 
