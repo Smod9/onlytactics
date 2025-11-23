@@ -48,6 +48,7 @@ export type RaceState = {
   startLine: StartLine
   leewardGate: Gate
   phase: RacePhase
+  countdownArmed: boolean
 }
 
 export type PlayerInput = {

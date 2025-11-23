@@ -59,7 +59,10 @@ export class HostLoop {
 
     const next = cloneRaceState(this.store.getState())
     const inputs = this.store.consumeInputs()
-    stepRaceState(next, inputs, dt)
+    const countdownHeld = next.phase === 'prestart' && !next.countdownArmed
+    if (!countdownHeld) {
+      stepRaceState(next, inputs, dt)
+    }
     this.applyWindOscillation(next, dt)
 
     const startEvents = this.updateStartLine(next)

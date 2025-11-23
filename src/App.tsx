@@ -15,7 +15,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Sailing Rules Trainer</h1>
+        <h1>Only Tactics!</h1>
         <div className="mode-switcher">
           {MODES.map(({ label, value }) => (
             <button

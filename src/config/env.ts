@@ -22,7 +22,6 @@ export const appEnv = {
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),
-  autoHost: toBool(rawEnv.VITE_AUTO_HOST, true),
 }
 
 export type AppEnv = typeof appEnv

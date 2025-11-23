@@ -55,9 +55,9 @@ export class ChatService {
     await mqttClient.connect()
     const message: ChatMessage = {
       messageId: createId('chat'),
-      raceId: appEnv.raceId,
+      raceId: raceStore.getState().meta.raceId,
       senderId: identity.clientId,
-      senderName: appEnv.clientName,
+      senderName: identity.clientName ?? appEnv.clientName,
       senderRole,
       text: trimmed,
       ts: Date.now(),

@@ -62,7 +62,7 @@ export const createInitialRaceState = (raceId: string): RaceState => {
     defaultLeewardGate.right,
   ]
   return {
-    t: -25,
+    t: -15,
     meta: createRaceMeta(raceId),
     wind: {
       directionDeg: baselineWind,
@@ -73,6 +73,7 @@ export const createInitialRaceState = (raceId: string): RaceState => {
     startLine: structuredCopy(defaultStartLine),
     leewardGate: structuredCopy(defaultLeewardGate),
     phase: 'prestart',
+    countdownArmed: false,
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat
       return acc

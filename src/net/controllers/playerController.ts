@@ -1,12 +1,21 @@
 import { appEnv } from '@/config/env'
 import { identity } from '@/net/identity'
-import { hostTopic, inputsTopic, presenceWildcard } from '@/net/topics'
+import {
+  hostTopic,
+  inputsTopic,
+  presenceWildcard,
+} from '@/net/topics'
 import { SubscriberController } from './subscriberController'
-import type { PlayerInput, RaceState } from '@/types/race'
+import type { PlayerInput, RaceRole, RaceState } from '@/types/race'
 import type { RaceStore } from '@/state/raceStore'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
-type PresencePayload = { clientId: string; status: 'online' | 'offline' }
+type PresencePayload = {
+  clientId: string
+  status: 'online' | 'offline'
+  name?: string
+  role?: RaceRole
+}
 
 export class PlayerController extends SubscriberController {
   private currentInput: PlayerInput = {
@@ -20,6 +29,12 @@ export class PlayerController extends SubscriberController {
   private failoverTimer?: number
 
   private lastStateMs = Date.now()
+
+  private lastPublished?: PlayerInput
+
+  private lastPublishMs = 0
+
+  private static readonly HEARTBEAT_MS = 4000
 
   private currentHostId?: string
 
@@ -62,7 +77,7 @@ export class PlayerController extends SubscriberController {
       ...partial,
       tClient: Date.now(),
     }
-    this.store.upsertInput(this.currentInput)
+    this.store.upsertInput(this.currentInput, identity.clientName)
   }
 
   protected onState(snapshot: RaceState) {
@@ -74,11 +89,23 @@ export class PlayerController extends SubscriberController {
         ...this.currentInput,
         desiredHeadingDeg: boat.desiredHeadingDeg ?? boat.headingDeg,
       }
-      this.store.upsertInput(this.currentInput)
+      this.store.upsertInput(this.currentInput, identity.clientName)
     }
   }
 
   private flushInput() {
+    const now = Date.now()
+    const hasChanged =
+      !this.lastPublished ||
+      this.lastPublished.boatId !== this.currentInput.boatId ||
+      this.lastPublished.desiredHeadingDeg !== this.currentInput.desiredHeadingDeg
+
+    if (!hasChanged && now - this.lastPublishMs < PlayerController.HEARTBEAT_MS) {
+      return
+    }
+
+    this.lastPublished = { ...this.currentInput }
+    this.lastPublishMs = now
     this.mqtt.publish(inputsTopic(this.currentInput.boatId), this.currentInput)
   }
 
@@ -96,11 +123,17 @@ export class PlayerController extends SubscriberController {
       return
     }
     const status = this.presenceMap.get(this.currentHostId)
+    if (!status) {
+      this.hostOnline = true
+      return
+    }
     this.hostOnline = status === 'online'
   }
 
   private handlePresence(payload?: PresencePayload) {
-    if (!payload) return
+    if (!payload) {
+      return
+    }
     this.presenceMap.set(payload.clientId, payload.status)
     if (payload.clientId === this.currentHostId) {
       this.hostOnline = payload.status === 'online'
@@ -130,7 +163,7 @@ export class PlayerController extends SubscriberController {
   }
 
   private canPromote() {
-    return appEnv.clientRole !== 'spectator'
+    return true
   }
 }
 

@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import {
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
 import { useRaceEvents, useRaceState } from '@/state/hooks'
@@ -7,39 +13,70 @@ import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
 import { DebugPanel } from './DebugPanel'
-import { identity, setBoatId } from '@/net/identity'
+import { identity, setClientName } from '@/net/identity'
+import { startRosterWatcher } from '@/state/rosterStore'
+import { RosterPanel } from './RosterPanel'
+import { TacticianPopout } from './TacticianPopout'
+import type { RaceRole } from '@/types/race'
 
 export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const [network] = useState(() => new GameNetwork())
   const [showDebug, setShowDebug] = useState(appEnv.debugHud)
-
-  const defaultBoatId = useMemo(() => Object.keys(race.boats)[0], [race.boats])
-
-  useEffect(() => {
-    if (defaultBoatId && !race.boats[identity.boatId]) {
-      setBoatId(defaultBoatId)
-    }
-  }, [defaultBoatId, race.boats])
+  const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
+  const [needsName, setNeedsName] = useState(!identity.clientName)
 
   const playerBoat = useMemo(() => race.boats[identity.boatId], [race.boats])
 
   useEffect(() => {
+    void startRosterWatcher()
+  }, [])
+
+  useEffect(() => {
+    if (needsName) return
     void network.start()
     return () => network.stop()
-  }, [network])
+  }, [network, needsName])
 
-  const role = useSyncExternalStore(
+  const role = useSyncExternalStore<RaceRole>(
     (listener) => network.onRoleChange(listener),
     () => network.getRole(),
-    () => appEnv.clientRole,
+    () => 'spectator',
   )
 
   useTacticianControls(network, role)
 
+  const submitName = (event: FormEvent) => {
+    event.preventDefault()
+    const trimmed = nameEntry.trim()
+    if (!trimmed) return
+    setClientName(trimmed)
+    setNeedsName(false)
+    network.announcePresence('online')
+  }
+
   return (
     <div className="live-client">
+      {needsName && (
+        <div className="username-gate">
+          <div className="username-card">
+            <h2>Enter Your Name</h2>
+            <p>We use this to label your boat and chat messages in the race.</p>
+            <form className="username-form" onSubmit={submitName}>
+              <input
+                value={nameEntry}
+                onChange={(event) => setNameEntry(event.target.value)}
+                placeholder="Callsign or Name"
+                maxLength={24}
+              />
+              <button type="submit" disabled={!nameEntry.trim()}>
+                Join Race
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       <div className="live-main">
         <PixiStage />
         <aside className="hud-panel">
@@ -47,6 +84,23 @@ export const LiveClient = () => {
         <p>
           Race <strong>{appEnv.raceId}</strong> as <strong>{role}</strong>
         </p>
+        <p>
+          You are <strong>{identity.clientName}</strong>
+        </p>
+        {race.phase === 'prestart' && !race.countdownArmed && (
+          <p className="countdown-status">
+            Waiting for host to start the sequence&hellip;
+          </p>
+        )}
+        {role === 'host' && race.phase === 'prestart' && !race.countdownArmed && (
+          <button
+            type="button"
+            className="start-sequence"
+            onClick={() => network.armCountdown(15)}
+          >
+            Start 15s Sequence
+          </button>
+        )}
         {playerBoat && (
           <div className="speed-readout">
             SPD {playerBoat.speed.toFixed(2)} kts
@@ -61,27 +115,9 @@ export const LiveClient = () => {
           ))}
           {!events.length && <p>No rule events yet.</p>}
         </div>
+        <RosterPanel role={role} />
         <ChatPanel network={network} />
         {role === 'host' && <ReplaySaveButton />}
-        {role !== 'spectator' && (
-          <div className="tactician-help">
-            <h3>Tactician Controls</h3>
-            <ul>
-              <li>
-                <kbd>Space</kbd> Sail by telltales (auto VMG heading)
-              </li>
-              <li>
-                <kbd>Enter</kbd> Tack / gybe (locks helm until turn completes)
-              </li>
-              <li>
-                <kbd>↑</kbd> Head up 5°
-              </li>
-              <li>
-                <kbd>↓</kbd> Bear away 5°
-              </li>
-            </ul>
-          </div>
-        )}
         <button
           type="button"
           className="debug-toggle"
@@ -91,6 +127,7 @@ export const LiveClient = () => {
         </button>
       </aside>
       </div>
+      <TacticianPopout />
       {showDebug && (
         <div className="debug-dock">
           <DebugPanel onClose={() => setShowDebug(false)} />

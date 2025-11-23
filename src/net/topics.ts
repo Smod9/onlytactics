@@ -1,6 +1,13 @@
 import { appEnv } from '@/config/env'
+import { readJson } from '@/utils/storage'
 
-const base = `sgame/${appEnv.raceId}`
+const RACE_KEY = 'sgame:raceId'
+
+const getRaceId = () => readJson<string>(RACE_KEY, appEnv.raceId)
+
+export const raceTopic = (raceId: string) => `sgame/${raceId}`
+
+const base = raceTopic(getRaceId())
 
 export const hostTopic = `${base}/host`
 export const stateTopic = `${base}/state`

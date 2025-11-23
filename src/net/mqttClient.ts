@@ -20,6 +20,30 @@ const fromBuffer = <T>(raw: Uint8Array | string) => {
   }
 }
 
+const topicMatches = (filter: string, topic: string) => {
+  if (filter === topic) return true
+  const filterLevels = filter.split('/')
+  const topicLevels = topic.split('/')
+
+  for (let i = 0; i < filterLevels.length; i += 1) {
+    const filterLevel = filterLevels[i]
+    const topicLevel = topicLevels[i]
+
+    if (filterLevel === '#') {
+      return true
+    }
+    if (filterLevel === '+') {
+      if (topicLevel === undefined) return false
+      continue
+    }
+    if (topicLevel === undefined || filterLevel !== topicLevel) {
+      return false
+    }
+  }
+
+  return filterLevels.length === topicLevels.length
+}
+
 export class GameMqttClient {
   private client?: MqttClient
 
@@ -33,8 +57,6 @@ export class GameMqttClient {
     const { endpoint, options } = this.buildConnectionOptions()
     console.info('[mqtt] connecting', {
       endpoint,
-      username: options.username,
-      password: options.password,
       clientId: options.clientId,
       protocol: options.protocol ?? 'auto',
       hasUsername: Boolean(options.username),
@@ -58,11 +80,20 @@ export class GameMqttClient {
     })
 
     this.client.on('message', (topic, payload) => {
-      const handlers = this.handlers.get(topic)
-      if (!handlers?.size) return
       const parsed = fromBuffer(payload)
       if (parsed === undefined) return
-      handlers.forEach((handler) => handler(parsed))
+
+      let matched = false
+      this.handlers.forEach((handlers, filter) => {
+        if (!handlers.size) return
+        if (!topicMatches(filter, topic)) return
+        matched = true
+        handlers.forEach((handler) => handler(parsed))
+      })
+
+      if (!matched) {
+        console.debug('[mqtt] message dropped (no handler)', topic)
+      }
     })
 
     return this.connectionPromise
@@ -96,6 +127,7 @@ export class GameMqttClient {
 
   publish(topic: string, payload: unknown, options?: { retain?: boolean }) {
     if (!this.client) return
+    // console.log('publishing message to topic', topic, payload)
     this.client.publish(topic, toBuffer(payload), {
       qos: 1,
       retain: options?.retain ?? false,
@@ -104,7 +136,6 @@ export class GameMqttClient {
 
   subscribe<T>(topic: string, handler: Handler<T>) {
     if (!this.client) throw new Error('MQTT client not connected')
-
     if (!this.handlers.has(topic)) {
       this.handlers.set(topic, new Set())
       this.client.subscribe(topic, { qos: 1 })

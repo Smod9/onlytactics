@@ -3,7 +3,6 @@ import { chatService } from '@/chat/chatService'
 import { useChatLog } from '@/state/hooks'
 import type { GameNetwork } from '@/net/gameNetwork'
 import type { ChatSenderRole, RaceRole } from '@/types/race'
-import { appEnv } from '@/config/env'
 
 type Props = {
   network?: GameNetwork
@@ -25,8 +24,8 @@ export const ChatPanel = ({ network }: Props) => {
       if (!network) return () => {}
       return network.onRoleChange(listener)
     },
-    () => network?.getRole() ?? appEnv.clientRole,
-    () => appEnv.clientRole,
+    () => network?.getRole() ?? 'spectator',
+    () => 'spectator',
   )
 
   useEffect(() => {

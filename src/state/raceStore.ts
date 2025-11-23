@@ -37,9 +37,14 @@ export class RaceStore {
     return () => this.listeners.delete(listener)
   }
 
-  upsertInput = (input: PlayerInput) => {
+  upsertInput = (input: PlayerInput, name?: string) => {
     if (!this.state.boats[input.boatId]) {
-      this.addBoat(input.boatId)
+      this.addBoat(input.boatId, name)
+    } else if (name) {
+      this.patchState((draft) => {
+        const boat = draft.boats[input.boatId]
+        if (boat) boat.name = name
+      })
     }
     this.latestInputs[input.boatId] = input
   }
@@ -81,11 +86,11 @@ export class RaceStore {
     this.listeners.forEach((listener) => listener())
   }
 
-  private addBoat(boatId: string) {
+  private addBoat(boatId: string, name?: string) {
     this.patchState((draft) => {
       const index = Object.keys(draft.boats).length
-      const name = `Boat ${index + 1}`
-      draft.boats[boatId] = createBoatState(name, index, boatId)
+      const boatName = name ?? `Boat ${index + 1}`
+      draft.boats[boatId] = createBoatState(boatName, index, boatId)
     })
   }
 }

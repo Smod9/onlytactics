@@ -11,7 +11,7 @@ cp env.example .env    # adjust values if needed (contains CloudAMQP defaults)
 npm run dev            # starts Vite and connects to the remote broker
 ```
 
-MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new CloudAMQP instance. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
+MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new broker. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
 
 ## Tactician controls
 

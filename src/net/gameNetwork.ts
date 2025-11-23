@@ -1,10 +1,14 @@
-import { appEnv } from '@/config/env'
 import type { RaceRole } from '@/types/race'
 import { normalizeDeg } from '@/logic/physics'
 import { HostController } from './controllers/hostController'
 import { PlayerController } from './controllers/playerController'
 import { SpectatorController } from './controllers/spectatorController'
 import type { Controller } from './controllers/types'
+import { mqttClient } from '@/net/mqttClient'
+import { hostTopic, presenceTopic, presenceWildcard } from './topics'
+import { identity } from '@/net/identity'
+
+type HostAnnouncement = { clientId: string; updatedAt: number }
 
 export class GameNetwork {
   private controller?: Controller
@@ -13,15 +17,19 @@ export class GameNetwork {
 
   private latestHeadingDeg = 0
 
-  private currentRole: RaceRole = appEnv.clientRole
+  private currentRole: RaceRole = 'spectator'
 
   private roleListeners = new Set<(role: RaceRole) => void>()
 
   async start() {
-    await this.setRole(appEnv.autoHost ? 'host' : appEnv.clientRole)
+    await mqttClient.connect()
+    this.announcePresence('online')
+    const role = await this.resolveInitialRole()
+    await this.setRole(role)
   }
 
   stop() {
+    this.announcePresence('offline')
     this.controller?.stop()
   }
 
@@ -55,10 +63,56 @@ export class GameNetwork {
     await this.controller.start()
     this.controller.updateLocalInput?.({ desiredHeadingDeg: this.latestHeadingDeg })
     this.setCurrentRole(role)
+    this.announcePresence('online')
   }
 
   private async promoteToHost() {
     await this.setRole('host')
+  }
+
+  private resolveInitialRole() {
+    return new Promise<RaceRole>((resolve) => {
+      let resolved = false
+      const online = new Set<string>([identity.clientId])
+      const cleanup: Array<() => void> = []
+
+      const finish = (role: RaceRole) => {
+        if (resolved) return
+        resolved = true
+        cleanup.forEach((fn) => fn())
+        resolve(role)
+      }
+
+      const timeout = window.setTimeout(() => {
+        const candidates = Array.from(online).sort()
+        finish(candidates[0] === identity.clientId ? 'host' : 'player')
+      }, 2500)
+
+      cleanup.push(() => window.clearTimeout(timeout))
+
+      cleanup.push(
+        mqttClient.subscribe<HostAnnouncement>(hostTopic, (payload) => {
+          if (resolved) return
+          if (payload?.clientId) {
+            finish(payload.clientId === identity.clientId ? 'host' : 'player')
+          }
+        }),
+      )
+
+      cleanup.push(
+        mqttClient.subscribe<{ clientId: string; status: 'online' | 'offline' }>(
+          presenceWildcard,
+          (message) => {
+            if (!message?.clientId) return
+            if (message.status === 'online') {
+              online.add(message.clientId)
+            } else {
+              online.delete(message.clientId)
+            }
+          },
+        ),
+      )
+    })
   }
 
   private setCurrentRole(role: RaceRole) {
@@ -70,8 +124,28 @@ export class GameNetwork {
     return this.playerController
   }
 
+  armCountdown(seconds = 15) {
+    if (this.controller instanceof HostController) {
+      this.controller.armCountdown(seconds)
+    }
+  }
+
   private ensureBoatAssignment() {
     // placeholder for future multi-boat assignment logic
+  }
+
+  announcePresence(status: 'online' | 'offline' = 'online') {
+    mqttClient.publish(
+      presenceTopic(identity.clientId),
+      {
+        clientId: identity.clientId,
+        status,
+        name: identity.clientName,
+        role: this.currentRole,
+        boatId: identity.boatId,
+      },
+      { retain: true },
+    )
   }
 }
 
