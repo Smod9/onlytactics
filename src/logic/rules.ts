@@ -35,6 +35,8 @@ const getTack = (boat: BoatState, windDir: number): Tack => {
 const boatPairKey = (rule: RuleId, a: string, b: string) =>
   `${rule}:${[a, b].sort().join(':')}`
 
+const isRightsSuspended = (boat: BoatState) => Boolean(boat.rightsSuspended)
+
 export class RulesEngine {
   private pairCooldowns = new Map<string, number>()
   private offenderCooldowns = new Map<string, number>()
@@ -83,6 +85,9 @@ export class RulesEngine {
 
     const offender = tackA === 'port' ? a : b
     const standOn = offender === a ? b : a
+    if (isRightsSuspended(standOn) && !isRightsSuspended(offender)) {
+      return []
+    }
     return this.recordOnce(state, '10', offender.id, standOn.id, {
       ruleId: '10',
       offenderId: offender.id,
@@ -113,6 +118,9 @@ export class RulesEngine {
     const bScore = project(b)
     const windward = aScore > bScore ? a : b
     const leeward = windward === a ? b : a
+    if (isRightsSuspended(leeward) && !isRightsSuspended(windward)) {
+      return []
+    }
 
     return this.recordOnce(state, '11', windward.id, leeward.id, {
       ruleId: '11',

@@ -232,6 +232,10 @@ export class HostController extends BaseController {
     const state = this.store.getState()
     const boat = state.boats[boatId]
     if (!boat) return
+    this.store.patchState((draft) => {
+      const target = draft.boats[boatId]
+      if (target) target.rightsSuspended = true
+    })
     const origin = boat.desiredHeadingDeg ?? boat.headingDeg
     const headings = [
       origin + 120,
@@ -273,6 +277,10 @@ export class HostController extends BaseController {
       timers.forEach((timer) => clearTimeout(timer))
       this.activeSpins.delete(boatId)
     }
+    this.store.patchState((draft) => {
+      const boat = draft.boats[boatId]
+      if (boat) boat.rightsSuspended = false
+    })
     this.clearPenalty(boatId)
   }
 

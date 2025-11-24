@@ -169,22 +169,31 @@ export class HostLoop {
         const cross = lineVec.x * rel.y - lineVec.y * rel.x
         const onCourseSide = cross * (this.courseSideSign ?? 1) > 0
 
-        if (beforeStart) {
-          if (onCourseSide) {
-            if (!boat.overEarly) {
-              boat.overEarly = true
-              this.ocsBoats.add(boat.id)
-              events.push({
-                eventId: createId('event'),
-                kind: 'penalty',
-                t: state.t,
-                message: `${boat.name} OCS - return below the line`,
-                boats: [boat.id],
-                ruleId: '29',
-              })
-            }
-          } else if (boat.overEarly) {
-            boat.overEarly = false
+        if (boat.overEarly && !onCourseSide) {
+          boat.overEarly = false
+          this.ocsBoats.delete(boat.id)
+          events.push({
+            eventId: createId('event'),
+            kind: 'rule_hint',
+            t: state.t,
+            message: `${boat.name} cleared OCS`,
+            boats: [boat.id],
+            ruleId: '29',
+          })
+        }
+
+        if (beforeStart && onCourseSide) {
+          if (!boat.overEarly) {
+            boat.overEarly = true
+            this.ocsBoats.add(boat.id)
+            events.push({
+              eventId: createId('event'),
+              kind: 'penalty',
+              t: state.t,
+              message: `${boat.name} OCS - return below the line`,
+              boats: [boat.id],
+              ruleId: '29',
+            })
           }
         }
       })

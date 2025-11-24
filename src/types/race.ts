@@ -29,6 +29,7 @@ export type BoatState = {
   fouled: boolean
   lastInputSeq?: number
   lastInputAppliedAt?: number
+  rightsSuspended: boolean
 }
 
 export type RaceMeta = {

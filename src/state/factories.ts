@@ -50,6 +50,7 @@ export const createBoatState = (
     fouled: false,
     lastInputSeq: 0,
     lastInputAppliedAt: 0,
+    rightsSuspended: false,
   }
 }
 
