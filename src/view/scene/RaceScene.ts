@@ -41,17 +41,20 @@ class BoatView {
       10,
     ])
     this.hull.fill()
+    this.sail.position.set(0, -20)
+    this.sail.pivot.set(0, 0)
+    this.drawSailShape(1)
+  }
 
+  private drawSailShape(leewardSign: 1 | -1) {
     this.sail.clear()
-    this.sail.fill({ color: 0xffffff, alpha: 0.8 })
-    this.sail.poly([
-      0,
-      -20,
-      8,
-      0,
-      0,
-      8,
-    ])
+    this.sail.fill({ color: 0xffffff, alpha: 0.7 })
+    this.sail.moveTo(0, 0) // tack point at bow
+    this.sail.lineTo(leewardSign * 18, 10)
+    this.sail.lineTo(leewardSign * 12, 34)
+    this.sail.lineTo(leewardSign * 5, 38)
+    this.sail.lineTo(leewardSign * 2, 26)
+    this.sail.closePath()
     this.sail.fill()
   }
 
@@ -60,10 +63,27 @@ class BoatView {
     this.container.position.set(x, y)
     this.container.scale.set(scale)
     this.container.rotation = degToRad(boat.headingDeg)
-    const relativeWind = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
-    const leewardSign = relativeWind >= 0 ? -1 : 1
-    this.sail.position.set(leewardSign * 6, 0)
-    this.sail.rotation = 0
+    const trueWindDiff = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
+    const isUpwind = Math.abs(trueWindDiff) < 90
+    const boatRad = degToRad(boat.headingDeg)
+    const windRad = degToRad(RaceScene.currentWindDeg)
+    const forwardX = Math.sin(boatRad)
+    const forwardY = -Math.cos(boatRad)
+    const windX = Math.sin(windRad)
+    const windY = -Math.cos(windRad)
+    const cross = forwardX * windY - forwardY * windX
+    let leewardSign: 1 | -1
+    if (Math.abs(cross) < 0.001) {
+      leewardSign = trueWindDiff >= 0 ? -1 : 1
+    } else {
+      const windSide = cross > 0 ? 1 : -1
+      leewardSign = (isUpwind ? -windSide : windSide) as 1 | -1
+    }
+    this.drawSailShape(leewardSign)
+    const apparent = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
+    const trimFactor = Math.min(1, apparent / 140)
+    const rotationDeg = leewardSign * (8 + trimFactor * 24)
+    this.sail.rotation = degToRad(rotationDeg)
     this.nameTag.text = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
     if (boat.overEarly || boat.fouled || boat.penalties > 0) {
       this.nameTag.style.fill = '#ff6b6b'
