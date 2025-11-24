@@ -96,6 +96,9 @@ export class RaceScene {
     style: { fill: '#ffffff', fontSize: 14, fontWeight: 'bold' },
   })
 
+  private readonly mapScaleBase = 560
+  private readonly boatScaleBase = 850
+
   private boats = new Map<string, BoatView>()
 
   constructor(private app: Application) {
@@ -135,7 +138,7 @@ export class RaceScene {
 
   private mapToScreen(): ScreenMapper {
     const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / 600
+    const scale = Math.min(width, height) / this.mapScaleBase
     return (value: Vec2) => ({
       x: width / 2 + value.x * scale,
       y: height / 2 + value.y * scale,
@@ -160,6 +163,7 @@ export class RaceScene {
       this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff })
       this.courseLayer.moveTo(x + 10, y - 10)
       this.courseLayer.lineTo(x + 10 + index * 4, y - 10)
+      this.drawZoneCircle({ x, y }, 60)
     })
   }
 
@@ -248,13 +252,33 @@ export class RaceScene {
       this.courseLayer.fill({ color: 0xff6b6b, alpha: 0.9 })
       this.courseLayer.circle(gateMark.x, gateMark.y, 7)
       this.courseLayer.fill()
+      this.drawZoneCircle(gateMark, 48)
     })
+  }
+
+  private drawZoneCircle(center: { x: number; y: number }, radius: number) {
+    const segments = 48
+    const step = (Math.PI * 2) / segments
+    let angle = 0
+    for (let i = 0; i < segments; i += 1) {
+      const startAngle = angle
+      const endAngle = angle + step * 0.6
+      const sx = center.x + Math.cos(startAngle) * radius
+      const sy = center.y + Math.sin(startAngle) * radius
+      const ex = center.x + Math.cos(endAngle) * radius
+      const ey = center.y + Math.sin(endAngle) * radius
+      this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.2 })
+      this.courseLayer.moveTo(sx, sy)
+      this.courseLayer.lineTo(ex, ey)
+      angle += step
+    }
+    this.courseLayer.stroke()
   }
 
   private drawBoats(state: RaceState) {
     const map = this.mapToScreen()
     const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / 900
+    const scale = Math.min(width, height) / this.boatScaleBase
     const seen = new Set<string>()
     Object.values(state.boats).forEach((boat) => {
       seen.add(boat.id)
