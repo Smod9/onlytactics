@@ -147,6 +147,7 @@ export class HostController extends BaseController {
       draft.countdownArmed = true
       draft.phase = 'prestart'
       draft.t = -seconds
+      draft.clockStartMs = Date.now() + seconds * 1000
     })
   }
 

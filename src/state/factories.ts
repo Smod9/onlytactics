@@ -76,6 +76,7 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     leewardGate: structuredCopy(defaultLeewardGate),
     phase: 'prestart',
     countdownArmed: false,
+    clockStartMs: null,
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat
       return acc

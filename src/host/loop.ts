@@ -59,7 +59,8 @@ export class HostLoop {
 
   private tick() {
     const now = performance.now()
-    const dt = (now - this.lastTick) / 1000
+    const rawDt = (now - this.lastTick) / 1000
+    const dt = Math.min(rawDt, 0.25)
     this.lastTick = now
 
     const next = cloneRaceState(this.store.getState())
@@ -68,7 +69,7 @@ export class HostLoop {
     if (!countdownHeld) {
       stepRaceState(next, inputs, dt)
     } else if (next.phase === 'prestart' && !next.countdownArmed) {
-      next.t = -30
+      next.t = -appEnv.countdownSeconds
     }
     const appliedAt = Date.now()
     Object.entries(inputs).forEach(([boatId, input]) => {
@@ -80,6 +81,9 @@ export class HostLoop {
       boat.lastInputAppliedAt = appliedAt
     })
     this.applyWindOscillation(next, dt)
+    if (next.clockStartMs) {
+      next.t = (Date.now() - next.clockStartMs) / 1000
+    }
 
     const startEvents = this.updateStartLine(next)
     const rawResolutions = this.rules.evaluate(next)
