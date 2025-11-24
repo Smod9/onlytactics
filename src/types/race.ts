@@ -15,6 +15,18 @@ export type Gate = {
   right: Vec2
 }
 
+export type BoatAiConfig = {
+  profileId: string
+  accuracy: number
+  reactionMs: number
+  upwindAwa: number
+  downwindAwa: number
+  tackThresholdDeg: number
+  gybeThresholdDeg: number
+  laylineBuffer: number
+  enabled: boolean
+}
+
 export type BoatState = {
   id: string
   name: string
@@ -30,6 +42,7 @@ export type BoatState = {
   lastInputSeq?: number
   lastInputAppliedAt?: number
   rightsSuspended: boolean
+  ai?: BoatAiConfig
 }
 
 export type RaceMeta = {

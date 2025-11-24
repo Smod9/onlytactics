@@ -1,11 +1,6 @@
-type PresencePayload = {
-  clientId: string
-  status: 'online' | 'offline'
-  name?: string
-  role?: RaceRole
-  boatId?: string
-}
 import { HostLoop } from '@/host/loop'
+import { AiManager } from '@/ai/manager'
+import { appEnv } from '@/config/env'
 import { createBoatState } from '@/state/factories'
 import {
   inputsTopic,
@@ -30,6 +25,14 @@ import { replayRecorder } from '@/replay/manager'
 import { SPIN_HOLD_SECONDS } from '@/logic/constants'
 import { normalizeDeg, quantizeHeading } from '@/logic/physics'
 
+type PresencePayload = {
+  clientId: string
+  status: 'online' | 'offline'
+  name?: string
+  role?: RaceRole
+  boatId?: string
+}
+
 const createEventId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
@@ -44,7 +47,8 @@ export class HostController extends BaseController {
   private lastInputSeq = new Map<string, number>()
 
   private activeSpins = new Map<string, number[]>()
-  private localSeq = 0
+  private localSeq = new Map<string, number>()
+  private aiManager?: AiManager
 
   constructor(private store: RaceStore = raceStore) {
     super()
@@ -52,6 +56,13 @@ export class HostController extends BaseController {
       onEvents: (events) => this.publishEvents(events),
       onTick: (state, events) => replayRecorder.recordFrame(state, events),
     })
+    if (appEnv.aiEnabled) {
+      this.aiManager = new AiManager(
+        this.store,
+        (boatId, update) => this.sendInputForBoat(boatId, update),
+        (boatId) => this.queueSpin(boatId),
+      )
+    }
   }
 
   protected async onStart() {
@@ -75,12 +86,14 @@ export class HostController extends BaseController {
       ),
     )
     this.startStatePublisher()
+    this.aiManager?.start()
   }
 
   protected onStop() {
     this.loop.stop()
     if (this.publishTimer) clearInterval(this.publishTimer)
     this.cancelActiveSpins()
+    this.aiManager?.stop()
     this.mqtt.publish(hostTopic, null, { retain: true })
   }
 
@@ -93,15 +106,19 @@ export class HostController extends BaseController {
   }
 
   updateLocalInput(update: ControlUpdate) {
-    const seq = update.clientSeq ?? ++this.localSeq
+    this.sendInputForBoat(identity.boatId, update)
+  }
+
+  private sendInputForBoat(boatId: string, update: ControlUpdate) {
+    const seq = update.clientSeq ?? this.bumpLocalSeq(boatId)
     const timestamp = Date.now()
     const payload: PlayerInput = {
-      boatId: identity.boatId,
+      boatId,
       tClient: timestamp,
       seq,
     }
     if (update.spin === 'full') {
-      const boat = this.store.getState().boats[identity.boatId]
+      const boat = this.store.getState().boats[boatId]
       const heading = quantizeHeading(boat?.desiredHeadingDeg ?? boat?.headingDeg ?? 0)
       payload.spin = 'full'
       payload.absoluteHeadingDeg = heading
@@ -129,6 +146,12 @@ export class HostController extends BaseController {
     }
     console.debug('[inputs] sent', payload)
     this.mqtt.publish(inputsTopic(payload.boatId), payload, { qos: 0 })
+  }
+
+  private bumpLocalSeq(boatId: string) {
+    const next = (this.localSeq.get(boatId) ?? 0) + 1
+    this.localSeq.set(boatId, next)
+    return next
   }
 
   private startStatePublisher() {
@@ -257,7 +280,7 @@ export class HostController extends BaseController {
   }
 
   private injectHeading(boatId: string, heading: number) {
-    const seq = ++this.localSeq
+    const seq = this.bumpLocalSeq(boatId)
     const normalized = normalizeDeg(heading)
     const payload: PlayerInput = {
       boatId,

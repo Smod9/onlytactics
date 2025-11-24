@@ -1,11 +1,11 @@
-import type { RaceRole, RaceState } from '@/types/race'
+import type { RaceRole } from '@/types/race'
 import { quantizeHeading } from '@/logic/physics'
 import { HostController } from './controllers/hostController'
 import { PlayerController } from './controllers/playerController'
 import { SpectatorController } from './controllers/spectatorController'
 import type { Controller } from './controllers/types'
 import { mqttClient } from '@/net/mqttClient'
-import { hostTopic, presenceTopic, presenceWildcard, stateTopic } from './topics'
+import { hostTopic, presenceTopic, presenceWildcard } from './topics'
 import { identity } from '@/net/identity'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
@@ -101,8 +101,9 @@ export class GameNetwork {
     return new Promise<RaceRole>((resolve) => {
       let resolved = false
       const online = new Set<string>([identity.clientId])
+      const presenceStatus = new Map<string, 'online' | 'offline'>()
+      presenceStatus.set(identity.clientId, 'online')
       const cleanup: Array<() => void> = []
-      let raceActive = false
 
       const finish = (role: RaceRole) => {
         if (resolved) return
@@ -113,24 +114,20 @@ export class GameNetwork {
 
       const timeout = window.setTimeout(() => {
         const candidates = Array.from(online).sort()
-        if (raceActive) {
-          finish('player')
-          return
-        }
         finish(candidates[0] === identity.clientId ? 'host' : 'player')
       }, 3000)
 
       cleanup.push(() => window.clearTimeout(timeout))
 
-      const unsubscribeHost = mqttClient.subscribe<HostAnnouncement>(
-        hostTopic,
-        (payload) => {
-          if (resolved) return
-          if (!payload?.clientId) return
+      const unsubscribeHost = mqttClient.subscribe<HostAnnouncement>(hostTopic, (payload) => {
+        if (resolved) return
+        if (!payload?.clientId) return
+        const status = presenceStatus.get(payload.clientId)
+        if (status && status === 'online') {
           mqttClient.publish(hostTopic, payload, { retain: true })
           finish(payload.clientId === identity.clientId ? 'host' : 'player')
-        },
-      )
+        }
+      })
       cleanup.push(unsubscribeHost)
 
       const unsubscribePresence = mqttClient.subscribe<{
@@ -138,6 +135,7 @@ export class GameNetwork {
         status: 'online' | 'offline'
       }>(presenceWildcard, (message) => {
         if (!message?.clientId) return
+        presenceStatus.set(message.clientId, message.status)
         if (message.status === 'online') {
           online.add(message.clientId)
         } else {
@@ -145,14 +143,6 @@ export class GameNetwork {
         }
       })
       cleanup.push(unsubscribePresence)
-
-      const unsubscribeState = mqttClient.subscribe<RaceState>(stateTopic, (state) => {
-        if (!state) return
-        if (state.phase && state.phase !== 'prestart') {
-          raceActive = true
-        }
-      })
-      cleanup.push(unsubscribeState)
     })
   }
 

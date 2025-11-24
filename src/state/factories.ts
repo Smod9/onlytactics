@@ -1,4 +1,5 @@
 import { appEnv } from '@/config/env'
+import { createAiConfig } from '@/ai/profiles'
 import { createId } from '@/utils/ids'
 import { seedFromString } from '@/utils/rng'
 import type { BoatState, RaceMeta, RaceState, Vec2 } from '@/types/race'
@@ -33,6 +34,7 @@ export const createBoatState = (
   name: string,
   index: number,
   id?: string,
+  aiProfileId?: string,
 ): BoatState => {
   const baseX = -100 + index * 60
   const baseY = 200
@@ -51,11 +53,22 @@ export const createBoatState = (
     lastInputSeq: 0,
     lastInputAppliedAt: 0,
     rightsSuspended: false,
+    ai: aiProfileId ? createAiConfig(aiProfileId) : undefined,
   }
 }
 
 export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds ?? 30): RaceState => {
-  const boats = ['Alpha', 'Bravo'].map((name, idx) => createBoatState(name, idx))
+  const boatConfigs: Array<{ name: string; id?: string; aiProfileId?: string }> = [
+    { name: 'Dennis', aiProfileId: appEnv.aiEnabled ? 'steady' : undefined },
+    { name: 'Terry', aiProfileId: appEnv.aiEnabled ? 'casual' : undefined },
+  ]
+  if (!appEnv.aiEnabled) {
+    boatConfigs[0].aiProfileId = undefined
+    boatConfigs[1].aiProfileId = undefined
+  }
+  const boats = boatConfigs.map((config, idx) =>
+    createBoatState(config.name, idx, config.id, config.aiProfileId),
+  )
   const baselineWind = appEnv.baselineWindDeg
   const defaultMarks: Vec2[] = [
     { x: 0, y: -240 }, // windward mark
