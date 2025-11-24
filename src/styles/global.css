@@ -106,6 +106,11 @@ button {
   font-size: 1.5rem;
 }
 
+.brand a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -716,6 +721,119 @@ kbd {
 .replay-chat {
   border-top: 1px solid #28304a;
   padding-top: 0.5rem;
+}
+
+/* Landing page */
+
+.landing-shell {
+  min-height: 100vh;
+  padding: 3rem clamp(1.5rem, 4vw, 4.5rem);
+  background: radial-gradient(circle at top, rgba(31, 61, 136, 0.3), rgba(4, 6, 12, 0.95)),
+    #05070f;
+  color: #f4f6fa;
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.landing-hero {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.landing-hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  margin: 0;
+}
+
+.landing-hero .lead {
+  font-size: 1.2rem;
+  line-height: 1.6;
+  color: #cfd8ff;
+}
+
+.landing-section {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.landing-section h2 {
+  font-size: 1.4rem;
+  color: #9fb7ff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.landing-actions .cta,
+.landing-actions .secondary {
+  padding: 0.85rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.landing-actions .cta {
+  background: linear-gradient(130deg, #ff8f70, #ffcd70);
+  color: #05070f;
+}
+
+.landing-actions .secondary {
+  border: 1px solid #36405f;
+  color: #b7c2ff;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: #91a7ff;
+}
+
+.testimonials {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.testimonial {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: rgba(10, 14, 26, 0.7);
+}
+
+.testimonial blockquote {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #f8f9ff;
+}
+
+.testimonial figcaption {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: #9db2ff;
+}
+
+.landing-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 1rem;
+  color: #a7b5d7;
+}
+
+.landing-footer .note {
+  font-size: 0.9rem;
+  color: #7f8db4;
 }
 
 .replay-chat-log {

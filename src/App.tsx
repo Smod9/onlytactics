@@ -17,7 +17,9 @@ export function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <h1>Only Tactics!</h1>
+          <a href="/" title="Return to landing page">
+            <h1>Only Tactics!</h1>
+          </a>
         </div>
         <div className="header-right">
           <div className="mode-switcher">

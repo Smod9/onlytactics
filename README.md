@@ -26,7 +26,7 @@ cp env.example .env    # adjust values if needed (contains CloudAMQP defaults)
 npm run dev            # starts Vite and connects to the remote broker
 ```
 
-MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new broker. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
+The dev server now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new broker. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
 
 ## Tactician controls
 
@@ -48,6 +48,10 @@ There are no sheet/trim controls in v1—boat speed comes entirely from angle-to
 - `npm run format` – Prettier
 - `npm run preview` – preview the production build locally
 - `npm run deploy` – build and push the contents of `dist/` to [Only Tactics on Surge](https://onlytactics.surge.sh)
+
+## Landing page
+
+The marketing page now loads by default at `/`. The game client lives at `/app`, so you can keep the front door focused on why the project exists while still linking people straight into races when needed. The hero includes GitHub links, testimonials, and the story from this README; feel free to style or extend it further before pointing a public DNS record at it.
 
 ## Attribution & License
 
