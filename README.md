@@ -5,7 +5,6 @@ This is the browser client for the sailing race rules trainer. It includes the P
 ## Getting started
 
 ```bash
-cd frontend
 npm install
 cp env.example .env    # adjust values if needed (contains CloudAMQP defaults)
 npm run dev            # starts Vite and connects to the remote broker
