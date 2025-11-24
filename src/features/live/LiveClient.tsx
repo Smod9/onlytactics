@@ -5,6 +5,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
 import { useRaceEvents, useRaceState } from '@/state/hooks'
@@ -26,11 +27,16 @@ export const LiveClient = () => {
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [needsName, setNeedsName] = useState(!identity.clientName)
+  const [headerCtaEl, setHeaderCtaEl] = useState<HTMLElement | null>(null)
 
   const playerBoat = useMemo(() => race.boats[identity.boatId], [race.boats])
 
   useEffect(() => {
     void startRosterWatcher()
+  }, [])
+
+  useEffect(() => {
+    setHeaderCtaEl(document.getElementById('header-cta-root'))
   }, [])
 
   useEffect(() => {
@@ -62,8 +68,12 @@ export const LiveClient = () => {
     network.announcePresence('online')
   }
 
+  const replayPortal =
+    role === 'host' && headerCtaEl ? createPortal(<ReplaySaveButton />, headerCtaEl) : null
+
   return (
     <div className="live-client">
+      {replayPortal}
       {needsName && (
         <div className="username-gate">
           <div className="username-card">
@@ -150,7 +160,6 @@ export const LiveClient = () => {
         </div>
         <RosterPanel role={role} />
         <ChatPanel network={network} />
-        {role === 'host' && <ReplaySaveButton />}
         <button
           type="button"
           className="debug-toggle"

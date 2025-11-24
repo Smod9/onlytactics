@@ -13,10 +13,8 @@ const resolvePath = (inputPath) =>
 const defaultInput = path.resolve(__dirname, '../onlytactics_prompt_log.md')
 const inputPath = resolvePath(process.argv[2] ?? defaultInput)
 const outputArg = process.argv[3]
-const outputPath =
-  outputArg !== undefined
-    ? resolvePath(outputArg)
-    : `${inputPath.replace(/\.md$/i, '') || inputPath}.html`
+const defaultOutput = path.resolve(__dirname, '../public/onlytactics_prompt_log.html')
+const outputPath = outputArg !== undefined ? resolvePath(outputArg) : defaultOutput
 
 const htmlEscape = (value) =>
   value
