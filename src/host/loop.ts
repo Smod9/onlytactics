@@ -6,6 +6,7 @@ import type { RaceEvent, RaceState } from '@/types/race'
 import { createSeededRandom } from '@/utils/rng'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
+import { identity } from '@/net/identity'
 
 type HostLoopOptions = {
   onEvents?: (events: RaceEvent[]) => void
@@ -26,6 +27,7 @@ export class HostLoop {
     const initialState = this.store.getState()
     this.windRandom = createSeededRandom(initialState.meta.seed)
     this.windSpeedTarget = initialState.wind.speed
+    this.raceStartWallClockMs = initialState.clockStartMs
   }
 
   private windTimer = 0
@@ -41,6 +43,7 @@ export class HostLoop {
 
   private courseSideSign?: number
   private penaltyHistory = new Map<string, number>()
+  private raceStartWallClockMs: number | null = null
 
   start() {
     if (this.timer) return
@@ -71,6 +74,9 @@ export class HostLoop {
     } else if (next.phase === 'prestart' && !next.countdownArmed) {
       next.t = -appEnv.countdownSeconds
     }
+    if (next.phase === 'running' && !this.raceStartWallClockMs) {
+      this.raceStartWallClockMs = Date.now() - next.t * 1000
+    }
     const appliedAt = Date.now()
     Object.entries(inputs).forEach(([boatId, input]) => {
       const seq = input.seq
@@ -84,6 +90,7 @@ export class HostLoop {
     if (next.clockStartMs) {
       next.t = (Date.now() - next.clockStartMs) / 1000
     }
+    this.checkRaceTimeout(next)
 
     const startEvents = this.updateStartLine(next)
     const rawResolutions = this.rules.evaluate(next)
@@ -143,6 +150,7 @@ export class HostLoop {
 
   private updateStartLine(state: RaceState): RaceEvent[] {
     const events: RaceEvent[] = []
+    state.hostId = state.hostId ?? identity.clientId
     const { committee, pin } = state.startLine
     const lineVec = {
       x: pin.x - committee.x,
@@ -233,6 +241,25 @@ export class HostLoop {
       this.penaltyHistory.set(key, currentTime)
       return true
     })
+  }
+
+  private checkRaceTimeout(state: RaceState) {
+    if (state.phase !== 'running') return
+    if (!this.raceStartWallClockMs) return
+    const elapsedMs = Date.now() - this.raceStartWallClockMs
+    const timeoutMs = appEnv.raceTimeoutMinutes * 60_000
+    if (elapsedMs < timeoutMs) return
+
+    state.phase = 'finished'
+    const event: RaceEvent = {
+      eventId: createId('event'),
+      t: state.t,
+      kind: 'finish',
+      message: 'Race ended: time limit reached',
+    }
+    this.options.onEvents?.([event])
+    this.timer && clearInterval(this.timer)
+    this.timer = undefined
   }
 }
 

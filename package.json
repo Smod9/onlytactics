@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "deploy": "npm run build && npx surge dist https://onlytactics.surge.sh"
+    "deploy": "npm run build && npx surge dist https://onlytactics.surge.sh",
+    "render:prompt-log": "node scripts/render_prompt_log.mjs"
   },
   "dependencies": {
     "idb": "^8.0.3",

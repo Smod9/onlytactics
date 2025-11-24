@@ -116,7 +116,7 @@ export class RulesEngine {
 
     const aScore = project(a)
     const bScore = project(b)
-    const windward = aScore > bScore ? a : b
+    const windward = aScore < bScore ? a : b
     const leeward = windward === a ? b : a
     if (isRightsSuspended(leeward) && !isRightsSuspended(windward)) {
       return []

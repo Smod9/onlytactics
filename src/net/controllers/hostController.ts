@@ -95,6 +95,11 @@ export class HostController extends BaseController {
     this.cancelActiveSpins()
     this.aiManager?.stop()
     this.mqtt.publish(hostTopic, null, { retain: true })
+    this.store.patchState((draft) => {
+      if (draft.hostId === identity.clientId) {
+        draft.hostId = undefined
+      }
+    })
   }
 
   private async claimHost() {
@@ -103,6 +108,9 @@ export class HostController extends BaseController {
       { clientId: identity.clientId, updatedAt: Date.now() },
       { retain: true },
     )
+    this.store.patchState((draft) => {
+      draft.hostId = identity.clientId
+    })
   }
 
   updateLocalInput(update: ControlUpdate) {

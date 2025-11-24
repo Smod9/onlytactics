@@ -66,6 +66,7 @@ export type RaceState = {
   phase: RacePhase
   countdownArmed: boolean
   clockStartMs: number | null
+  hostId?: string
 }
 
 export type PlayerInput = {

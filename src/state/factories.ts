@@ -59,8 +59,8 @@ export const createBoatState = (
 
 export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds ?? 30): RaceState => {
   const boatConfigs: Array<{ name: string; id?: string; aiProfileId?: string }> = [
-    { name: 'Dennis', aiProfileId: appEnv.aiEnabled ? 'steady' : undefined },
-    { name: 'Terry', aiProfileId: appEnv.aiEnabled ? 'casual' : undefined },
+    { name: appEnv.aiEnabled ? 'Dennis (AI)' : 'Dennis', aiProfileId: appEnv.aiEnabled ? 'steady' : undefined },
+    { name: appEnv.aiEnabled ? 'Terry (AI)' : 'Terry', aiProfileId: appEnv.aiEnabled ? 'casual' : undefined },
   ]
   if (!appEnv.aiEnabled) {
     boatConfigs[0].aiProfileId = undefined
@@ -91,6 +91,7 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     phase: 'prestart',
     countdownArmed: false,
     clockStartMs: null,
+    hostId: undefined,
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat
       return acc

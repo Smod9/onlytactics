@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Text } from 'pixi.js'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
+import { angleDiff } from '@/logic/physics'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 
@@ -45,9 +46,9 @@ class BoatView {
     this.sail.fill({ color: 0xffffff, alpha: 0.8 })
     this.sail.poly([
       0,
-      -18,
-      6,
-      4,
+      -20,
+      8,
+      0,
       0,
       8,
     ])
@@ -59,6 +60,10 @@ class BoatView {
     this.container.position.set(x, y)
     this.container.scale.set(scale)
     this.container.rotation = degToRad(boat.headingDeg)
+    const relativeWind = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
+    const leewardSign = relativeWind >= 0 ? -1 : 1
+    this.sail.position.set(leewardSign * 6, 0)
+    this.sail.rotation = 0
     this.nameTag.text = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
     if (boat.overEarly || boat.fouled || boat.penalties > 0) {
       this.nameTag.style.fill = '#ff6b6b'
@@ -117,7 +122,10 @@ export class RaceScene {
     this.drawWater()
   }
 
+  static currentWindDeg = 0
+
   update(state: RaceState) {
+    RaceScene.currentWindDeg = state.wind.directionDeg
     this.drawCourse(state)
     this.drawBoats(state)
     this.drawHud(state)

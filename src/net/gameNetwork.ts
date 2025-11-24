@@ -1,12 +1,13 @@
-import type { RaceRole } from '@/types/race'
+import type { RaceRole, RaceState } from '@/types/race'
 import { quantizeHeading } from '@/logic/physics'
 import { HostController } from './controllers/hostController'
 import { PlayerController } from './controllers/playerController'
 import { SpectatorController } from './controllers/spectatorController'
 import type { Controller } from './controllers/types'
 import { mqttClient } from '@/net/mqttClient'
-import { hostTopic, presenceTopic, presenceWildcard } from './topics'
+import { hostTopic, presenceTopic, presenceWildcard, stateTopic } from './topics'
 import { identity } from '@/net/identity'
+import { appEnv } from '@/config/env'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
 
@@ -25,9 +26,16 @@ export class GameNetwork {
 
   private statusListeners = new Set<(status: NetworkStatus) => void>()
 
+  private stateUnsubscribe?: () => void
+  private hostMonitorTimer?: number
+  private lastStateAt = Date.now()
+  private knownHostId?: string
+  private promotePending = false
+
   async start() {
     this.setStatus('connecting')
     await mqttClient.connect()
+    this.ensureStateSubscription()
     this.setStatus('looking_for_host')
     this.announcePresence('online')
     const role = await this.resolveInitialRole()
@@ -37,6 +45,9 @@ export class GameNetwork {
   stop() {
     this.announcePresence('offline')
     this.controller?.stop()
+    this.stopHostMonitor()
+    this.stateUnsubscribe?.()
+    this.stateUnsubscribe = undefined
   }
 
   getRole() {
@@ -91,6 +102,12 @@ export class GameNetwork {
     this.setCurrentRole(role)
     this.setStatus('ready')
     this.announcePresence('online')
+    if (role === 'host') {
+      this.knownHostId = identity.clientId
+      this.stopHostMonitor()
+    } else {
+      this.startHostMonitor()
+    }
   }
 
   private async promoteToHost() {
@@ -124,7 +141,6 @@ export class GameNetwork {
         if (!payload?.clientId) return
         const status = presenceStatus.get(payload.clientId)
         if (status && status === 'online') {
-          mqttClient.publish(hostTopic, payload, { retain: true })
           finish(payload.clientId === identity.clientId ? 'host' : 'player')
         }
       })
@@ -143,6 +159,14 @@ export class GameNetwork {
         }
       })
       cleanup.push(unsubscribePresence)
+
+      const unsubscribeState = mqttClient.subscribe<RaceState>(stateTopic, (state) => {
+        if (resolved) return
+        if (state?.hostId && state.hostId !== identity.clientId) {
+          finish('player')
+        }
+      })
+      cleanup.push(unsubscribeState)
     })
   }
 
@@ -183,6 +207,49 @@ export class GameNetwork {
     if (this.status === status) return
     this.status = status
     this.statusListeners.forEach((listener) => listener(status))
+  }
+
+  private ensureStateSubscription() {
+    if (this.stateUnsubscribe) return
+    this.stateUnsubscribe = mqttClient.subscribe<RaceState>(stateTopic, (state) => {
+      if (!state) return
+      this.lastStateAt = Date.now()
+      if (state.hostId) {
+        this.knownHostId = state.hostId
+      }
+    })
+  }
+
+  private startHostMonitor() {
+    if (this.hostMonitorTimer) return
+    this.hostMonitorTimer = window.setInterval(() => this.checkHostHeartbeat(), 1000)
+  }
+
+  private stopHostMonitor() {
+    if (this.hostMonitorTimer) {
+      window.clearInterval(this.hostMonitorTimer)
+      this.hostMonitorTimer = undefined
+    }
+  }
+
+  private checkHostHeartbeat() {
+    if (this.currentRole === 'host') return
+    const now = Date.now()
+    if (this.knownHostId && this.knownHostId !== identity.clientId) {
+      if (now - this.lastStateAt <= appEnv.hostHeartbeatMs) {
+        return
+      }
+    }
+    if (this.promotePending) return
+    this.promotePending = true
+    const jitter = 500 + Math.random() * 1000
+    window.setTimeout(() => {
+      this.promotePending = false
+      if (this.currentRole === 'host') return
+      if (Date.now() - this.lastStateAt > appEnv.hostHeartbeatMs) {
+        void this.promoteToHost()
+      }
+    }, jitter)
   }
 }
 

@@ -98,6 +98,20 @@ export const startRosterWatcher = async () => {
   mqttClient.subscribe<HostAnnouncement>(hostTopic, (payload) => {
     rosterStore.updateHost(payload?.clientId)
   })
+  injectAiEntries()
+}
+
+const injectAiEntries = () => {
+  const aiNames = ['Dennis', 'Terry']
+  aiNames.forEach((name) => {
+    const clientId = `ai-${name.toLowerCase()}`
+    rosterStore.updatePresence({
+      clientId,
+      status: 'online',
+      name: `${name} (AI)`,
+      role: 'player',
+    })
+  })
 }
 
 export const useRoster = () =>

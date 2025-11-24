@@ -19,12 +19,14 @@ export const appEnv = {
   clientName: rawEnv.VITE_CLIENT_NAME ?? 'Visitor',
   tickRateHz: toNumber(rawEnv.VITE_TICK_RATE, 10),
   hostFailoverMs: toNumber(rawEnv.VITE_HOST_FAILOVER_MS, 4000),
+  hostHeartbeatMs: toNumber(rawEnv.VITE_HOST_HEARTBEAT_MS, 5000),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 30),
   penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),
   aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, true),
+  raceTimeoutMinutes: toNumber(rawEnv.VITE_RACE_TIMEOUT_MINUTES, 10),
 }
 
 export type AppEnv = typeof appEnv
