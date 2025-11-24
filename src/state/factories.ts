@@ -36,8 +36,8 @@ export const createBoatState = (
   id?: string,
   aiProfileId?: string,
 ): BoatState => {
-  const baseX = -100 + index * 60
-  const baseY = 200
+  const baseX = -160 + index * 120
+  const baseY = 240
   return {
     id: id ?? createId(`boat${index + 1}`),
     name,
@@ -57,7 +57,7 @@ export const createBoatState = (
   }
 }
 
-export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds ?? 30): RaceState => {
+export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds): RaceState => {
   const boatConfigs: Array<{ name: string; id?: string; aiProfileId?: string }> = [
     { name: appEnv.aiEnabled ? 'Dennis (AI)' : 'Dennis', aiProfileId: appEnv.aiEnabled ? 'steady' : undefined },
     { name: appEnv.aiEnabled ? 'Terry (AI)' : 'Terry', aiProfileId: appEnv.aiEnabled ? 'casual' : undefined },

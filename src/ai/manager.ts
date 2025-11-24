@@ -72,6 +72,13 @@ export class AiManager {
       return
     }
 
+    const avoidance = this.computeSeparationHeading(state, boat, profile)
+    if (avoidance !== undefined) {
+      runtime.nextDecisionAt = now + 500
+      this.publishHeading(boat, avoidance, runtime, true)
+      return
+    }
+
     const nextDecisionAt = runtime.nextDecisionAt
     if (now < nextDecisionAt) return
     runtime.nextDecisionAt = now + this.computeDecisionDelay(profile)
@@ -80,15 +87,15 @@ export class AiManager {
     this.publishHeading(boat, heading, runtime)
   }
 
-  private publishHeading(boat: BoatState, heading: number, runtime: Runtime) {
-    if (runtime.lastHeading !== undefined) {
+  private publishHeading(boat: BoatState, heading: number, runtime: Runtime, force = false) {
+    if (!force && runtime.lastHeading !== undefined) {
       const diff = Math.abs(angleDiff(heading, runtime.lastHeading))
       if (diff < 2) {
         return
       }
     }
     const now = performance.now()
-    if (runtime.lastSentAt && now - runtime.lastSentAt < 800) {
+    if (!force && runtime.lastSentAt && now - runtime.lastSentAt < 800) {
       return
     }
     runtime.lastSentAt = now
@@ -204,6 +211,30 @@ export class AiManager {
       y: (state.startLine.pin.y + state.startLine.committee.y) / 2 + 60,
     }
     return this.bearingTo(boat.pos, safePoint)
+  }
+
+  private computeSeparationHeading(
+    state: RaceState,
+    boat: BoatState,
+    profile: NonNullable<BoatState['ai']>,
+  ) {
+    const others = Object.values(state.boats).filter((other) => other.id !== boat.id)
+    if (!others.length) return undefined
+    let closest: BoatState | undefined
+    let min = Infinity
+    others.forEach((other) => {
+      const dist = distanceBetween(other.pos, boat.pos)
+      if (dist < min) {
+        min = dist
+        closest = other
+      }
+    })
+    const threshold = profile.separationDistance ?? 70
+    if (!closest || min > threshold) return undefined
+    const dx = boat.pos.x - closest.pos.x
+    const dy = boat.pos.y - closest.pos.y
+    const rad = Math.atan2(dx, -dy)
+    return normalizeDeg((rad * 180) / Math.PI)
   }
 
   private getGateCenter(state: RaceState): Vec2 {

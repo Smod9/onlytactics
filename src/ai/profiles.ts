@@ -72,6 +72,7 @@ export const createAiConfig = (profileId: string): BoatAiConfig => {
     tackThresholdDeg: preset.tackThresholdDeg,
     gybeThresholdDeg: preset.gybeThresholdDeg,
     laylineBuffer: preset.laylineBuffer,
+    separationDistance: 70,
     enabled: true,
   }
 }

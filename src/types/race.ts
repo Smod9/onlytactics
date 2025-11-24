@@ -24,6 +24,7 @@ export type BoatAiConfig = {
   tackThresholdDeg: number
   gybeThresholdDeg: number
   laylineBuffer: number
+  separationDistance?: number
   enabled: boolean
 }
 

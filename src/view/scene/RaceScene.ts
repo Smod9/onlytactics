@@ -30,7 +30,7 @@ class BoatView {
   private drawBoat() {
     this.hull.clear()
     this.hull.fill({ color: this.color })
-    this.hull.poly([
+    const hullPoints = [
       0,
       -20,
       10,
@@ -39,8 +39,21 @@ class BoatView {
       16,
       -10,
       10,
-    ])
+    ]
+    this.hull.poly(hullPoints)
     this.hull.fill()
+    this.hull.setStrokeStyle({ width: 2, color: 0x00c389 })
+    this.hull.moveTo(0, -20)
+    this.hull.lineTo(10, 10)
+    this.hull.stroke()
+    this.hull.setStrokeStyle({ width: 2, color: 0xff5e5e })
+    this.hull.moveTo(-10, 10)
+    this.hull.lineTo(0, -20)
+    this.hull.stroke()
+    this.hull.setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.25 })
+    this.hull.moveTo(-10, 10)
+    this.hull.lineTo(10, 10)
+    this.hull.stroke()
     this.sail.position.set(0, -20)
     this.sail.pivot.set(0, 0)
     this.drawSailShape(1)
@@ -48,7 +61,7 @@ class BoatView {
 
   private drawSailShape(leewardSign: 1 | -1) {
     this.sail.clear()
-    this.sail.fill({ color: 0xffffff, alpha: 0.7 })
+    this.sail.fill({ color: 0xffffff, alpha: 0.4 })
     this.sail.moveTo(0, 0) // tack point at bow
     this.sail.lineTo(leewardSign * 18, 10)
     this.sail.lineTo(leewardSign * 12, 34)
