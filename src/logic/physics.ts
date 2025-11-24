@@ -3,6 +3,7 @@ import {
   ACCELERATION_RATE,
   DEFAULT_SHEET,
   DECELERATION_RATE,
+  HEADING_STEP_DEG,
   KNOTS_TO_MS,
   MAX_SPEED_KTS,
   MAX_DOWNWIND_ANGLE_DEG,
@@ -111,6 +112,10 @@ const clampDesiredHeading = (
 
 const steerTowardsDesired = (boat: BoatState, dt: number) => {
   const error = angleDiff(boat.desiredHeadingDeg, boat.headingDeg)
+  if (Math.abs(error) <= HEADING_STEP_DEG + 0.2) {
+    boat.headingDeg = normalizeDeg(boat.desiredHeadingDeg)
+    return
+  }
   const maxTurn = TURN_RATE_DEG * dt
   const applied = clamp(error, -maxTurn, maxTurn)
   boat.headingDeg = normalizeDeg(boat.headingDeg + applied)

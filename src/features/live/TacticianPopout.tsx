@@ -39,10 +39,10 @@ export const TacticianPopout = () => {
               <kbd>Enter</kbd> Tack / gybe (locks helm until turn completes)
             </li>
             <li>
-              <kbd>↑</kbd> Head up 5°
+              <kbd>↑</kbd> Head up 10°
             </li>
             <li>
-              <kbd>↓</kbd> Bear away 5°
+              <kbd>↓</kbd> Bear away 10°
             </li>
             <li>
               <kbd>S</kbd> 360° spin to clear one penalty

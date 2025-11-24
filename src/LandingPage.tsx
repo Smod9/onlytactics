@@ -4,6 +4,7 @@ const TESTIMONIALS = [
   { quote: "It's fun! This will be a great tool for teaching!", author: 'Chris T.' },
   { quote: "It's everything I was hoping it would be.", author: 'Christian G.' },
   { quote: 'It seems to work!', author: 'Chris R.' },
+  { quote: 'Now we just need a mobile app!', author: 'Sky L.' },
 ]
 
 const isMobile = () => window.matchMedia('(max-width: 768px)').matches
