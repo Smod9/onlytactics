@@ -62,13 +62,21 @@ class BoatView {
   private drawSailShape(leewardSign: 1 | -1) {
     this.sail.clear()
     this.sail.fill({ color: 0xffffff, alpha: 0.4 })
-    this.sail.moveTo(0, 0) // tack point at bow
-    this.sail.lineTo(leewardSign * 18, 10)
-    this.sail.lineTo(leewardSign * 12, 34)
-    this.sail.lineTo(leewardSign * 5, 38)
-    this.sail.lineTo(leewardSign * 2, 26)
+    // Bow tack
+    this.sail.moveTo(0, 0)
+
+    // Clew (foot angle)
+    this.sail.lineTo(leewardSign * 25, 38)
+
+    // Smooth leech curve: control point halfway up, curved inwards
+    this.sail.quadraticCurveTo(
+      leewardSign * 32, 4,   // control point
+      leewardSign * 10, 0    // head of the sail, slightly forward
+    )
+
     this.sail.closePath()
     this.sail.fill()
+
   }
 
   update(boat: BoatState, mapToScreen: ScreenMapper, scale: number, isPlayer = false) {
@@ -76,22 +84,8 @@ class BoatView {
     this.container.position.set(x, y)
     this.container.scale.set(scale)
     this.container.rotation = degToRad(boat.headingDeg)
-    const trueWindDiff = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
-    const isUpwind = Math.abs(trueWindDiff) < 90
-    const boatRad = degToRad(boat.headingDeg)
-    const windRad = degToRad(RaceScene.currentWindDeg)
-    const forwardX = Math.sin(boatRad)
-    const forwardY = -Math.cos(boatRad)
-    const windX = Math.sin(windRad)
-    const windY = -Math.cos(windRad)
-    const cross = forwardX * windY - forwardY * windX
-    let leewardSign: 1 | -1
-    if (Math.abs(cross) < 0.001) {
-      leewardSign = trueWindDiff >= 0 ? -1 : 1
-    } else {
-      const windSide = cross > 0 ? 1 : -1
-      leewardSign = (isUpwind ? -windSide : windSide) as 1 | -1
-    }
+    const awa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
+    const leewardSign: 1 | -1 = awa >= 0 ? -1 : 1
     this.drawSailShape(leewardSign)
     const apparent = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
     const trimFactor = Math.min(1, apparent / 140)

@@ -131,6 +131,9 @@ export const LiveClient = () => {
             <div className="speed-readout">
               SPD {playerBoat.speed.toFixed(2)} kts
             </div>
+            <div className="heading-readout">
+              HDG {playerBoat.headingDeg.toFixed(0)}°
+            </div>
             {playerBoat.penalties > 0 && (
               <button
                 type="button"

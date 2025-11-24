@@ -4,16 +4,27 @@ import { createId } from '@/utils/ids'
 import { seedFromString } from '@/utils/rng'
 import type { BoatState, RaceMeta, RaceState, Vec2 } from '@/types/race'
 
-const defaultBoatColors = [0xf6bd60, 0xf28482, 0x84a59d, 0x4d908e, 0xf94144]
+const defaultBoatColors = [
+  0xff9ecd, // pink
+  0xffd166, // golden
+  0x8dd3c7, // mint
+  0xaec9ff, // pastel blue
+  0xff8e72, // coral
+  0xcdb4db, // lavender
+  0x9bdeac, // seafoam
+  0xffc4eb, // blush
+  0xf4d35e, // sunflower
+  0xb5e48c, // lime pastel
+]
 
 const defaultStartLine = {
-  pin: { x: -210, y: 60 },
-  committee: { x: 210, y: 50 },
+  pin: { x: -210, y: 80 },
+  committee: { x: 210, y: 70 },
 }
 
 const defaultLeewardGate = {
-  left: { x: -40, y: 130 },
-  right: { x: 40, y: 120 },
+  left: { x: -40, y: -20 },
+  right: { x: 40, y: -30 },
 }
 
 const structuredCopy = <T>(value: T): T => {

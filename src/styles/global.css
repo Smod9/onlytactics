@@ -250,6 +250,12 @@ button {
   color: #4af6c2;
 }
 
+.heading-readout {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.95rem;
+  color: #ffcf70;
+}
+
 .player-actions {
   display: flex;
   align-items: center;
