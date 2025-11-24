@@ -6,7 +6,16 @@ const TESTIMONIALS = [
   { quote: 'It seems to work!', author: 'Chris R.' },
 ]
 
+const isMobile = () => window.matchMedia('(max-width: 768px)').matches
+
 export const LandingPage = () => {
+  const handleLaunch = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isMobile()) {
+      event.preventDefault()
+      alert('Only Tactics needs a laptop or desktop for now. Mobile controls coming soon!')
+    }
+  }
+
   return (
     <div className="landing-shell">
       <header className="landing-hero">
@@ -17,7 +26,12 @@ export const LandingPage = () => {
           front and center. Built in the open so sailors can teach, tweak, and race together.
         </p>
         <div className="landing-actions">
-          <a className="cta" href="/app" aria-label="Launch the Only Tactics game client">
+          <a
+            className="cta"
+            href="/app"
+            aria-label="Launch the Only Tactics game client"
+            onClick={handleLaunch}
+          >
             Launch the Game
           </a>
           <a

@@ -73,7 +73,8 @@ body,
 }
 
 body {
-  overflow: hidden;
+  overflow-y: auto;
+  min-height: 100%;
 }
 
 a {
@@ -730,6 +731,7 @@ kbd {
   padding: 3rem clamp(1.5rem, 4vw, 4.5rem);
   background: radial-gradient(circle at top, rgba(31, 61, 136, 0.3), rgba(4, 6, 12, 0.95)),
     #05070f;
+  overflow-y: auto;
   color: #f4f6fa;
   display: flex;
   flex-direction: column;
