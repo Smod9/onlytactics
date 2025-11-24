@@ -155,6 +155,7 @@ export const LiveClient = () => {
               <div key={event.eventId} className="event-item">
                 <span className="event-kind">
                   #{events.length - index} {event.kind}
+                  {event.ruleId ? ` (Rule ${event.ruleId})` : ''}
                 </span>
                 <span className="event-message">{event.message}</span>
               </div>

@@ -152,7 +152,6 @@ export class HostController extends BaseController {
         return
       }
     }
-    console.debug('[inputs] sent', payload)
     this.mqtt.publish(inputsTopic(payload.boatId), payload, { qos: 0 })
   }
 
@@ -244,12 +243,6 @@ export class HostController extends BaseController {
       return
     }
 
-    console.debug('[inputs] received', {
-      boatId: input.boatId,
-      desiredHeadingDeg: desired,
-      tClient: timestamp,
-      seq,
-    })
     this.store.upsertInput({
       ...input,
       desiredHeadingDeg: desired,

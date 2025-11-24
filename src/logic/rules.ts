@@ -46,14 +46,24 @@ export class RulesEngine {
   evaluate(state: RaceState): RuleResolution[] {
     const boats = Object.values(state.boats)
     const results: RaceResolution[] = []
+    const phase = state.phase
     for (let i = 0; i < boats.length; i += 1) {
       for (let j = i + 1; j < boats.length; j += 1) {
         const a = boats[i]
         const b = boats[j]
-        results.push(
+        const pairs = [
           ...this.checkRule10(state, a, b),
           ...this.checkRule11(state, a, b),
-        )
+        ]
+        if (pairs.length && state.t < 0) {
+          console.debug('[rules] prestart violation', {
+            phase,
+            t: state.t,
+            rules: pairs.map((p) => p.ruleId),
+            boats: pairs.map((p) => p.boats),
+          })
+        }
+        results.push(...pairs)
       }
     }
     return results
@@ -139,11 +149,11 @@ export class RulesEngine {
   ) {
     const pairKey = boatPairKey(ruleId, offenderId, otherBoatId)
     const offenderKey = `${ruleId}:${offenderId}`
-    const pairExpiry = this.pairCooldowns.get(pairKey) ?? 0
-    if (pairExpiry > state.t) return []
+    const pairExpiry = this.pairCooldowns.get(pairKey)
+    if (pairExpiry !== undefined && pairExpiry > state.t) return []
 
-    const offenderExpiry = this.offenderCooldowns.get(offenderKey) ?? 0
-    if (offenderExpiry > state.t) return []
+    const offenderExpiry = this.offenderCooldowns.get(offenderKey)
+    if (offenderExpiry !== undefined && offenderExpiry > state.t) return []
 
     this.pairCooldowns.set(pairKey, state.t + this.cooldownSeconds)
     this.offenderCooldowns.set(offenderKey, state.t + this.cooldownSeconds)
