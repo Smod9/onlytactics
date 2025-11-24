@@ -47,8 +47,19 @@ export const createBoatState = (
   id?: string,
   aiProfileId?: string,
 ): BoatState => {
-  const baseX = -160 + index * 120
-  const baseY = 240
+  const lineTop = Math.max(defaultStartLine.pin.y, defaultStartLine.committee.y)
+  const spawnPadding = 30
+  const left = defaultStartLine.pin.x + spawnPadding
+  const right = defaultStartLine.committee.x - spawnPadding
+  const span = Math.max(60, right - left)
+  const columnSpacingTarget = 80
+  const maxColumns = Math.max(1, Math.min(6, Math.floor(span / columnSpacingTarget) + 1))
+  const columnCount = Math.max(1, maxColumns)
+  const column = index % columnCount
+  const row = Math.floor(index / columnCount)
+  const step = columnCount > 1 ? span / (columnCount - 1) : 0
+  const baseX = left + column * step
+  const baseY = lineTop + 120 + row * 40
   return {
     id: id ?? createId(`boat${index + 1}`),
     name,
