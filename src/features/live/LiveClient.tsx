@@ -45,6 +45,12 @@ export const LiveClient = () => {
     () => 'spectator',
   )
 
+  const networkStatus = useSyncExternalStore<ReturnType<GameNetwork['getStatus']>>(
+    (listener) => network.onStatusChange(listener),
+    () => network.getStatus(),
+    () => 'idle',
+  )
+
   useTacticianControls(network, role)
 
   const submitName = (event: FormEvent) => {
@@ -87,7 +93,16 @@ export const LiveClient = () => {
         <p>
           You are <strong>{identity.clientName}</strong>
         </p>
-        {race.phase === 'prestart' && !race.countdownArmed && (
+        {networkStatus === 'looking_for_host' && (
+          <p className="countdown-status">Looking for host&hellip;</p>
+        )}
+        {networkStatus === 'connecting' && (
+          <p className="countdown-status">Connecting&hellip;</p>
+        )}
+        {networkStatus === 'joining' && (
+          <p className="countdown-status">Joining race&hellip;</p>
+        )}
+        {networkStatus === 'ready' && race.phase === 'prestart' && !race.countdownArmed && (
           <p className="countdown-status">
             Waiting for host to start the sequence&hellip;
           </p>

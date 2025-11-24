@@ -1,11 +1,11 @@
-import type { RaceRole } from '@/types/race'
+import type { RaceRole, RaceState } from '@/types/race'
 import { quantizeHeading } from '@/logic/physics'
 import { HostController } from './controllers/hostController'
 import { PlayerController } from './controllers/playerController'
 import { SpectatorController } from './controllers/spectatorController'
 import type { Controller } from './controllers/types'
 import { mqttClient } from '@/net/mqttClient'
-import { hostTopic, presenceTopic, presenceWildcard } from './topics'
+import { hostTopic, presenceTopic, presenceWildcard, stateTopic } from './topics'
 import { identity } from '@/net/identity'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
@@ -21,8 +21,14 @@ export class GameNetwork {
 
   private roleListeners = new Set<(role: RaceRole) => void>()
 
+  private status: NetworkStatus = 'idle'
+
+  private statusListeners = new Set<(status: NetworkStatus) => void>()
+
   async start() {
+    this.setStatus('connecting')
     await mqttClient.connect()
+    this.setStatus('looking_for_host')
     this.announcePresence('online')
     const role = await this.resolveInitialRole()
     await this.setRole(role)
@@ -37,9 +43,18 @@ export class GameNetwork {
     return this.currentRole
   }
 
+  getStatus() {
+    return this.status
+  }
+
   onRoleChange(listener: (role: RaceRole) => void) {
     this.roleListeners.add(listener)
     return () => this.roleListeners.delete(listener)
+  }
+
+  onStatusChange(listener: (status: NetworkStatus) => void) {
+    this.statusListeners.add(listener)
+    return () => this.statusListeners.delete(listener)
   }
 
   updateDesiredHeading(headingDeg: number, clientSeq?: number) {
@@ -55,6 +70,7 @@ export class GameNetwork {
   }
 
   private async setRole(role: RaceRole) {
+    this.setStatus('joining')
     this.controller?.stop()
     if (role === 'host') {
       this.controller = new HostController()
@@ -70,6 +86,7 @@ export class GameNetwork {
     await this.controller.start()
     this.controller.updateLocalInput?.({ desiredHeadingDeg: this.latestHeadingDeg })
     this.setCurrentRole(role)
+    this.setStatus('ready')
     this.announcePresence('online')
   }
 
@@ -82,6 +99,7 @@ export class GameNetwork {
       let resolved = false
       const online = new Set<string>([identity.clientId])
       const cleanup: Array<() => void> = []
+      let raceActive = false
 
       const finish = (role: RaceRole) => {
         if (resolved) return
@@ -92,6 +110,10 @@ export class GameNetwork {
 
       const timeout = window.setTimeout(() => {
         const candidates = Array.from(online).sort()
+        if (raceActive) {
+          finish('player')
+          return
+        }
         finish(candidates[0] === identity.clientId ? 'host' : 'player')
       }, 3000)
 
@@ -120,6 +142,14 @@ export class GameNetwork {
         }
       })
       cleanup.push(unsubscribePresence)
+
+      const unsubscribeState = mqttClient.subscribe<RaceState>(stateTopic, (state) => {
+        if (!state) return
+        if (state.phase && state.phase !== 'prestart') {
+          raceActive = true
+        }
+      })
+      cleanup.push(unsubscribeState)
     })
   }
 
@@ -155,5 +185,13 @@ export class GameNetwork {
       { retain: true },
     )
   }
+
+  private setStatus(status: NetworkStatus) {
+    if (this.status === status) return
+    this.status = status
+    this.statusListeners.forEach((listener) => listener(status))
+  }
 }
+
+type NetworkStatus = 'idle' | 'connecting' | 'looking_for_host' | 'joining' | 'ready'
 

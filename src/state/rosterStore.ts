@@ -43,12 +43,18 @@ class RosterStore {
 
   updatePresence(message?: PresenceMessage) {
     if (!message) return
+    if (message.status === 'offline') {
+      if (this.entries.delete(message.clientId)) {
+        this.emit()
+      }
+      return
+    }
     const existing = this.entries.get(message.clientId)
     const entry: RosterEntry = {
       clientId: message.clientId,
-      name: message.name ?? existing?.name ?? 'Sailor',
+      name: message.name ?? existing?.name ?? 'Unknown',
       role: message.role ?? existing?.role ?? 'unknown',
-      status: message.status,
+      status: 'online',
       lastSeen: Date.now(),
     }
     this.entries.set(message.clientId, entry)
@@ -61,10 +67,12 @@ class RosterStore {
   }
 
   private emit() {
-    const entries = Array.from(this.entries.values()).map((entry) => ({
-      ...entry,
-      role: entry.clientId === this.hostId ? 'host' : entry.role,
-    }))
+    const entries = Array.from(this.entries.values())
+      .filter((entry) => entry.status === 'online')
+      .map((entry) => ({
+        ...entry,
+        role: entry.clientId === this.hostId ? 'host' : entry.role,
+      }))
     entries.sort((a, b) => {
       if (a.role === 'host') return -1
       if (b.role === 'host') return 1
