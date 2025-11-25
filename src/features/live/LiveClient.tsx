@@ -19,6 +19,7 @@ import { startRosterWatcher } from '@/state/rosterStore'
 import { RosterPanel } from './RosterPanel'
 import { TacticianPopout } from './TacticianPopout'
 import type { RaceRole } from '@/types/race'
+import { OnScreenControls } from './OnScreenControls'
 
 export const LiveClient = () => {
   const events = useRaceEvents()
@@ -91,7 +92,10 @@ export const LiveClient = () => {
         </div>
       )}
       <div className="live-main">
-        <PixiStage />
+        <div className="stage-shell">
+          <PixiStage />
+          <OnScreenControls />
+        </div>
         <aside className="hud-panel">
         <h2>Race Feed</h2>
         <p>

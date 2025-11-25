@@ -210,6 +210,105 @@ button {
   height: 100%;
 }
 
+.stage-shell {
+  position: relative;
+  min-height: 0;
+  display: flex;
+}
+
+.stage-shell .pixi-stage {
+  flex: 1;
+}
+
+.on-screen-controls {
+  position: fixed;
+  bottom: 1rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.on-screen-toggle {
+  pointer-events: auto;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(6, 10, 22, 0.85);
+  color: #e4edff;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.on-screen-cluster {
+  position: absolute;
+  pointer-events: auto;
+  padding: 0.4rem 0.5rem;
+  background: rgba(4, 6, 12, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.7rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.on-screen-cluster.left {
+  left: 0.75rem;
+  bottom: 3rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
+}
+
+.on-screen-cluster.left.extras {
+  left: 0.75rem;
+  bottom: 9rem;
+}
+
+.on-screen-cluster.right {
+  right: 0.75rem;
+  bottom: 3rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
+}
+
+.on-screen-button {
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 20, 36, 0.85);
+  color: #f3f7ff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.on-screen-button.wide {
+  min-width: 170px;
+}
+.on-screen-button:active {
+  transform: translateY(1px);
+}
+
+.on-screen-label {
+  font-size: 0.85rem;
+}
+
+.on-screen-sublabel {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .live-client {
   width: 100%;
   height: 100%;
@@ -859,5 +958,33 @@ kbd {
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   background: rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 900px) {
+  .live-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .on-screen-controls {
+    bottom: 0.5rem;
+  }
+
+  .on-screen-cluster {
+    bottom: 3.5rem;
+    width: calc(50% - 1.4rem);
+  }
+
+  .on-screen-cluster.left {
+    left: 0.4rem;
+  }
+
+  .on-screen-cluster.right {
+    right: 0.4rem;
+  }
+
+  .on-screen-cluster.left.extras {
+    bottom: 8rem;
+  }
 }
 
