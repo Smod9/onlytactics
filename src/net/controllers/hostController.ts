@@ -162,7 +162,7 @@ export class HostController extends BaseController {
   }
 
   private startStatePublisher() {
-    const intervalMs = 100
+    const intervalMs = appEnv.hostPublishIntervalMs
     this.publishTimer = window.setInterval(() => {
       this.mqtt.publish(stateTopic, this.store.getState())
     }, intervalMs)
@@ -183,8 +183,23 @@ export class HostController extends BaseController {
 
   private handlePresence(payload?: PresencePayload) {
     const boatId = payload?.boatId
+    if (!boatId) return
+
+    if (payload?.status === 'offline') {
+      this.store.patchState((draft) => {
+        if (draft.boats[boatId]) {
+          delete draft.boats[boatId]
+        }
+      })
+      this.lastInputSeq.delete(boatId)
+      this.lastInputTs.delete(boatId)
+      this.activeSpins.delete(boatId)
+      this.localSeq.delete(boatId)
+      return
+    }
+
     const name = payload?.name
-    if (!boatId || !name) return
+    if (!name) return
     this.store.patchState((draft) => {
       let boat = draft.boats[boatId]
       if (!boat) {
