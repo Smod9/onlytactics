@@ -22,7 +22,7 @@ export function App() {
           </a>
         </div>
         <div className="header-right">
-          <div className="mode-switcher">
+          <div className="mode-switcher desktop-only">
             {MODES.map(({ label, value }) => (
               <button
                 key={value}
@@ -34,7 +34,7 @@ export function App() {
               </button>
             ))}
           </div>
-          <nav className="header-links" aria-label="Project resources">
+          <nav className="header-links desktop-only" aria-label="Project resources">
             <a
               className="icon-link"
               href="https://github.com/Smod9/onlytactics/issues"

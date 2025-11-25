@@ -210,6 +210,39 @@ button {
   height: 100%;
 }
 
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* Mobile scaffolding – future tweaks to stack HUD/chat, show touch controls, etc. */
+@media (max-width: 900px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .live-client {
+    padding: 0.5rem;
+  }
+
+  .live-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .pixi-stage {
+    min-height: 70vh;
+  }
+}
+
 .live-client {
   width: 100%;
   height: 100%;
@@ -225,6 +258,9 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 1rem;
+}
+.live-main .pixi-stage {
+  min-height: 100%;
 }
 
 .hud-panel {

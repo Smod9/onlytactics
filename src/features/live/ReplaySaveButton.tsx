@@ -19,7 +19,7 @@ export const ReplaySaveButton = () => {
   }
 
   return (
-    <div className="replay-save">
+    <div className="replay-save desktop-only">
       <button type="button" onClick={() => void save()} disabled={status === 'saving'}>
         {status === 'saving' ? 'Saving…' : 'Save Replay'}
       </button>

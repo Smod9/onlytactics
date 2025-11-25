@@ -95,7 +95,7 @@ export const LiveClient = () => {
       )}
       <div className="live-main">
         <PixiStage />
-        <aside className="hud-panel">
+        <aside className="hud-panel desktop-only">
         <h2>Race Feed</h2>
         <p>
           Race <strong>{appEnv.raceId}</strong> as <strong>{role}</strong>
@@ -166,7 +166,7 @@ export const LiveClient = () => {
         <ChatPanel network={network} />
         <button
           type="button"
-          className="debug-toggle"
+          className="debug-toggle desktop-only"
           onClick={() => setShowDebug((value) => !value)}
         >
           {showDebug ? 'Hide Debug' : 'Show Debug'}

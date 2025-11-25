@@ -68,7 +68,7 @@ export const ChatPanel = ({ network }: Props) => {
         ))}
         {!chat.length && <p className="chat-empty">No messages yet.</p>}
       </div>
-      <div className="chat-input">
+      <div className="chat-input desktop-only">
         <input
           type="text"
           value={draft}
