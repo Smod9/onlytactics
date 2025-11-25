@@ -27,16 +27,13 @@ export const LiveClient = () => {
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [needsName, setNeedsName] = useState(!identity.clientName)
-  const [headerCtaEl, setHeaderCtaEl] = useState<HTMLElement | null>(null)
+  const headerCtaEl =
+    typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
   const playerBoat = useMemo(() => race.boats[identity.boatId], [race.boats])
 
   useEffect(() => {
     void startRosterWatcher()
-  }, [])
-
-  useEffect(() => {
-    setHeaderCtaEl(document.getElementById('header-cta-root'))
   }, [])
 
   useEffect(() => {

@@ -1,9 +1,11 @@
 import { Application, Container, Graphics, Text } from 'pixi.js'
+import { appEnv } from '@/config/env'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
 
 type ScreenMapper = (value: Vec2) => { x: number; y: number }
 
@@ -127,6 +129,22 @@ export class RaceScene {
     text: '',
     style: { fill: '#ffffff', fontSize: 14, fontWeight: 'bold' },
   })
+  private countdownContainer = new Container()
+  private countdownBg = new Graphics()
+  private countdownFill = new Graphics()
+  private countdownLabel = new Text({
+    text: 'START IN',
+    style: { fill: '#f7d19f', fontSize: 12, letterSpacing: 2, fontWeight: '600' },
+  })
+  private countdownTime = new Text({
+    text: '',
+    style: {
+      fill: '#ffffff',
+      fontSize: 48,
+      fontWeight: '700',
+      fontFamily: 'IBM Plex Mono, monospace',
+    },
+  })
 
   private readonly mapScaleBase = 560
   private readonly boatScaleBase = 850
@@ -141,7 +159,23 @@ export class RaceScene {
       this.hudLayer,
     )
 
-    this.hudLayer.addChild(this.windArrow, this.windArrowFill, this.windText, this.timerText)
+    this.countdownLabel.anchor.set(0.5)
+    this.countdownTime.anchor.set(0.5)
+    this.countdownContainer.addChild(
+      this.countdownBg,
+      this.countdownFill,
+      this.countdownLabel,
+      this.countdownTime,
+    )
+    this.countdownContainer.visible = false
+
+    this.hudLayer.addChild(
+      this.windArrow,
+      this.windArrowFill,
+      this.windText,
+      this.timerText,
+      this.countdownContainer,
+    )
     this.windText.position.set(80, 20)
     this.timerText.position.set(20, 20)
     this.windText.position.set(20, 48)
@@ -367,6 +401,61 @@ export class RaceScene {
       tipY - 12,
     ])
     this.windArrowFill.fill()
+
+    this.drawCountdown(state)
+  }
+
+  private drawCountdown(state: RaceState) {
+    const show = state.phase === 'prestart' && state.countdownArmed
+    this.countdownContainer.visible = show
+    if (!show) {
+      this.countdownBg.clear()
+      this.countdownFill.clear()
+      return
+    }
+
+    const stageWidth = this.app.canvas.width
+    const stageHeight = this.app.canvas.height
+    const totalSeconds = Math.max(1, appEnv.countdownSeconds)
+    const remainingSeconds = Math.max(0, -state.t)
+    const percent = clamp01(remainingSeconds / totalSeconds)
+    const secondsRounded = Math.ceil(remainingSeconds)
+    const minutes = Math.floor(secondsRounded / 60)
+    const seconds = secondsRounded % 60
+    const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`
+    const finalWarning = secondsRounded <= 10
+
+    const overlayWidth = Math.min(stageWidth - 32, 640)
+    const overlayHeight = Math.min(stageHeight * 0.25, 140)
+    const overlayX = (stageWidth - overlayWidth) / 2
+    const overlayY = Math.max(16, stageHeight * 0.08)
+    const barPadding = 24
+    const barWidth = Math.max(60, overlayWidth - barPadding * 2)
+    const barHeight = 18
+    const barX = overlayX + barPadding
+    const barY = overlayY + overlayHeight - barPadding - barHeight
+
+    const fillColor = finalWarning ? 0xff8f70 : 0x53e0ff
+
+    this.countdownBg.clear()
+    this.countdownBg.fill({ color: 0x050a1a, alpha: 0.85 })
+    this.countdownBg.roundRect(overlayX, overlayY, overlayWidth, overlayHeight, 24)
+    this.countdownBg.fill()
+
+    this.countdownFill.clear()
+    if (percent > 0) {
+      this.countdownFill.fill({ color: fillColor, alpha: 0.95 })
+      this.countdownFill.roundRect(barX, barY, barWidth * percent, barHeight, barHeight / 2)
+      this.countdownFill.fill()
+    }
+    this.countdownFill.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.2 })
+    this.countdownFill.roundRect(barX, barY, barWidth, barHeight, barHeight / 2)
+    this.countdownFill.stroke()
+
+    const centerX = overlayX + overlayWidth / 2
+    this.countdownLabel.position.set(centerX, overlayY + 28)
+    this.countdownTime.position.set(centerX, overlayY + overlayHeight / 2)
+    this.countdownTime.text = timeText
   }
 }
 
