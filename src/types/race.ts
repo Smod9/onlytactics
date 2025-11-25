@@ -68,6 +68,7 @@ export type RaceState = {
   countdownArmed: boolean
   clockStartMs: number | null
   hostId?: string
+  aiEnabled: boolean
 }
 
 export type PlayerInput = {

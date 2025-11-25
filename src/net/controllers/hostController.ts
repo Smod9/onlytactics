@@ -1,7 +1,7 @@
 import { HostLoop } from '@/host/loop'
 import { AiManager } from '@/ai/manager'
 import { appEnv } from '@/config/env'
-import { createBoatState } from '@/state/factories'
+import { AI_BOAT_CONFIGS, createBoatState } from '@/state/factories'
 import {
   inputsTopic,
   inputsWildcard,
@@ -48,7 +48,8 @@ export class HostController extends BaseController {
 
   private activeSpins = new Map<string, number[]>()
   private localSeq = new Map<string, number>()
-  private aiManager?: AiManager
+  private aiManager: AiManager
+  private aiEnabled = appEnv.aiEnabled
 
   constructor(private store: RaceStore = raceStore) {
     super()
@@ -56,13 +57,11 @@ export class HostController extends BaseController {
       onEvents: (events) => this.publishEvents(events),
       onTick: (state, events) => replayRecorder.recordFrame(state, events),
     })
-    if (appEnv.aiEnabled) {
-      this.aiManager = new AiManager(
-        this.store,
-        (boatId, update) => this.sendInputForBoat(boatId, update),
-        (boatId) => this.queueSpin(boatId),
-      )
-    }
+    this.aiManager = new AiManager(
+      this.store,
+      (boatId, update) => this.sendInputForBoat(boatId, update),
+      (boatId) => this.queueSpin(boatId),
+    )
   }
 
   protected async onStart() {
@@ -86,14 +85,19 @@ export class HostController extends BaseController {
       ),
     )
     this.startStatePublisher()
-    this.aiManager?.start()
+    if (this.aiEnabled) {
+      this.ensureAiBoats()
+      this.aiManager.start()
+    } else {
+      this.removeAiBoats()
+    }
   }
 
   protected onStop() {
     this.loop.stop()
     if (this.publishTimer) clearInterval(this.publishTimer)
     this.cancelActiveSpins()
-    this.aiManager?.stop()
+    this.aiManager.stop()
     this.mqtt.publish(hostTopic, null, { retain: true })
     this.store.patchState((draft) => {
       if (draft.hostId === identity.clientId) {
@@ -190,6 +194,7 @@ export class HostController extends BaseController {
         if (draft.boats[boatId]) {
           delete draft.boats[boatId]
         }
+        draft.aiEnabled = this.aiEnabled
       })
       this.lastInputSeq.delete(boatId)
       this.lastInputTs.delete(boatId)
@@ -204,11 +209,13 @@ export class HostController extends BaseController {
       let boat = draft.boats[boatId]
       if (!boat) {
         const index = Object.keys(draft.boats).length
-        boat = createBoatState(name, index, boatId)
+        const aiConfig = AI_BOAT_CONFIGS.find((config) => config.id === boatId)
+        boat = createBoatState(name, index, boatId, aiConfig?.aiProfileId)
         draft.boats[boatId] = boat
       } else {
         boat.name = name
       }
+      draft.aiEnabled = this.aiEnabled
     })
   }
 
@@ -353,6 +360,58 @@ export class HostController extends BaseController {
   private cancelActiveSpins() {
     this.activeSpins.forEach((timers) => timers.forEach((id) => clearTimeout(id)))
     this.activeSpins.clear()
+  }
+
+  setAiEnabled(enabled: boolean) {
+    if (this.aiEnabled === enabled) return
+    this.aiEnabled = enabled
+    if (enabled) {
+      this.ensureAiBoats()
+      this.aiManager.start()
+    } else {
+      this.aiManager.stop()
+      this.removeAiBoats()
+    }
+  }
+
+  private ensureAiBoats() {
+    this.store.patchState((draft) => {
+      AI_BOAT_CONFIGS.forEach((config, idx) => {
+        if (!draft.boats[config.id]) {
+          draft.boats[config.id] = createBoatState(
+            config.name,
+            Object.keys(draft.boats).length + idx,
+            config.id,
+            config.aiProfileId,
+          )
+        } else if (config.aiProfileId) {
+          draft.boats[config.id].ai = createBoatState(
+            config.name,
+            0,
+            config.id,
+            config.aiProfileId,
+          ).ai
+        }
+      })
+      draft.aiEnabled = true
+    })
+  }
+
+  private removeAiBoats() {
+    this.store.patchState((draft) => {
+      AI_BOAT_CONFIGS.forEach((config) => {
+        if (draft.boats[config.id]) {
+          delete draft.boats[config.id]
+        }
+      })
+      draft.aiEnabled = false
+    })
+    AI_BOAT_CONFIGS.forEach((config) => {
+      this.lastInputSeq.delete(config.id)
+      this.lastInputTs.delete(config.id)
+      this.activeSpins.delete(config.id)
+      this.localSeq.delete(config.id)
+    })
   }
 }
 

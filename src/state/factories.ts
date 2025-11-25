@@ -4,7 +4,7 @@ import { createId } from '@/utils/ids'
 import { seedFromString } from '@/utils/rng'
 import type { BoatState, RaceMeta, RaceState, Vec2 } from '@/types/race'
 
-const defaultBoatColors = [
+export const defaultBoatColors = [
   0xff9ecd, // pink
   0xffd166, // golden
   0x8dd3c7, // mint
@@ -33,6 +33,11 @@ const structuredCopy = <T>(value: T): T => {
   }
   return JSON.parse(JSON.stringify(value)) as T
 }
+
+export const AI_BOAT_CONFIGS: Array<{ id: string; name: string; aiProfileId: string }> = [
+  { id: 'ai-dennis', name: 'Dennis (AI)', aiProfileId: 'steady' },
+  { id: 'ai-terry', name: 'Terry (AI)', aiProfileId: 'casual' },
+]
 
 export const createRaceMeta = (raceId: string, seed?: number): RaceMeta => ({
   raceId,
@@ -80,14 +85,7 @@ export const createBoatState = (
 }
 
 export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds): RaceState => {
-  const boatConfigs: Array<{ name: string; id?: string; aiProfileId?: string }> = [
-    { name: appEnv.aiEnabled ? 'Dennis (AI)' : 'Dennis', aiProfileId: appEnv.aiEnabled ? 'steady' : undefined },
-    { name: appEnv.aiEnabled ? 'Terry (AI)' : 'Terry', aiProfileId: appEnv.aiEnabled ? 'casual' : undefined },
-  ]
-  if (!appEnv.aiEnabled) {
-    boatConfigs[0].aiProfileId = undefined
-    boatConfigs[1].aiProfileId = undefined
-  }
+  const boatConfigs = appEnv.aiEnabled ? AI_BOAT_CONFIGS : []
   const boats = boatConfigs.map((config, idx) =>
     createBoatState(config.name, idx, config.id, config.aiProfileId),
   )
@@ -114,6 +112,7 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     countdownArmed: false,
     clockStartMs: null,
     hostId: undefined,
+    aiEnabled: appEnv.aiEnabled,
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat
       return acc

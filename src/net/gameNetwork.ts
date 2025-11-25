@@ -185,6 +185,12 @@ export class GameNetwork {
     }
   }
 
+  setAiEnabled(enabled: boolean) {
+    if (this.controller instanceof HostController) {
+      this.controller.setAiEnabled(enabled)
+    }
+  }
+
   private ensureBoatAssignment() {
     // placeholder for future multi-boat assignment logic
   }

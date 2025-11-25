@@ -127,6 +127,15 @@ export const LiveClient = () => {
             Start {appEnv.countdownSeconds}s Sequence
           </button>
         )}
+        {role === 'host' && (
+          <button
+            type="button"
+            className="start-sequence"
+            onClick={() => network.setAiEnabled(!race.aiEnabled)}
+          >
+            {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
+          </button>
+        )}
         {playerBoat && (
           <div className="player-actions">
             <div className="speed-readout">
