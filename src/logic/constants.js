@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SPIN_HOLD_SECONDS = exports.DEFAULT_SHEET = exports.STALL_SPEED_FACTOR = exports.STALL_DURATION_S = exports.HEADING_STEP_DEG = exports.MAX_DOWNWIND_ANGLE_DEG = exports.NO_GO_ANGLE_DEG = exports.PORT_STARBOARD_DISTANCE = exports.DECELERATION_RATE = exports.ACCELERATION_RATE = exports.TURN_RATE_DEG = exports.MAX_SPEED_KTS = exports.KNOTS_TO_MS = void 0;
+exports.KNOTS_TO_MS = 0.514444;
+exports.MAX_SPEED_KTS = 12;
+exports.TURN_RATE_DEG = 60;
+exports.ACCELERATION_RATE = 0.6;
+exports.DECELERATION_RATE = 0.4;
+exports.PORT_STARBOARD_DISTANCE = 25;
+exports.NO_GO_ANGLE_DEG = 35;
+exports.MAX_DOWNWIND_ANGLE_DEG = 140;
+exports.HEADING_STEP_DEG = 10;
+exports.STALL_DURATION_S = 3;
+exports.STALL_SPEED_FACTOR = 0.35;
+exports.DEFAULT_SHEET = 0.75;
+exports.SPIN_HOLD_SECONDS = 2;
