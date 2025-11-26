@@ -69,12 +69,12 @@ export const LandingPage = () => {
         <h2>Purpose</h2>
         <p>
           Most sailing games waste effort on spray, waves, and spectacle. This one refuses to.
-           Real life sailing has even more distractions with infinite control line distraction
-           potential, rig tuning, sail shape, maneuver execution, sore bums etc.
+          Real life sailing has even more distractions with infinite control line distraction
+          potential, rig tuning, sail shape, maneuver execution, sore bums etc.
         </p>
         <p>
           Many people don&rsquo;t realize how big of an impact the basics make. So much of
-          &rsquo;sailing fast&rsquo; comes from understanding rules, reading shifts, managing
+          &rsquo;sailing fast&rsquo; comes from understanding rules, reading shifts, managing
           crossings, and making better choices under pressure. Those skills are difficult to
           practice on the water from within the boat and with no Birds Eye view.
         </p>

@@ -8,6 +8,7 @@ import { mqttClient } from '@/net/mqttClient'
 import { hostTopic, presenceTopic, presenceWildcard, stateTopic } from './topics'
 import { identity } from '@/net/identity'
 import { appEnv } from '@/config/env'
+import { ColyseusBridge } from './colyseusBridge'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
 
@@ -15,6 +16,8 @@ export class GameNetwork {
   private controller?: Controller
 
   private playerController?: PlayerController
+
+  private colyseusBridge?: ColyseusBridge
 
   private latestHeadingDeg = 0
 
@@ -34,6 +37,10 @@ export class GameNetwork {
 
   async start() {
     this.setStatus('connecting')
+    if (this.useColyseus()) {
+      await this.startColyseus()
+      return
+    }
     await mqttClient.connect()
     this.ensureStateSubscription()
     this.setStatus('looking_for_host')
@@ -43,6 +50,12 @@ export class GameNetwork {
   }
 
   stop() {
+    if (this.useColyseus()) {
+      this.colyseusBridge?.disconnect()
+      this.colyseusBridge = undefined
+      this.setStatus('idle')
+      return
+    }
     this.announcePresence('offline')
     this.controller?.stop()
     this.stopHostMonitor()
@@ -71,6 +84,17 @@ export class GameNetwork {
   updateDesiredHeading(headingDeg: number, seq: number, deltaHeadingDeg?: number) {
     const absolute = quantizeHeading(headingDeg)
     this.latestHeadingDeg = absolute
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendInput({
+        boatId: identity.boatId,
+        seq,
+        desiredHeadingDeg: absolute,
+        absoluteHeadingDeg: absolute,
+        deltaHeadingDeg,
+        tClient: Date.now(),
+      })
+      return
+    }
     this.controller?.updateLocalInput?.({
       desiredHeadingDeg: absolute,
       absoluteHeadingDeg: absolute,
@@ -80,6 +104,15 @@ export class GameNetwork {
   }
 
   requestSpin(seq?: number) {
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendInput({
+        boatId: identity.boatId,
+        seq: seq ?? 0,
+        spin: 'full',
+        tClient: Date.now(),
+      })
+      return
+    }
     this.controller?.updateLocalInput?.({ spin: 'full', clientSeq: seq })
   }
 
@@ -202,6 +235,7 @@ export class GameNetwork {
   }
 
   announcePresence(status: 'online' | 'offline' = 'online') {
+    if (this.useColyseus()) return
     mqttClient.publish(
       presenceTopic(identity.clientId),
       {
@@ -243,7 +277,6 @@ export class GameNetwork {
       this.hostMonitorTimer = undefined
     }
   }
-
   private checkHostHeartbeat() {
     if (this.currentRole === 'host') return
     const now = Date.now()
@@ -262,6 +295,30 @@ export class GameNetwork {
         void this.promoteToHost()
       }
     }, jitter)
+  }
+
+  private useColyseus() {
+    return appEnv.netTransport === 'colyseus'
+  }
+
+  private async startColyseus() {
+    if (!this.colyseusBridge) {
+      this.colyseusBridge = new ColyseusBridge(appEnv.colyseusEndpoint, appEnv.colyseusRoomId)
+      this.colyseusBridge.onStatusChange((status) => {
+        if (status === 'connected') {
+          this.setStatus('ready')
+        } else if (status === 'connecting') {
+          this.setStatus('connecting')
+        } else if (status === 'disconnected') {
+          this.setStatus('idle')
+        } else if (status === 'error') {
+          this.setStatus('idle')
+        }
+      })
+    }
+    await this.colyseusBridge.connect()
+    this.setCurrentRole('player')
+    this.setStatus('ready')
   }
 }
 

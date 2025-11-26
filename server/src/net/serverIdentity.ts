@@ -4,11 +4,11 @@ export const identity = {
   clientName: 'Colyseus Host',
 }
 
-export const setBoatId = (_nextBoatId: string) => {
+export const setBoatId = () => {
   // no-op on server
 }
 
-export const setClientName = (_name: string) => {
+export const setClientName = () => {
   // no-op on server
 }
 

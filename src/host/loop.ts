@@ -366,8 +366,10 @@ export class HostLoop {
       message: 'Race ended: time limit reached',
     }
     this.options.onEvents?.([event])
-    this.timer && clearInterval(this.timer)
-    this.timer = undefined
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = undefined
+    }
   }
 }
 
