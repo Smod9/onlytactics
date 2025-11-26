@@ -1,8 +1,24 @@
 import { Server as ColyseusServer } from 'colyseus'
 import express from 'express'
 import { createServer } from 'http'
+import { performance } from 'node:perf_hooks'
 import { env } from './lib/env'
 import { RaceRoom } from './rooms/RaceRoom'
+
+const attachGlobalPolyfills = () => {
+  const globalAny = globalThis as typeof globalThis & {
+    window?: typeof globalThis
+    performance?: typeof performance
+  }
+  if (!globalAny.window) {
+    globalAny.window = globalAny
+  }
+  if (!globalAny.performance) {
+    globalAny.performance = performance
+  }
+}
+
+attachGlobalPolyfills()
 
 const expressApp = express()
 

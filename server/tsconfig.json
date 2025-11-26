@@ -3,9 +3,16 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
-    "rootDir": ".",
+    "rootDir": "..",
     "outDir": "dist",
     "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@/config/env": ["src/config/serverEnv"],
+      "@/net/identity": ["src/net/serverIdentity"],
+      "@/state/raceStore": ["src/state/serverRaceStore"],
+      "@/*": ["../src/*"]
+    },
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
