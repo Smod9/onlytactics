@@ -33,7 +33,7 @@ export class ColyseusBridge {
 
   async connect() {
     this.emitStatus('connecting')
-    this.room = await this.client.joinById<RaceRoomSchema>(this.roomId, {
+    this.room = await this.client.joinOrCreate<RaceRoomSchema>(this.roomId, {
       name: identity.clientName ?? 'Visitor',
     })
     this.attachHandlers(this.room)
