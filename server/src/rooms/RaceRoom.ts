@@ -11,12 +11,24 @@ type HelloMessage = {
   name?: string
 }
 
+type InputMessage = {
+  kind: 'input'
+  boatId: string
+  seq: number
+  desiredHeadingDeg?: number
+  absoluteHeadingDeg?: number
+  deltaHeadingDeg?: number
+  spin?: 'full'
+}
+
 export class RaceRoom extends Room<RaceRoomState> {
   maxClients = 32
 
   private raceStore?: RaceStore
 
   private loop?: HostLoop
+
+  private clientBoatMap = new Map<string, string>()
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
@@ -38,6 +50,22 @@ export class RaceRoom extends Room<RaceRoomState> {
         message: `Hello ${message.name ?? 'Sailor'}!`,
       })
     })
+
+    this.onMessage<InputMessage>('input', (client, message) => {
+      if (!this.raceStore) return
+      const boatId = this.resolveBoatId(client, message.boatId)
+      if (!boatId) return
+      const payload = {
+        boatId,
+        seq: message.seq ?? 0,
+        desiredHeadingDeg: message.desiredHeadingDeg,
+        absoluteHeadingDeg: message.absoluteHeadingDeg,
+        deltaHeadingDeg: message.deltaHeadingDeg,
+        spin: message.spin,
+        tClient: Date.now(),
+      }
+      this.raceStore.upsertInput(payload)
+    })
   }
 
   onJoin(client: Client) {
@@ -46,6 +74,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       clientId: client.sessionId,
       playerCount: this.state.playerCount,
     })
+    this.assignBoatToClient(client)
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -55,11 +84,38 @@ export class RaceRoom extends Room<RaceRoomState> {
       consented,
       playerCount: this.state.playerCount,
     })
+    this.releaseBoat(client)
   }
 
   onDispose() {
     console.info('[RaceRoom] disposed', { roomId: this.roomId })
     this.loop?.stop()
+  }
+
+  private assignBoatToClient(client: Client) {
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    const available = Object.values(state.boats).find(
+      (boat) => !Array.from(this.clientBoatMap.values()).includes(boat.id),
+    )
+    if (available) {
+      this.clientBoatMap.set(client.sessionId, available.id)
+      client.send('boat_assignment', { boatId: available.id })
+    } else {
+      client.send('boat_assignment', { boatId: null })
+    }
+  }
+
+  private releaseBoat(client: Client) {
+    this.clientBoatMap.delete(client.sessionId)
+  }
+
+  private resolveBoatId(client: Client, preferredId?: string) {
+    if (preferredId && Object.values(this.raceStore?.getState().boats ?? {}).some((boat) => boat.id === preferredId)) {
+      this.clientBoatMap.set(client.sessionId, preferredId)
+      return preferredId
+    }
+    return this.clientBoatMap.get(client.sessionId)
   }
 }
 

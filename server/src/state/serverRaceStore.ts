@@ -1,6 +1,6 @@
 import type { PlayerInput, RaceEvent, RaceState } from '@/types/race'
-import { cloneRaceState, createInitialRaceState } from '@/state/factories'
-import { appEnv } from '@/config/env'
+import { cloneRaceState, createInitialRaceState } from '../../../src/state/factories'
+import { appEnv } from '../config/serverEnv'
 
 export class RaceStore {
   private state: RaceState
