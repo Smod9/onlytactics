@@ -12,6 +12,8 @@ const MODES: Array<{ label: string; value: AppMode }> = [
 export function App() {
   const [mode, setMode] = useState<AppMode>('live')
   const promptLogHref = `${import.meta.env.BASE_URL ?? '/'}onlytactics_prompt_log.html`
+  const appVersion = `v${__APP_VERSION__}`
+  const releaseUrl = __APP_RELEASE_URL__
 
   return (
     <div className="app-shell">
@@ -19,6 +21,16 @@ export function App() {
         <div className="brand">
           <a href="/" title="Return to landing page">
             <h1>Only Tactics!</h1>
+          </a>
+          <a
+            className="app-version"
+            href={releaseUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Application version ${appVersion}. View release notes.`}
+            title={`View release notes for ${appVersion}`}
+          >
+            {appVersion}
           </a>
         </div>
         <div className="header-right">

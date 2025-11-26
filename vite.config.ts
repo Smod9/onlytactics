@@ -1,6 +1,33 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
+import { readFileSync } from 'node:fs'
+
+const packageJson = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
+) as { version?: string }
+const fallbackVersion = packageJson.version ?? '0.0.0'
+
+const changelogUrlBase = 'https://github.com/Smod9/onlytactics/blob/main/CHANGELOG.md'
+let releaseNotesUrl = `https://github.com/Smod9/onlytactics/releases/tag/v${encodeURIComponent(fallbackVersion)}`
+let displayVersion = fallbackVersion
+
+try {
+  const changelog = readFileSync(new URL('./CHANGELOG.md', import.meta.url), 'utf-8')
+  const headingMatch = changelog.match(/^#\s+([\w.+-]+)\s+\(([^)]+)\)/m)
+  if (headingMatch) {
+    const [_, version, date] = headingMatch
+    displayVersion = version
+    const headingText = `${version} ${date}`.trim().toLowerCase()
+    const anchor = headingText
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+    releaseNotesUrl = `${changelogUrlBase}#${anchor}`
+  }
+} catch {
+  // fall back to the release tag URL if changelog parsing fails
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,5 +39,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(displayVersion),
+    __APP_RELEASE_URL__: JSON.stringify(releaseNotesUrl),
   },
 })
