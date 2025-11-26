@@ -890,21 +890,32 @@ kbd {
 
 .landing-shell {
   min-height: 100vh;
-  padding: 3rem clamp(1.5rem, 4vw, 4.5rem);
+  padding: clamp(2rem, 4vw, 4rem);
   background: radial-gradient(circle at top, rgba(31, 61, 136, 0.3), rgba(4, 6, 12, 0.95)),
     #05070f;
   overflow-y: auto;
   color: #f4f6fa;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 3rem;
 }
 
+.landing-shell > * {
+  width: min(100%, 1120px);
+}
+
 .landing-hero {
-  max-width: 760px;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+  }
 }
 
 .landing-hero h1 {
@@ -912,17 +923,77 @@ kbd {
   margin: 0;
 }
 
-.landing-hero .lead {
+.landing-hero .lead,
+.landing-hero-copy .lead {
   font-size: 1.2rem;
   line-height: 1.6;
   color: #cfd8ff;
 }
 
+.landing-hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.landing-hero-video {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .landing-section {
-  max-width: 800px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+.landing-video {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.video-frame {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.video-frame iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-caption {
+  font-size: 0.9rem;
+  color: #b7c2ff;
+}
+
+.value-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.value-list li {
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.9rem;
+  background: rgba(8, 12, 26, 0.65);
+  font-weight: 600;
+  color: #e2e8ff;
 }
 
 .landing-section h2 {
