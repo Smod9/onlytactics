@@ -4,7 +4,7 @@ const TESTIMONIALS = [
   { quote: "It's fun! This will be a great tool for teaching!", author: 'Chris T.' },
   { quote: "It's everything I was hoping it would be.", author: 'Christian G.' },
   { quote: 'What an amazing tool, will benefit the sailing community globally.', author: 'John H. Head Coach Youth Sailing Program' },
-  { quote: 'The Opti kids at the sailing school are going to love this!', author: 'Sky L. Director, Summer Sailing School, Salt Spring Sailing Club' },
+  { quote: 'The Opti kids at the sailing school are going to love this!', author: 'Sky L. Director, Summer Sailing School' },
   { quote: 'A safety forward tool for teaching sailors!', author: 'Marine Search & Rescue Instructor ' },
 ]
 
