@@ -23,6 +23,10 @@ type InputMessage = {
   spin?: 'full'
 }
 
+type HostCommand =
+  | { kind: 'arm'; seconds?: number }
+  | { kind: 'reset' }
+
 export class RaceRoom extends Room<RaceRoomState> {
   maxClients = 32
 
@@ -31,6 +35,8 @@ export class RaceRoom extends Room<RaceRoomState> {
   private loop?: HostLoop
 
   private clientBoatMap = new Map<string, string>()
+
+  private hostSessionId?: string
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
@@ -68,6 +74,21 @@ export class RaceRoom extends Room<RaceRoomState> {
       }
       this.raceStore.upsertInput(payload)
     })
+
+    this.onMessage<HostCommand>('host_command', (client, command) => {
+      if (client.sessionId !== this.hostSessionId) {
+        console.warn('[RaceRoom] ignoring host command from non-host', {
+          clientId: client.sessionId,
+          command,
+        })
+        return
+      }
+      if (command.kind === 'arm') {
+        this.armCountdown(command.seconds ?? appEnv.countdownSeconds)
+      } else if (command.kind === 'reset') {
+        this.resetRaceState()
+      }
+    })
   }
 
   onJoin(client: Client, options?: Record<string, unknown>) {
@@ -77,7 +98,9 @@ export class RaceRoom extends Room<RaceRoomState> {
       playerCount: this.state.playerCount,
     })
     this.assignBoatToClient(client, options)
-    this.armCountdown()
+    if (!this.hostSessionId) {
+      this.setHost(client.sessionId)
+    }
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -138,6 +161,10 @@ export class RaceRoom extends Room<RaceRoomState> {
         draft.leaderboard = draft.leaderboard.filter((id) => id !== boatId)
       }
     })
+    if (this.hostSessionId === client.sessionId) {
+      const nextHost = this.clientBoatMap.keys().next().value as string | undefined
+      this.setHost(nextHost)
+    }
   }
 
   private resolveBoatId(client: Client, preferredId?: string) {
@@ -158,19 +185,53 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (!this.raceStore) return
     const draft = cloneRaceState(this.raceStore.getState())
     mutator(draft)
+    draft.hostId = this.hostSessionId ?? ''
     this.raceStore.setState(draft)
     applyRaceStateToSchema(this.state.race, draft)
   }
 
-  private armCountdown() {
-    if (!this.raceStore) return
-    const state = this.raceStore.getState()
-    if (state.countdownArmed) return
-    const countdownMs = appEnv.countdownSeconds * 1000
+  private setHost(sessionId?: string) {
+    this.hostSessionId = sessionId
     this.mutateState((draft) => {
-      draft.countdownArmed = true
-      draft.clockStartMs = Date.now() + countdownMs
+      draft.hostId = sessionId ?? ''
+      if (!sessionId) {
+        draft.countdownArmed = false
+        draft.clockStartMs = null
+      }
     })
+  }
+
+  private armCountdown(seconds: number) {
+    this.mutateState((draft) => {
+      draft.phase = 'prestart'
+      draft.countdownArmed = true
+      draft.clockStartMs = Date.now() + seconds * 1000
+      draft.t = -seconds
+    })
+  }
+
+  private resetRaceState() {
+    const assignment = Array.from(this.clientBoatMap.entries()).map(([sessionId, boatId], idx) => ({
+      boatId,
+      name: this.state.race.boats[boatId]?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
+      index: idx,
+    }))
+    this.mutateState((draft) => {
+      draft.phase = 'prestart'
+      draft.countdownArmed = false
+      draft.clockStartMs = null
+      draft.t = -appEnv.countdownSeconds
+      const nextBoats: RaceState['boats'] = {}
+      assignment.forEach(({ boatId, name, index }) => {
+        nextBoats[boatId] = createBoatState(name, index, boatId)
+      })
+      draft.boats = nextBoats
+      draft.leaderboard = assignment.map((entry) => entry.boatId)
+    })
+    const nextState = this.raceStore?.getState()
+    if (nextState) {
+      this.loop?.reset(nextState)
+    }
   }
 }
 

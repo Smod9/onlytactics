@@ -8,6 +8,7 @@ import { mqttClient } from '@/net/mqttClient'
 import { hostTopic, presenceTopic, presenceWildcard, stateTopic } from './topics'
 import { identity } from '@/net/identity'
 import { appEnv } from '@/config/env'
+import { raceStore } from '@/state/raceStore'
 import { ColyseusBridge } from './colyseusBridge'
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
@@ -18,6 +19,8 @@ export class GameNetwork {
   private playerController?: PlayerController
 
   private colyseusBridge?: ColyseusBridge
+
+  private colyseusRoleUnsub?: () => void
 
   private latestHeadingDeg = 0
 
@@ -34,26 +37,31 @@ export class GameNetwork {
   private lastStateAt = Date.now()
   private knownHostId?: string
   private promotePending = false
+  private startPromise?: Promise<void>
+  private stopRequested = false
 
   async start() {
-    this.setStatus('connecting')
-    if (this.useColyseus()) {
-      await this.startColyseus()
-      return
+    if (this.startPromise) return this.startPromise
+    this.stopRequested = false
+    this.startPromise = (async () => {
+      this.setStatus('connecting')
+      if (this.useColyseus()) {
+        await this.startColyseus()
+      } else {
+        await this.startViaMqtt()
+      }
+    })()
+    try {
+      await this.startPromise
+    } finally {
+      this.startPromise = undefined
     }
-    await mqttClient.connect()
-    this.ensureStateSubscription()
-    this.setStatus('looking_for_host')
-    this.announcePresence('online')
-    const role = await this.resolveInitialRole()
-    await this.setRole(role)
   }
 
   stop() {
+    this.stopRequested = true
     if (this.useColyseus()) {
-      this.colyseusBridge?.disconnect()
-      this.colyseusBridge = undefined
-      this.setStatus('idle')
+      this.teardownColyseus()
       return
     }
     this.announcePresence('offline')
@@ -213,6 +221,10 @@ export class GameNetwork {
   }
 
   armCountdown(seconds = 15) {
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendHostCommand({ kind: 'arm', seconds })
+      return
+    }
     if (this.controller instanceof HostController) {
       this.controller.armCountdown(seconds)
     }
@@ -225,6 +237,10 @@ export class GameNetwork {
   }
 
   resetRace() {
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendHostCommand({ kind: 'reset' })
+      return
+    }
     if (this.controller instanceof HostController) {
       this.controller.resetRace()
     }
@@ -301,6 +317,23 @@ export class GameNetwork {
     return appEnv.netTransport === 'colyseus'
   }
 
+  private async startViaMqtt() {
+    await mqttClient.connect()
+    if (this.stopRequested) {
+      mqttClient.disconnect()
+      return
+    }
+    this.ensureStateSubscription()
+    this.setStatus('looking_for_host')
+    this.announcePresence('online')
+    const role = await this.resolveInitialRole()
+    if (this.stopRequested) {
+      this.announcePresence('offline')
+      return
+    }
+    await this.setRole(role)
+  }
+
   private async startColyseus() {
     if (!this.colyseusBridge) {
       this.colyseusBridge = new ColyseusBridge(appEnv.colyseusEndpoint, appEnv.colyseusRoomId)
@@ -317,8 +350,32 @@ export class GameNetwork {
       })
     }
     await this.colyseusBridge.connect()
-    this.setCurrentRole('player')
+    if (this.stopRequested || !this.colyseusBridge) {
+      this.teardownColyseus()
+      return
+    }
+    this.colyseusRoleUnsub?.()
+    this.colyseusRoleUnsub = raceStore.subscribe(() => this.syncColyseusRole())
+    this.syncColyseusRole()
     this.setStatus('ready')
+  }
+
+  private teardownColyseus() {
+    this.colyseusBridge?.disconnect()
+    this.colyseusBridge = undefined
+    this.colyseusRoleUnsub?.()
+    this.colyseusRoleUnsub = undefined
+    this.setStatus('idle')
+  }
+
+  private syncColyseusRole() {
+    if (!this.colyseusBridge) return
+    const sessionId = this.colyseusBridge.getSessionId()
+    if (!sessionId) return
+    const hostId = raceStore.getState().hostId
+    const nextRole: RaceRole =
+      hostId && hostId === sessionId ? 'host' : 'player'
+    this.setCurrentRole(nextRole)
   }
 }
 

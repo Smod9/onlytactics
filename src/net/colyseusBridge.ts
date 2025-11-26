@@ -5,6 +5,10 @@ import { identity, setBoatId } from '@/net/identity'
 
 type ColyseusStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
+type HostCommand =
+  | { kind: 'arm'; seconds?: number }
+  | { kind: 'reset' }
+
 type RaceRoomSchema = {
   race: {
     toJSON: () => RaceState
@@ -17,6 +21,8 @@ export class ColyseusBridge {
   private room?: Room<RaceRoomSchema>
 
   private statusListeners = new Set<(status: ColyseusStatus) => void>()
+
+  private sessionId?: string
 
   constructor(endpoint: string, private roomId: string) {
     this.client = new Client(endpoint)
@@ -36,6 +42,7 @@ export class ColyseusBridge {
     this.room = await this.client.joinOrCreate<RaceRoomSchema>(this.roomId, {
       name: identity.clientName ?? 'Visitor',
     })
+    this.sessionId = this.room.sessionId
     this.attachHandlers(this.room)
     this.emitStatus('connected')
   }
@@ -43,7 +50,12 @@ export class ColyseusBridge {
   disconnect() {
     void this.room?.leave()
     this.room = undefined
+    this.sessionId = undefined
     this.emitStatus('disconnected')
+  }
+
+  getSessionId() {
+    return this.sessionId
   }
 
   sendInput(input: PlayerInput) {
@@ -52,6 +64,11 @@ export class ColyseusBridge {
       ...input,
       boatId: input.boatId ?? identity.boatId,
     })
+  }
+
+  sendHostCommand(command: HostCommand) {
+    if (!this.room) return
+    this.room.send('host_command', command)
   }
 
   private attachHandlers(room: Room<RaceRoomSchema>) {
