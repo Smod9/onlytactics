@@ -1,7 +1,9 @@
 import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
-import { createInitialRaceState } from '@/state/factories'
+import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
+import type { RaceState } from '@/types/race'
+import { appEnv } from '@/config/env'
 import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
@@ -68,13 +70,14 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
   }
 
-  onJoin(client: Client) {
+  onJoin(client: Client, options?: Record<string, unknown>) {
     this.state.playerCount += 1
     console.info('[RaceRoom] client joined', {
       clientId: client.sessionId,
       playerCount: this.state.playerCount,
     })
-    this.assignBoatToClient(client)
+    this.assignBoatToClient(client, options)
+    this.armCountdown()
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -92,22 +95,49 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.loop?.stop()
   }
 
-  private assignBoatToClient(client: Client) {
-    if (!this.raceStore) return
-    const state = this.raceStore.getState()
-    const available = Object.values(state.boats).find(
-      (boat) => !Array.from(this.clientBoatMap.values()).includes(boat.id),
-    )
-    if (available) {
-      this.clientBoatMap.set(client.sessionId, available.id)
-      client.send('boat_assignment', { boatId: available.id })
-    } else {
-      client.send('boat_assignment', { boatId: null })
-    }
+  private assignBoatToClient(client: Client, options?: Record<string, unknown>) {
+    let assignedId: string | null = null
+    this.mutateState((draft) => {
+      const taken = new Set(this.clientBoatMap.values())
+      const preferAi = Object.values(draft.boats).find(
+        (boat) => !taken.has(boat.id) && Boolean(boat.ai),
+      )
+      const fallback = Object.values(draft.boats).find((boat) => !taken.has(boat.id))
+      const existing = preferAi ?? fallback
+      const displayName = this.resolvePlayerName(client, options)
+
+      if (existing) {
+        existing.ai = undefined
+        existing.name = displayName
+        assignedId = existing.id
+      } else {
+        const index = Object.keys(draft.boats).length
+        const newBoat = createBoatState(displayName, index, `player-${client.sessionId}`)
+        draft.boats[newBoat.id] = newBoat
+        assignedId = newBoat.id
+      }
+
+      if (assignedId) {
+        this.clientBoatMap.set(client.sessionId, assignedId)
+        if (!draft.leaderboard.includes(assignedId)) {
+          draft.leaderboard.push(assignedId)
+        }
+      }
+    })
+
+    client.send('boat_assignment', { boatId: assignedId })
   }
 
   private releaseBoat(client: Client) {
+    const boatId = this.clientBoatMap.get(client.sessionId)
+    if (!boatId) return
     this.clientBoatMap.delete(client.sessionId)
+    this.mutateState((draft) => {
+      if (draft.boats[boatId]) {
+        delete draft.boats[boatId]
+        draft.leaderboard = draft.leaderboard.filter((id) => id !== boatId)
+      }
+    })
   }
 
   private resolveBoatId(client: Client, preferredId?: string) {
@@ -116,6 +146,31 @@ export class RaceRoom extends Room<RaceRoomState> {
       return preferredId
     }
     return this.clientBoatMap.get(client.sessionId)
+  }
+
+  private resolvePlayerName(client: Client, options?: Record<string, unknown>) {
+    const name = typeof options?.name === 'string' ? options.name.trim() : ''
+    if (name) return name
+    return `Sailor ${client.sessionId.slice(0, 4)}`
+  }
+
+  private mutateState(mutator: (draft: RaceState) => void) {
+    if (!this.raceStore) return
+    const draft = cloneRaceState(this.raceStore.getState())
+    mutator(draft)
+    this.raceStore.setState(draft)
+    applyRaceStateToSchema(this.state.race, draft)
+  }
+
+  private armCountdown() {
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    if (state.countdownArmed) return
+    const countdownMs = appEnv.countdownSeconds * 1000
+    this.mutateState((draft) => {
+      draft.countdownArmed = true
+      draft.clockStartMs = Date.now() + countdownMs
+    })
   }
 }
 
