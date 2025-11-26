@@ -2,7 +2,7 @@ import { stepRaceState, clamp as physicsClamp } from '@/logic/physics'
 import { RulesEngine, type RuleResolution } from '@/logic/rules'
 import { cloneRaceState } from '@/state/factories'
 import { raceStore, RaceStore } from '@/state/raceStore'
-import type { RaceEvent, RaceState } from '@/types/race'
+import type { BoatState, RaceEvent, RaceState } from '@/types/race'
 import { createSeededRandom } from '@/utils/rng'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
@@ -58,6 +58,19 @@ export class HostLoop {
     this.timer = undefined
   }
 
+  reset(state: RaceState) {
+    this.windRandom = createSeededRandom(state.meta.seed)
+    this.windSpeedTarget = state.wind.speed
+    this.windTimer = 0
+    this.windShift = 0
+    this.windTargetShift = 0
+    this.startSignalSent = false
+    this.ocsBoats.clear()
+    this.courseSideSign = undefined
+    this.penaltyHistory.clear()
+    this.raceStartWallClockMs = state.clockStartMs
+  }
+
   isRunning = () => Boolean(this.timer)
 
   private tick() {
@@ -91,6 +104,7 @@ export class HostLoop {
       next.t = (Date.now() - next.clockStartMs) / 1000
     }
     this.checkRaceTimeout(next)
+    this.updateLapProgress(next)
 
     const startEvents = this.updateStartLine(next)
     const rawResolutions = this.rules.evaluate(next)
@@ -146,6 +160,100 @@ export class HostLoop {
     this.windShift += (this.windTargetShift - this.windShift) * lerpFactor
     state.wind.directionDeg = state.baselineWindDeg + this.windShift
     state.wind.speed += (this.windSpeedTarget - state.wind.speed) * lerpFactor
+  }
+
+  private updateLapProgress(state: RaceState) {
+    const marks = state.marks
+    const markCount = marks.length
+    if (!markCount) return
+
+    const lapTarget = Math.max(1, state.lapsToFinish || 1)
+    Object.values(state.boats).forEach((boat) => {
+      if (boat.nextMarkIndex === undefined) boat.nextMarkIndex = 0
+      if (boat.lap === undefined) boat.lap = 0
+      if (boat.finished) {
+        boat.distanceToNextMark = 0
+        boat.inMarkZone = false
+        return
+      }
+
+    const nextMark = marks[boat.nextMarkIndex % markCount]
+    if (!nextMark) return
+
+    const crossed = this.didCrossMarkLine(boat, nextMark, state)
+    boat.distanceToNextMark = this.distanceToLine(boat, nextMark)
+
+    if (crossed) {
+      boat.nextMarkIndex = (boat.nextMarkIndex + 1) % markCount
+      if (boat.nextMarkIndex === 0) {
+        boat.lap += 1
+        if (boat.lap >= lapTarget) {
+          boat.finished = true
+          boat.finishTime = state.t
+          boat.distanceToNextMark = 0
+        }
+      }
+    }
+    })
+
+    const boats = Object.values(state.boats)
+    boats.sort((a, b) => this.compareLeaderboard(a, b))
+    state.leaderboard = boats.map((boat) => boat.id)
+  }
+
+  private compareLeaderboard(a: BoatState, b: BoatState) {
+    if (a.finished && b.finished) {
+      if ((a.finishTime ?? Infinity) !== (b.finishTime ?? Infinity)) {
+        return (a.finishTime ?? Infinity) - (b.finishTime ?? Infinity)
+      }
+    } else if (a.finished !== b.finished) {
+      return a.finished ? -1 : 1
+    }
+
+    const aPenalty = a.penalties > 0 || a.overEarly
+    const bPenalty = b.penalties > 0 || b.overEarly
+    if (aPenalty !== bPenalty) {
+      return aPenalty ? 1 : -1
+    }
+
+    if (b.lap !== a.lap) {
+      return b.lap - a.lap
+    }
+
+    if (b.nextMarkIndex !== a.nextMarkIndex) {
+      return b.nextMarkIndex - a.nextMarkIndex
+    }
+
+    return (a.distanceToNextMark ?? Infinity) - (b.distanceToNextMark ?? Infinity)
+  }
+
+  private didCrossMarkLine(boat: BoatState, mark: BoatState['pos'], state: RaceState) {
+    if (state.marks[0] === mark) {
+      return this.crossedHorizontalLine(boat, mark.y, 1)
+    }
+    const gate = this.getGateCenter(state)
+    if (gate && Math.abs(gate.y - mark.y) < 1) {
+      return this.crossedHorizontalLine(boat, gate.y, -1)
+    }
+    return this.distanceToLine(boat, mark) <= 30
+  }
+
+  private crossedHorizontalLine(boat: BoatState, lineY: number, direction: 1 | -1) {
+    const prevY = boat.pos.y - boat.speed
+    const currentY = boat.pos.y
+    if (direction === 1) {
+      return prevY < lineY && currentY >= lineY
+    }
+    return prevY > lineY && currentY <= lineY
+  }
+
+  private getGateCenter(state: RaceState) {
+    const { left, right } = state.leewardGate
+    return { x: (left.x + right.x) / 2, y: (left.y + right.y) / 2 }
+  }
+
+  private distanceToLine(boat: BoatState, point: { x: number; y: number }) {
+    return Math.abs(boat.pos.y - point.y)
   }
 
   private updateStartLine(state: RaceState): RaceEvent[] {

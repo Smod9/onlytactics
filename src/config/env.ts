@@ -21,6 +21,7 @@ export const appEnv = {
   hostFailoverMs: toNumber(rawEnv.VITE_HOST_FAILOVER_MS, 4000),
   hostHeartbeatMs: toNumber(rawEnv.VITE_HOST_HEARTBEAT_MS, 5000),
   hostPublishIntervalMs: toNumber(rawEnv.VITE_HOST_PUBLISH_INTERVAL_MS, 150),
+  lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 1),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 60),
   penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),

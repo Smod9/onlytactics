@@ -71,6 +71,12 @@ export const createBoatState = (
     color: defaultBoatColors[index % defaultBoatColors.length],
     headingDeg: 0,
     desiredHeadingDeg: 0,
+    lap: 0,
+    nextMarkIndex: 0,
+    inMarkZone: false,
+    finished: false,
+    finishTime: undefined,
+    distanceToNextMark: undefined,
     penalties: 0,
     pos: { x: baseX, y: baseY },
     speed: 0,
@@ -112,6 +118,8 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     countdownArmed: false,
     clockStartMs: null,
     hostId: undefined,
+    lapsToFinish: appEnv.lapsToFinish,
+    leaderboard: [],
     aiEnabled: appEnv.aiEnabled,
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat

@@ -36,6 +36,12 @@ export type BoatState = {
   headingDeg: number
   desiredHeadingDeg: number
   speed: number
+  lap: number
+  nextMarkIndex: number
+  inMarkZone: boolean
+  finished: boolean
+  finishTime?: number
+  distanceToNextMark?: number
   penalties: number
   stallTimer: number
   overEarly: boolean
@@ -68,6 +74,8 @@ export type RaceState = {
   countdownArmed: boolean
   clockStartMs: number | null
   hostId?: string
+  lapsToFinish: number
+  leaderboard: string[]
   aiEnabled: boolean
 }
 

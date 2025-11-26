@@ -191,6 +191,12 @@ export class GameNetwork {
     }
   }
 
+  resetRace() {
+    if (this.controller instanceof HostController) {
+      this.controller.resetRace()
+    }
+  }
+
   private ensureBoatAssignment() {
     // placeholder for future multi-boat assignment logic
   }

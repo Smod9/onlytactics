@@ -490,6 +490,57 @@ button {
   gap: 0.5rem;
 }
 
+.leaderboard-panel {
+  border-top: 1px solid #28304a;
+  padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.leaderboard-panel h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb7ff;
+}
+
+.leaderboard-panel ol {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0;
+  margin: 0;
+}
+
+.leaderboard-panel li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-panel li:last-child {
+  border-bottom: none;
+}
+
+.leaderboard-position {
+  width: 1.5rem;
+  color: #9fb7ff;
+}
+
+.leaderboard-name {
+  font-weight: 600;
+}
+
+.leaderboard-meta {
+  font-size: 0.8rem;
+  color: #b7c2ff;
+}
+
 .chat-header {
   display: flex;
   align-items: center;
@@ -644,6 +695,12 @@ kbd {
   border: 1px solid #49beaa;
   background: #12352b;
   color: #8ef5cd;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .header-cta .replay-save button {

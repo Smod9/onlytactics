@@ -66,12 +66,33 @@ export const LiveClient = () => {
     network.announcePresence('online')
   }
 
-  const replayPortal =
-    role === 'host' && headerCtaEl ? createPortal(<ReplaySaveButton />, headerCtaEl) : null
+  const headerPortal =
+    role === 'host' && headerCtaEl
+      ? createPortal(
+          <div className="header-controls">
+            <ReplaySaveButton />
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => network.setAiEnabled(!race.aiEnabled)}
+            >
+              {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
+            </button>
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => network.resetRace()}
+            >
+              Restart Race
+            </button>
+          </div>,
+          headerCtaEl,
+        )
+      : null
 
   return (
     <div className="live-client">
-      {replayPortal}
+      {headerPortal}
       {needsName && (
         <div className="username-gate">
           <div className="username-card">
@@ -127,15 +148,6 @@ export const LiveClient = () => {
             Start {appEnv.countdownSeconds}s Sequence
           </button>
         )}
-        {role === 'host' && (
-          <button
-            type="button"
-            className="start-sequence"
-            onClick={() => network.setAiEnabled(!race.aiEnabled)}
-          >
-            {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
-          </button>
-        )}
         {playerBoat && (
           <div className="player-actions">
             <div className="speed-readout">
@@ -156,6 +168,30 @@ export const LiveClient = () => {
             )}
           </div>
         )}
+        <div className="leaderboard-panel">
+          <h3>Leaderboard</h3>
+          {race.leaderboard.length ? (
+            <ol>
+              {race.leaderboard.slice(0, 6).map((boatId, index) => {
+                const boat = race.boats[boatId]
+                if (!boat) return null
+                const lap = Math.min(boat.lap ?? 0, race.lapsToFinish)
+                const finished = boat.finished || lap >= race.lapsToFinish
+                return (
+                  <li key={boatId}>
+                    <span className="leaderboard-position">{index + 1}.</span>
+                    <span className="leaderboard-name">{boat.name}</span>
+                    <span className="leaderboard-meta">
+                      {finished ? 'Finished' : `Lap ${lap}/${race.lapsToFinish}`}
+                    </span>
+                  </li>
+                )
+              })}
+            </ol>
+          ) : (
+            <p>No leaderboard data yet.</p>
+          )}
+        </div>
         <div className="event-list">
           {events
             .slice()
@@ -172,7 +208,7 @@ export const LiveClient = () => {
             ))}
           {!events.length && <p>No rule events yet.</p>}
         </div>
-        <RosterPanel role={role} />
+        {race.phase === 'prestart' && !race.countdownArmed && <RosterPanel role={role} />}
         <ChatPanel network={network} />
         <button
           type="button"

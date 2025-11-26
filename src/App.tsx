@@ -22,6 +22,7 @@ export function App() {
           </a>
         </div>
         <div className="header-right">
+          <div id="header-cta-root" className="header-cta" />
           <div className="mode-switcher">
             {MODES.map(({ label, value }) => (
               <button
@@ -56,7 +57,6 @@ export function App() {
               <DocumentIcon />
             </a>
           </nav>
-          <div id="header-cta-root" className="header-cta" />
         </div>
       </header>
       <main className="app-main">

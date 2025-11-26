@@ -1,7 +1,7 @@
 import { HostLoop } from '@/host/loop'
 import { AiManager } from '@/ai/manager'
 import { appEnv } from '@/config/env'
-import { AI_BOAT_CONFIGS, createBoatState } from '@/state/factories'
+import { AI_BOAT_CONFIGS, createBoatState, createInitialRaceState } from '@/state/factories'
 import {
   inputsTopic,
   inputsWildcard,
@@ -412,6 +412,28 @@ export class HostController extends BaseController {
       this.activeSpins.delete(config.id)
       this.localSeq.delete(config.id)
     })
+  }
+  resetRace() {
+    const current = this.store.getState()
+    const humanBoats = Object.values(current.boats).filter((boat) => !boat.ai)
+    const fresh = createInitialRaceState(current.meta.raceId, appEnv.countdownSeconds)
+    fresh.aiEnabled = this.aiEnabled
+    this.store.reset(fresh)
+    this.loop.reset(fresh)
+    this.store.patchState((draft) => {
+      let index = Object.keys(draft.boats).length
+      humanBoats.forEach((boat) => {
+        draft.boats[boat.id] = createBoatState(boat.name, index, boat.id)
+        index += 1
+      })
+    })
+    if (this.aiEnabled) {
+      this.ensureAiBoats()
+      this.aiManager.start()
+    } else {
+      this.aiManager.stop()
+      this.removeAiBoats()
+    }
   }
 }
 
