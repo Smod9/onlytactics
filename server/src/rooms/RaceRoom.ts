@@ -2,7 +2,7 @@ import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
 import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
-import type { ChatMessage, ChatSenderRole, RaceState } from '@/types/race'
+import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState } from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { RaceRoomState } from '../state/RaceRoomState'
@@ -61,6 +61,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.raceStore = new RaceStore(initialState)
     applyRaceStateToSchema(this.state.race, initialState)
     this.loop = new HostLoop(this.raceStore, undefined, undefined, {
+      onEvents: (events) => this.broadcastEvents(events),
       onTick: (state) => {
         if (state.hostId !== this.hostClientId) {
           roomDebug('loop host sync', {
@@ -332,6 +333,11 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (nextState) {
       this.loop?.reset(nextState)
     }
+  }
+
+  private broadcastEvents(events: RaceEvent[]) {
+    if (!events.length) return
+    this.broadcast('events', events)
   }
 
   private handleChat(client: Client, payload: ChatMessagePayload) {

@@ -1,6 +1,6 @@
 import { Client, type Room } from 'colyseus.js'
 import { raceStore } from '@/state/raceStore'
-import type { ChatMessage, PlayerInput, RaceState } from '@/types/race'
+import type { ChatMessage, PlayerInput, RaceEvent, RaceState } from '@/types/race'
 import { identity, setBoatId } from '@/net/identity'
 import { appEnv } from '@/config/env'
 
@@ -123,6 +123,11 @@ export class ColyseusBridge {
     })
     room.onMessage('chat', (payload: ChatMessage) => {
       this.chatListeners.forEach((listener) => listener(payload))
+    })
+    room.onMessage('events', (payload: RaceEvent[]) => {
+      if (Array.isArray(payload) && payload.length) {
+        raceStore.appendEvents(payload)
+      }
     })
     room.onLeave(() => {
       if (appEnv.debugNetLogs) {
