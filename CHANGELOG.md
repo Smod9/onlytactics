@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/Smod9/onlytactics/compare/v1.2.0...v1.3.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** Trying to get stuff to deploy ([7f719d4](https://github.com/Smod9/onlytactics/commit/7f719d42cda344b08eb4d586835ba82c7c5d2314))
+
 # [1.2.0](https://github.com/Smod9/onlytactics/compare/v1.1.0...v1.2.0) (2025-11-27)
 
 
