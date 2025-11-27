@@ -2,6 +2,7 @@ import {
   type FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react'
@@ -37,10 +38,18 @@ export const LiveClient = () => {
     void startRosterWatcher()
   }, [])
 
+  const skipDevCleanupRef = useRef(import.meta.env.DEV)
+
   useEffect(() => {
     if (needsName) return
     void network.start()
-    return () => network.stop()
+    return () => {
+      if (skipDevCleanupRef.current) {
+        skipDevCleanupRef.current = false
+        return
+      }
+      network.stop()
+    }
   }, [network, needsName])
 
   const role = useSyncExternalStore<RaceRole>(
@@ -75,6 +84,7 @@ export const LiveClient = () => {
               type="button"
               className="start-sequence"
               onClick={() => network.setAiEnabled(!race.aiEnabled)}
+              style={{ display: 'none' }}
             >
               {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
             </button>
@@ -120,7 +130,9 @@ export const LiveClient = () => {
         <aside className="hud-panel">
         <h2>Race Feed</h2>
         <p>
-          Race <strong>{appEnv.raceId}</strong> as <strong>{role}</strong>
+          Race{' '}
+          <strong>{appEnv.netTransport === 'colyseus' ? appEnv.colyseusRoomId : appEnv.raceId}</strong>{' '}
+          as <strong>{role}</strong>
         </p>
         <p>
           You are <strong>{identity.clientName}</strong>

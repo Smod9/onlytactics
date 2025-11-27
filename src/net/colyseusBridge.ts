@@ -2,6 +2,7 @@ import { Client, type Room } from 'colyseus.js'
 import { raceStore } from '@/state/raceStore'
 import type { PlayerInput, RaceState } from '@/types/race'
 import { identity, setBoatId } from '@/net/identity'
+import { appEnv } from '@/config/env'
 
 type ColyseusStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -24,7 +25,10 @@ export class ColyseusBridge {
 
   private sessionId?: string
 
+  private endpoint: string
+
   constructor(endpoint: string, private roomId: string) {
+    this.endpoint = endpoint
     this.client = new Client(endpoint)
   }
 
@@ -39,15 +43,30 @@ export class ColyseusBridge {
 
   async connect() {
     this.emitStatus('connecting')
+    if (appEnv.debugNetLogs) {
+      console.info('[ColyseusBridge]', 'connect()', {
+        endpoint: this.endpoint,
+        roomId: this.roomId,
+      })
+    }
     this.room = await this.client.joinOrCreate<RaceRoomSchema>(this.roomId, {
       name: identity.clientName ?? 'Visitor',
+      clientId: identity.clientId,
     })
     this.sessionId = this.room.sessionId
+    if (appEnv.debugNetLogs) {
+      console.info('[ColyseusBridge]', 'joined room', {
+        sessionId: this.sessionId,
+      })
+    }
     this.attachHandlers(this.room)
     this.emitStatus('connected')
   }
 
   disconnect() {
+    if (appEnv.debugNetLogs) {
+      console.info('[ColyseusBridge]', 'disconnect()')
+    }
     void this.room?.leave()
     this.room = undefined
     this.sessionId = undefined
@@ -68,6 +87,9 @@ export class ColyseusBridge {
 
   sendHostCommand(command: HostCommand) {
     if (!this.room) return
+    if (appEnv.debugNetLogs) {
+      console.info('[ColyseusBridge]', 'sendHostCommand', command)
+    }
     this.room.send('host_command', command)
   }
 
@@ -82,10 +104,18 @@ export class ColyseusBridge {
     room.onStateChange(() => pushState())
     room.onMessage('boat_assignment', (payload: { boatId?: string | null }) => {
       if (payload?.boatId) {
+        if (appEnv.debugNetLogs) {
+          console.info('[ColyseusBridge]', 'boat assignment', payload.boatId)
+        }
         setBoatId(payload.boatId)
       }
     })
-    room.onLeave(() => this.emitStatus('disconnected'))
+    room.onLeave(() => {
+      if (appEnv.debugNetLogs) {
+        console.info('[ColyseusBridge]', 'room leave event')
+      }
+      this.emitStatus('disconnected')
+    })
     room.onError((code) => {
       console.error('[colyseus] room error', code)
       this.emitStatus('error')

@@ -11,6 +11,11 @@ import { appEnv } from '@/config/env'
 import { raceStore } from '@/state/raceStore'
 import { ColyseusBridge } from './colyseusBridge'
 
+const netLog = (...args: unknown[]) => {
+  if (!appEnv.debugNetLogs) return
+  console.info('[GameNetwork]', ...args)
+}
+
 type HostAnnouncement = { clientId: string; updatedAt: number }
 
 export class GameNetwork {
@@ -39,9 +44,11 @@ export class GameNetwork {
   private promotePending = false
   private startPromise?: Promise<void>
   private stopRequested = false
+  private lastLoggedHostId?: string
 
   async start() {
     if (this.startPromise) return this.startPromise
+    netLog('start()', { transport: this.useColyseus() ? 'colyseus' : 'mqtt' })
     this.stopRequested = false
     this.startPromise = (async () => {
       this.setStatus('connecting')
@@ -59,6 +66,7 @@ export class GameNetwork {
   }
 
   stop() {
+    netLog('stop()', { transport: this.useColyseus() ? 'colyseus' : 'mqtt' })
     this.stopRequested = true
     if (this.useColyseus()) {
       this.teardownColyseus()
@@ -125,6 +133,7 @@ export class GameNetwork {
   }
 
   private async setRole(role: RaceRole) {
+    netLog('setRole()', { nextRole: role })
     this.setStatus('joining')
     this.controller?.stop()
     if (role === 'host') {
@@ -152,6 +161,7 @@ export class GameNetwork {
   }
 
   private async promoteToHost() {
+    netLog('promoteToHost()')
     await this.setRole('host')
   }
 
@@ -212,6 +222,9 @@ export class GameNetwork {
   }
 
   private setCurrentRole(role: RaceRole) {
+    if (this.currentRole !== role) {
+      netLog('role change', { from: this.currentRole, to: role })
+    }
     this.currentRole = role
     this.roleListeners.forEach((listener) => listener(role))
   }
@@ -222,6 +235,7 @@ export class GameNetwork {
 
   armCountdown(seconds = 15) {
     if (this.useColyseus()) {
+      netLog('send host command', { kind: 'arm', seconds })
       this.colyseusBridge?.sendHostCommand({ kind: 'arm', seconds })
       return
     }
@@ -231,6 +245,7 @@ export class GameNetwork {
   }
 
   setAiEnabled(enabled: boolean) {
+    netLog('setAiEnabled()', { enabled })
     if (this.controller instanceof HostController) {
       this.controller.setAiEnabled(enabled)
     }
@@ -238,6 +253,7 @@ export class GameNetwork {
 
   resetRace() {
     if (this.useColyseus()) {
+      netLog('send host command', { kind: 'reset' })
       this.colyseusBridge?.sendHostCommand({ kind: 'reset' })
       return
     }
@@ -338,6 +354,7 @@ export class GameNetwork {
     if (!this.colyseusBridge) {
       this.colyseusBridge = new ColyseusBridge(appEnv.colyseusEndpoint, appEnv.colyseusRoomId)
       this.colyseusBridge.onStatusChange((status) => {
+        netLog('colyseus status', { status })
         if (status === 'connected') {
           this.setStatus('ready')
         } else if (status === 'connecting') {
@@ -349,11 +366,16 @@ export class GameNetwork {
         }
       })
     }
+    netLog('colyseus connect()', {
+      endpoint: appEnv.colyseusEndpoint,
+      roomId: appEnv.colyseusRoomId,
+    })
     await this.colyseusBridge.connect()
     if (this.stopRequested || !this.colyseusBridge) {
       this.teardownColyseus()
       return
     }
+    netLog('colyseus joined', { sessionId: this.colyseusBridge.getSessionId() })
     this.colyseusRoleUnsub?.()
     this.colyseusRoleUnsub = raceStore.subscribe(() => this.syncColyseusRole())
     this.syncColyseusRole()
@@ -362,6 +384,7 @@ export class GameNetwork {
 
   private teardownColyseus() {
     this.colyseusBridge?.disconnect()
+    netLog('colyseus disconnect')
     this.colyseusBridge = undefined
     this.colyseusRoleUnsub?.()
     this.colyseusRoleUnsub = undefined
@@ -373,8 +396,16 @@ export class GameNetwork {
     const sessionId = this.colyseusBridge.getSessionId()
     if (!sessionId) return
     const hostId = raceStore.getState().hostId
-    const nextRole: RaceRole =
-      hostId && hostId === sessionId ? 'host' : 'player'
+    netLog('syncColyseusRole()', { hostId, sessionId })
+    if (hostId !== this.lastLoggedHostId) {
+      this.lastLoggedHostId = hostId
+      netLog('hostId update', { hostId, sessionId })
+    }
+    const nextRole: RaceRole = hostId
+      ? hostId === sessionId
+        ? 'host'
+        : 'player'
+      : 'spectator'
     this.setCurrentRole(nextRole)
   }
 }

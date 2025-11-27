@@ -8,6 +8,11 @@ import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
 
+const roomDebug = (...args: unknown[]) => {
+  if (!appEnv.debugNetLogs) return
+  console.info('[RaceRoom:debug]', ...args)
+}
+
 type HelloMessage = {
   kind: 'hello'
   name?: string
@@ -41,11 +46,16 @@ export class RaceRoom extends Room<RaceRoomState> {
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
     console.info('[RaceRoom] created', { options, roomId: this.roomId })
+    roomDebug('onCreate', { options, roomId: this.roomId })
     const initialState = createInitialRaceState(`colyseus-${this.roomId}`)
     this.raceStore = new RaceStore(initialState)
     applyRaceStateToSchema(this.state.race, initialState)
     this.loop = new HostLoop(this.raceStore, undefined, undefined, {
       onTick: (state) => {
+        if (state.hostId !== this.hostSessionId) {
+          roomDebug('loop host sync', { loopHostId: state.hostId, currentHost: this.hostSessionId })
+        }
+        state.hostId = this.hostSessionId ?? state.hostId ?? ''
         applyRaceStateToSchema(this.state.race, state)
       },
     })
@@ -81,8 +91,14 @@ export class RaceRoom extends Room<RaceRoomState> {
           clientId: client.sessionId,
           command,
         })
+        roomDebug('host_command ignored', {
+          clientId: client.sessionId,
+          command,
+          hostSessionId: this.hostSessionId,
+        })
         return
       }
+      roomDebug('host_command', { clientId: client.sessionId, command })
       if (command.kind === 'arm') {
         this.armCountdown(command.seconds ?? appEnv.countdownSeconds)
       } else if (command.kind === 'reset') {
@@ -96,6 +112,11 @@ export class RaceRoom extends Room<RaceRoomState> {
     console.info('[RaceRoom] client joined', {
       clientId: client.sessionId,
       playerCount: this.state.playerCount,
+    })
+    roomDebug('onJoin', {
+      clientId: client.sessionId,
+      playerCount: this.state.playerCount,
+      hostSessionId: this.hostSessionId,
     })
     this.assignBoatToClient(client, options)
     if (!this.hostSessionId) {
@@ -111,6 +132,11 @@ export class RaceRoom extends Room<RaceRoomState> {
       playerCount: this.state.playerCount,
     })
     this.releaseBoat(client)
+    roomDebug('onLeave', {
+      clientId: client.sessionId,
+      consented,
+      nextHost: this.hostSessionId,
+    })
   }
 
   onDispose() {
@@ -149,12 +175,18 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
 
     client.send('boat_assignment', { boatId: assignedId })
+    roomDebug('assignBoatToClient', {
+      clientId: client.sessionId,
+      boatId: assignedId,
+      hostSessionId: this.hostSessionId,
+    })
   }
 
   private releaseBoat(client: Client) {
     const boatId = this.clientBoatMap.get(client.sessionId)
     if (!boatId) return
     this.clientBoatMap.delete(client.sessionId)
+    roomDebug('releaseBoat', { clientId: client.sessionId, boatId })
     this.mutateState((draft) => {
       if (draft.boats[boatId]) {
         delete draft.boats[boatId]
@@ -190,8 +222,33 @@ export class RaceRoom extends Room<RaceRoomState> {
     applyRaceStateToSchema(this.state.race, draft)
   }
 
+  private describeHost(sessionId?: string) {
+    if (!sessionId) {
+      return {
+        sessionId: undefined,
+        hostBoatId: undefined,
+        hostName: undefined,
+      }
+    }
+    const hostBoatId = this.clientBoatMap.get(sessionId)
+    const storeName =
+      hostBoatId && this.raceStore ? this.raceStore.getState().boats[hostBoatId]?.name : undefined
+    const schemaName = hostBoatId ? this.state.race.boats[hostBoatId]?.name : undefined
+    return {
+      sessionId,
+      hostBoatId,
+      hostName: storeName ?? schemaName,
+    }
+  }
+
   private setHost(sessionId?: string) {
+    const previousHost = this.hostSessionId
     this.hostSessionId = sessionId
+    roomDebug('setHost', {
+      previousHost,
+      nextHost: sessionId,
+      ...this.describeHost(sessionId),
+    })
     this.mutateState((draft) => {
       draft.hostId = sessionId ?? ''
       if (!sessionId) {
@@ -202,6 +259,10 @@ export class RaceRoom extends Room<RaceRoomState> {
   }
 
   private armCountdown(seconds: number) {
+    roomDebug('armCountdown', {
+      seconds,
+      ...this.describeHost(this.hostSessionId),
+    })
     this.mutateState((draft) => {
       draft.phase = 'prestart'
       draft.countdownArmed = true
@@ -216,6 +277,10 @@ export class RaceRoom extends Room<RaceRoomState> {
       name: this.state.race.boats[boatId]?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
       index: idx,
     }))
+    roomDebug('resetRaceState', {
+      assignments: assignment.length,
+      ...this.describeHost(this.hostSessionId),
+    })
     this.mutateState((draft) => {
       draft.phase = 'prestart'
       draft.countdownArmed = false

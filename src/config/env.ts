@@ -28,9 +28,10 @@ export const appEnv = {
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 60),
   penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
+  debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, true),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),
-  aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, true),
+  aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, false),
   raceTimeoutMinutes: toNumber(rawEnv.VITE_RACE_TIMEOUT_MINUTES, 10),
 }
 
