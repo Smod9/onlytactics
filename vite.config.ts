@@ -16,7 +16,7 @@ try {
   const changelog = readFileSync(new URL('./CHANGELOG.md', import.meta.url), 'utf-8')
   const headingMatch = changelog.match(/^#\s+([\w.+-]+)\s+\(([^)]+)\)/m)
   if (headingMatch) {
-    const [_, version, date] = headingMatch
+    const [, version, date] = headingMatch
     displayVersion = version
     const headingText = `${version} ${date}`.trim().toLowerCase()
     const anchor = headingText
@@ -39,6 +39,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json'],
   },
   define: {
     __APP_VERSION__: JSON.stringify(displayVersion),

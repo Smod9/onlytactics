@@ -17,6 +17,9 @@ export const appEnv = {
   raceId: rawEnv.VITE_RACE_ID ?? 'dev-race',
   clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'spectator') as ClientRole,
   clientName: rawEnv.VITE_CLIENT_NAME ?? 'Visitor',
+  netTransport: (rawEnv.VITE_NET_TRANSPORT ?? 'mqtt') as 'mqtt' | 'colyseus',
+  colyseusEndpoint: rawEnv.VITE_COLYSEUS_ENDPOINT ?? 'ws://localhost:2567',
+  colyseusRoomId: rawEnv.VITE_COLYSEUS_ROOM_ID ?? 'onlytactics-dev',
   tickRateHz: toNumber(rawEnv.VITE_TICK_RATE, 10),
   hostFailoverMs: toNumber(rawEnv.VITE_HOST_FAILOVER_MS, 4000),
   hostHeartbeatMs: toNumber(rawEnv.VITE_HOST_HEARTBEAT_MS, 5000),
@@ -25,9 +28,10 @@ export const appEnv = {
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 60),
   penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
+  debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, true),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),
-  aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, true),
+  aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, false),
   raceTimeoutMinutes: toNumber(rawEnv.VITE_RACE_TIMEOUT_MINUTES, 10),
 }
 

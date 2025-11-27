@@ -1,6 +1,7 @@
 import mqtt, { type IClientOptions, type MqttClient } from 'mqtt'
 import { presenceTopic } from './topics'
 import { identity } from './identity'
+import { appEnv } from '@/config/env'
 const MQTT_URL = 'wss://cf22679c9b2c46ef967a2b4b1bf0f46f.s1.eu.hivemq.cloud:8884/mqtt'
 const MQTT_USERNAME = 'onlytacticsfrontend'
 const MQTT_PASSWORD = 'Sailing123'
@@ -51,7 +52,13 @@ export class GameMqttClient {
 
   private connectionPromise?: Promise<void>
 
+  private readonly disabled = appEnv.netTransport === 'colyseus'
+
   connect() {
+    if (this.disabled) {
+      console.debug('[mqtt] skipped connect (colyseus transport enabled)')
+      return Promise.resolve()
+    }
     if (this.client) return this.connectionPromise ?? Promise.resolve()
 
     const { endpoint, options } = this.buildConnectionOptions()
@@ -130,7 +137,7 @@ export class GameMqttClient {
     payload: unknown,
     options?: { retain?: boolean; qos?: 0 | 1 | 2 },
   ) {
-    if (!this.client) return
+    if (this.disabled || !this.client) return
     this.client.publish(topic, toBuffer(payload), {
       qos: options?.qos ?? 1,
       retain: options?.retain ?? false,
@@ -138,6 +145,9 @@ export class GameMqttClient {
   }
 
   subscribe<T>(topic: string, handler: Handler<T>) {
+    if (this.disabled) {
+      return () => {}
+    }
     if (!this.client) throw new Error('MQTT client not connected')
     if (!this.handlers.has(topic)) {
       this.handlers.set(topic, new Set())
@@ -158,6 +168,7 @@ export class GameMqttClient {
   }
 
   disconnect() {
+    if (this.disabled) return
     this.publish(presenceTopic(identity.clientId), {
       clientId: identity.clientId,
       status: 'offline' as const,

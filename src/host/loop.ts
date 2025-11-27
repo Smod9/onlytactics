@@ -14,7 +14,7 @@ type HostLoopOptions = {
 }
 
 export class HostLoop {
-  private timer?: number
+  private timer?: ReturnType<typeof setInterval>
 
   private lastTick = 0
 
@@ -49,7 +49,7 @@ export class HostLoop {
     if (this.timer) return
     this.lastTick = performance.now()
     const intervalMs = 1000 / this.tickRate
-    this.timer = window.setInterval(() => this.tick(), intervalMs)
+    this.timer = setInterval(() => this.tick(), intervalMs)
   }
 
   stop() {
@@ -366,8 +366,10 @@ export class HostLoop {
       message: 'Race ended: time limit reached',
     }
     this.options.onEvents?.([event])
-    this.timer && clearInterval(this.timer)
-    this.timer = undefined
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = undefined
+    }
   }
 }
 

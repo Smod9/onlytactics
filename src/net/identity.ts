@@ -5,15 +5,20 @@ const CLIENT_ID_KEY = 'sgame:clientId'
 const BOAT_ID_KEY = 'sgame:boatId'
 const CLIENT_NAME_KEY = 'sgame:clientName'
 
-const ensureSessionId = (key: string, generator: () => string) => {
-  const existing = readSessionJson<string | null>(key, null)
+const ensureSessionId = (
+  key: string,
+  generator: () => string,
+  read: typeof readJson | typeof readSessionJson = readSessionJson,
+  write: typeof writeJson | typeof writeSessionJson = writeSessionJson,
+) => {
+  const existing = read<string | null>(key, null)
   if (existing) return existing
   const fresh = generator()
-  writeSessionJson(key, fresh)
+  write(key, fresh)
   return fresh
 }
 
-const clientId = ensureSessionId(CLIENT_ID_KEY, () => createId('client'))
+const clientId = ensureSessionId(CLIENT_ID_KEY, () => createId('client'), readJson, writeJson)
 const boatId = ensureSessionId(BOAT_ID_KEY, () => createId('boat'))
 const clientName = readJson<string | null>(CLIENT_NAME_KEY, null)
 

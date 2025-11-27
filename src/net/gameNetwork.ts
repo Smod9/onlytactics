@@ -1,4 +1,4 @@
-import type { RaceRole, RaceState } from '@/types/race'
+import type { ChatMessage, RaceRole, RaceState } from '@/types/race'
 import { quantizeHeading } from '@/logic/physics'
 import { HostController } from './controllers/hostController'
 import { PlayerController } from './controllers/playerController'
@@ -8,6 +8,13 @@ import { mqttClient } from '@/net/mqttClient'
 import { hostTopic, presenceTopic, presenceWildcard, stateTopic } from './topics'
 import { identity } from '@/net/identity'
 import { appEnv } from '@/config/env'
+import { raceStore } from '@/state/raceStore'
+import { ColyseusBridge } from './colyseusBridge'
+
+const netLog = (...args: unknown[]) => {
+  if (!appEnv.debugNetLogs) return
+  console.info('[GameNetwork]', ...args)
+}
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
 
@@ -15,6 +22,11 @@ export class GameNetwork {
   private controller?: Controller
 
   private playerController?: PlayerController
+
+  private colyseusBridge?: ColyseusBridge
+
+  private colyseusRoleUnsub?: () => void
+  private colyseusChatUnsub?: () => void
 
   private latestHeadingDeg = 0
 
@@ -31,18 +43,37 @@ export class GameNetwork {
   private lastStateAt = Date.now()
   private knownHostId?: string
   private promotePending = false
+  private startPromise?: Promise<void>
+  private stopRequested = false
+  private lastLoggedHostId?: string
+  private chatListeners = new Set<(message: ChatMessage) => void>()
 
   async start() {
-    this.setStatus('connecting')
-    await mqttClient.connect()
-    this.ensureStateSubscription()
-    this.setStatus('looking_for_host')
-    this.announcePresence('online')
-    const role = await this.resolveInitialRole()
-    await this.setRole(role)
+    if (this.startPromise) return this.startPromise
+    netLog('start()', { transport: this.useColyseus() ? 'colyseus' : 'mqtt' })
+    this.stopRequested = false
+    this.startPromise = (async () => {
+      this.setStatus('connecting')
+      if (this.useColyseus()) {
+        await this.startColyseus()
+      } else {
+        await this.startViaMqtt()
+      }
+    })()
+    try {
+      await this.startPromise
+    } finally {
+      this.startPromise = undefined
+    }
   }
 
   stop() {
+    netLog('stop()', { transport: this.useColyseus() ? 'colyseus' : 'mqtt' })
+    this.stopRequested = true
+    if (this.useColyseus()) {
+      this.teardownColyseus()
+      return
+    }
     this.announcePresence('offline')
     this.controller?.stop()
     this.stopHostMonitor()
@@ -68,9 +99,40 @@ export class GameNetwork {
     return () => this.statusListeners.delete(listener)
   }
 
+  onChatMessage(listener: (message: ChatMessage) => void) {
+    this.chatListeners.add(listener)
+    return () => this.chatListeners.delete(listener)
+  }
+
+  sendChat(text: string) {
+    if (!text.trim()) return false
+    if (this.useColyseus()) {
+      if (!this.colyseusBridge) return false
+      this.colyseusBridge.sendChat(text)
+      return true
+    }
+    netLog('sendChat() ignored for MQTT transport')
+    return false
+  }
+
+  private emitChat(message: ChatMessage) {
+    this.chatListeners.forEach((listener) => listener(message))
+  }
+
   updateDesiredHeading(headingDeg: number, seq: number, deltaHeadingDeg?: number) {
     const absolute = quantizeHeading(headingDeg)
     this.latestHeadingDeg = absolute
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendInput({
+        boatId: identity.boatId,
+        seq,
+        desiredHeadingDeg: absolute,
+        absoluteHeadingDeg: absolute,
+        deltaHeadingDeg,
+        tClient: Date.now(),
+      })
+      return
+    }
     this.controller?.updateLocalInput?.({
       desiredHeadingDeg: absolute,
       absoluteHeadingDeg: absolute,
@@ -80,10 +142,20 @@ export class GameNetwork {
   }
 
   requestSpin(seq?: number) {
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendInput({
+        boatId: identity.boatId,
+        seq: seq ?? 0,
+        spin: 'full',
+        tClient: Date.now(),
+      })
+      return
+    }
     this.controller?.updateLocalInput?.({ spin: 'full', clientSeq: seq })
   }
 
   private async setRole(role: RaceRole) {
+    netLog('setRole()', { nextRole: role })
     this.setStatus('joining')
     this.controller?.stop()
     if (role === 'host') {
@@ -111,6 +183,7 @@ export class GameNetwork {
   }
 
   private async promoteToHost() {
+    netLog('promoteToHost()')
     await this.setRole('host')
   }
 
@@ -171,6 +244,9 @@ export class GameNetwork {
   }
 
   private setCurrentRole(role: RaceRole) {
+    if (this.currentRole !== role) {
+      netLog('role change', { from: this.currentRole, to: role })
+    }
     this.currentRole = role
     this.roleListeners.forEach((listener) => listener(role))
   }
@@ -180,18 +256,29 @@ export class GameNetwork {
   }
 
   armCountdown(seconds = 15) {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'arm', seconds })
+      this.colyseusBridge?.sendHostCommand({ kind: 'arm', seconds })
+      return
+    }
     if (this.controller instanceof HostController) {
       this.controller.armCountdown(seconds)
     }
   }
 
   setAiEnabled(enabled: boolean) {
+    netLog('setAiEnabled()', { enabled })
     if (this.controller instanceof HostController) {
       this.controller.setAiEnabled(enabled)
     }
   }
 
   resetRace() {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'reset' })
+      this.colyseusBridge?.sendHostCommand({ kind: 'reset' })
+      return
+    }
     if (this.controller instanceof HostController) {
       this.controller.resetRace()
     }
@@ -202,6 +289,7 @@ export class GameNetwork {
   }
 
   announcePresence(status: 'online' | 'offline' = 'online') {
+    if (this.useColyseus()) return
     mqttClient.publish(
       presenceTopic(identity.clientId),
       {
@@ -243,7 +331,6 @@ export class GameNetwork {
       this.hostMonitorTimer = undefined
     }
   }
-
   private checkHostHeartbeat() {
     if (this.currentRole === 'host') return
     const now = Date.now()
@@ -262,6 +349,88 @@ export class GameNetwork {
         void this.promoteToHost()
       }
     }, jitter)
+  }
+
+  private useColyseus() {
+    return appEnv.netTransport === 'colyseus'
+  }
+
+  private async startViaMqtt() {
+    await mqttClient.connect()
+    if (this.stopRequested) {
+      mqttClient.disconnect()
+      return
+    }
+    this.ensureStateSubscription()
+    this.setStatus('looking_for_host')
+    this.announcePresence('online')
+    const role = await this.resolveInitialRole()
+    if (this.stopRequested) {
+      this.announcePresence('offline')
+      return
+    }
+    await this.setRole(role)
+  }
+
+  private async startColyseus() {
+    if (!this.colyseusBridge) {
+      this.colyseusBridge = new ColyseusBridge(appEnv.colyseusEndpoint, appEnv.colyseusRoomId)
+      this.colyseusBridge.onStatusChange((status) => {
+        netLog('colyseus status', { status })
+        if (status === 'connected') {
+          this.setStatus('ready')
+        } else if (status === 'connecting') {
+          this.setStatus('connecting')
+        } else if (status === 'disconnected') {
+          this.setStatus('idle')
+        } else if (status === 'error') {
+          this.setStatus('idle')
+        }
+      })
+    }
+    netLog('colyseus connect()', {
+      endpoint: appEnv.colyseusEndpoint,
+      roomId: appEnv.colyseusRoomId,
+    })
+    await this.colyseusBridge.connect()
+    if (this.stopRequested || !this.colyseusBridge) {
+      this.teardownColyseus()
+      return
+    }
+    netLog('colyseus joined', { sessionId: this.colyseusBridge.getSessionId() })
+    this.colyseusRoleUnsub?.()
+    this.colyseusRoleUnsub = raceStore.subscribe(() => this.syncColyseusRole())
+    this.colyseusChatUnsub?.()
+    this.colyseusChatUnsub = this.colyseusBridge.onChatMessage((message) => this.emitChat(message))
+    this.syncColyseusRole()
+    this.setStatus('ready')
+  }
+
+  private teardownColyseus() {
+    this.colyseusBridge?.disconnect()
+    netLog('colyseus disconnect')
+    this.colyseusBridge = undefined
+    this.colyseusRoleUnsub?.()
+    this.colyseusRoleUnsub = undefined
+    this.colyseusChatUnsub?.()
+    this.colyseusChatUnsub = undefined
+    this.setStatus('idle')
+  }
+
+  private syncColyseusRole() {
+    if (!this.colyseusBridge) return
+    const sessionId = this.colyseusBridge.getSessionId()
+    if (!sessionId) return
+    const hostId = raceStore.getState().hostId
+    const clientId = identity.clientId
+    const isHost = Boolean(hostId && hostId === clientId)
+    netLog('syncColyseusRole()', { hostId, sessionId, clientId })
+    if (hostId !== this.lastLoggedHostId) {
+      this.lastLoggedHostId = hostId
+      netLog('hostId update', { hostId, sessionId, clientId })
+    }
+    const nextRole: RaceRole = hostId ? (isHost ? 'host' : 'player') : 'spectator'
+    this.setCurrentRole(nextRole)
   }
 }
 
