@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/Smod9/onlytactics/compare/v1.9.0...v1.10.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** Fly server working ([1e9dded](https://github.com/Smod9/onlytactics/commit/1e9dded749391725f766626b59d80c4fe34d75a8))
+
 # [1.9.0](https://github.com/Smod9/onlytactics/compare/v1.8.0...v1.9.0) (2025-11-27)
 
 
