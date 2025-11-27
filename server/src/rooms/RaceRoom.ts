@@ -267,8 +267,8 @@ export class RaceRoom extends Room<RaceRoomState> {
     const clientId = this.clientIdentityMap.get(sessionId)
     const storeName =
       hostBoatId && this.raceStore ? this.raceStore.getState().boats[hostBoatId]?.name : undefined
-    const schemaName = hostBoatId ? this.state.race.boats[hostBoatId]?.name : undefined
-    return {
+    const schemaName = hostBoatId ? this.state.race.boats.get(hostBoatId)?.name : undefined
+      return {
       sessionId,
       clientId,
       hostBoatId,
