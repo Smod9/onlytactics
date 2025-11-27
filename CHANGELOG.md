@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/Smod9/onlytactics/compare/v1.8.0...v1.9.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** fly io config ([4d86827](https://github.com/Smod9/onlytactics/commit/4d86827168e0f755f6f74bde6585476670d1af79))
+
 # [1.8.0](https://github.com/Smod9/onlytactics/compare/v1.7.0...v1.8.0) (2025-11-27)
 
 
