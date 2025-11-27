@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/Smod9/onlytactics/compare/v1.4.0...v1.5.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** Polishing colyseus release ([51d7857](https://github.com/Smod9/onlytactics/commit/51d785779f06ed9a7e0eeee00485c502eb0445cf))
+
 # [1.4.0](https://github.com/Smod9/onlytactics/compare/v1.3.0...v1.4.0) (2025-11-27)
 
 
