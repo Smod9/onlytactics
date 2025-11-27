@@ -1,6 +1,6 @@
 import { Client, type Room } from 'colyseus.js'
 import { raceStore } from '@/state/raceStore'
-import type { PlayerInput, RaceState } from '@/types/race'
+import type { ChatMessage, PlayerInput, RaceState } from '@/types/race'
 import { identity, setBoatId } from '@/net/identity'
 import { appEnv } from '@/config/env'
 
@@ -22,6 +22,7 @@ export class ColyseusBridge {
   private room?: Room<RaceRoomSchema>
 
   private statusListeners = new Set<(status: ColyseusStatus) => void>()
+  private chatListeners = new Set<(message: ChatMessage) => void>()
 
   private sessionId?: string
 
@@ -39,6 +40,11 @@ export class ColyseusBridge {
 
   private emitStatus(status: ColyseusStatus) {
     this.statusListeners.forEach((listener) => listener(status))
+  }
+
+  onChatMessage(listener: (message: ChatMessage) => void) {
+    this.chatListeners.add(listener)
+    return () => this.chatListeners.delete(listener)
   }
 
   async connect() {
@@ -93,6 +99,11 @@ export class ColyseusBridge {
     this.room.send('host_command', command)
   }
 
+  sendChat(text: string) {
+    if (!this.room) return
+    this.room.send('chat', { text })
+  }
+
   private attachHandlers(room: Room<RaceRoomSchema>) {
     const pushState = () => {
       const next = room.state?.race?.toJSON?.()
@@ -109,6 +120,9 @@ export class ColyseusBridge {
         }
         setBoatId(payload.boatId)
       }
+    })
+    room.onMessage('chat', (payload: ChatMessage) => {
+      this.chatListeners.forEach((listener) => listener(payload))
     })
     room.onLeave(() => {
       if (appEnv.debugNetLogs) {

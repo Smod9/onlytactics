@@ -29,8 +29,8 @@ export const ChatPanel = ({ network }: Props) => {
   )
 
   useEffect(() => {
-    void chatService.start()
-  }, [])
+    void chatService.start(network)
+  }, [network])
 
   useEffect(() => {
     const node = scrollRef.current
@@ -39,7 +39,7 @@ export const ChatPanel = ({ network }: Props) => {
   }, [chat])
 
   const sendMessage = async () => {
-    const result = await chatService.send(draft, roleToSender(role))
+    const result = await chatService.send(draft, roleToSender(role), network)
     if (result.ok) {
       setDraft('')
       setStatus(null)
@@ -47,6 +47,8 @@ export const ChatPanel = ({ network }: Props) => {
       setStatus('Too many messages. Slow down.')
     } else if (result.error === 'empty') {
       setStatus('Message is empty.')
+    } else if (result.error === 'network') {
+      setStatus('Chat is unavailable right now.')
     }
   }
 

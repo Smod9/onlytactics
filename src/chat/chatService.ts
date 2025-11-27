@@ -5,6 +5,7 @@ import type { ChatMessage } from '@/types/race'
 import { raceStore } from '@/state/raceStore'
 import { identity } from '@/net/identity'
 import { createId } from '@/utils/ids'
+import type { GameNetwork } from '@/net/gameNetwork'
 
 class RateLimiter {
   private timestamps: number[] = []
@@ -29,8 +30,16 @@ export class ChatService {
 
   private unsubscribe?: () => void
 
-  async start() {
+  async start(network?: GameNetwork) {
     if (this.started) return
+    if (appEnv.netTransport === 'colyseus') {
+      if (!network) return
+      this.unsubscribe = network.onChatMessage((message) => {
+        raceStore.appendChat(message)
+      })
+      this.started = true
+      return
+    }
     await mqttClient.connect()
     this.unsubscribe = mqttClient.subscribe<ChatMessage>(chatTopic, (message) => {
       raceStore.appendChat(message)
@@ -44,13 +53,23 @@ export class ChatService {
     this.started = false
   }
 
-  async send(text: string, senderRole: ChatMessage['senderRole']) {
+  async send(text: string, senderRole: ChatMessage['senderRole'], network?: GameNetwork) {
     const trimmed = text.trim()
     if (!trimmed.length) {
       return { ok: false as const, error: 'empty' }
     }
     if (!this.limiter.canSend()) {
       return { ok: false as const, error: 'rate_limit' }
+    }
+    if (appEnv.netTransport === 'colyseus') {
+      if (!network) {
+        return { ok: false as const, error: 'network' }
+      }
+      const sent = network.sendChat(trimmed)
+      if (!sent) {
+        return { ok: false as const, error: 'network' }
+      }
+      return { ok: true as const }
     }
     await mqttClient.connect()
     const message: ChatMessage = {

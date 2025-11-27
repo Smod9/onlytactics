@@ -1,4 +1,4 @@
-import type { RaceRole, RaceState } from '@/types/race'
+import type { ChatMessage, RaceRole, RaceState } from '@/types/race'
 import { quantizeHeading } from '@/logic/physics'
 import { HostController } from './controllers/hostController'
 import { PlayerController } from './controllers/playerController'
@@ -26,6 +26,7 @@ export class GameNetwork {
   private colyseusBridge?: ColyseusBridge
 
   private colyseusRoleUnsub?: () => void
+  private colyseusChatUnsub?: () => void
 
   private latestHeadingDeg = 0
 
@@ -45,6 +46,7 @@ export class GameNetwork {
   private startPromise?: Promise<void>
   private stopRequested = false
   private lastLoggedHostId?: string
+  private chatListeners = new Set<(message: ChatMessage) => void>()
 
   async start() {
     if (this.startPromise) return this.startPromise
@@ -95,6 +97,26 @@ export class GameNetwork {
   onStatusChange(listener: (status: NetworkStatus) => void) {
     this.statusListeners.add(listener)
     return () => this.statusListeners.delete(listener)
+  }
+
+  onChatMessage(listener: (message: ChatMessage) => void) {
+    this.chatListeners.add(listener)
+    return () => this.chatListeners.delete(listener)
+  }
+
+  sendChat(text: string) {
+    if (!text.trim()) return false
+    if (this.useColyseus()) {
+      if (!this.colyseusBridge) return false
+      this.colyseusBridge.sendChat(text)
+      return true
+    }
+    netLog('sendChat() ignored for MQTT transport')
+    return false
+  }
+
+  private emitChat(message: ChatMessage) {
+    this.chatListeners.forEach((listener) => listener(message))
   }
 
   updateDesiredHeading(headingDeg: number, seq: number, deltaHeadingDeg?: number) {
@@ -378,6 +400,8 @@ export class GameNetwork {
     netLog('colyseus joined', { sessionId: this.colyseusBridge.getSessionId() })
     this.colyseusRoleUnsub?.()
     this.colyseusRoleUnsub = raceStore.subscribe(() => this.syncColyseusRole())
+    this.colyseusChatUnsub?.()
+    this.colyseusChatUnsub = this.colyseusBridge.onChatMessage((message) => this.emitChat(message))
     this.syncColyseusRole()
     this.setStatus('ready')
   }
@@ -388,6 +412,8 @@ export class GameNetwork {
     this.colyseusBridge = undefined
     this.colyseusRoleUnsub?.()
     this.colyseusRoleUnsub = undefined
+    this.colyseusChatUnsub?.()
+    this.colyseusChatUnsub = undefined
     this.setStatus('idle')
   }
 
@@ -396,16 +422,14 @@ export class GameNetwork {
     const sessionId = this.colyseusBridge.getSessionId()
     if (!sessionId) return
     const hostId = raceStore.getState().hostId
-    netLog('syncColyseusRole()', { hostId, sessionId })
+    const clientId = identity.clientId
+    const isHost = Boolean(hostId && hostId === clientId)
+    netLog('syncColyseusRole()', { hostId, sessionId, clientId })
     if (hostId !== this.lastLoggedHostId) {
       this.lastLoggedHostId = hostId
-      netLog('hostId update', { hostId, sessionId })
+      netLog('hostId update', { hostId, sessionId, clientId })
     }
-    const nextRole: RaceRole = hostId
-      ? hostId === sessionId
-        ? 'host'
-        : 'player'
-      : 'spectator'
+    const nextRole: RaceRole = hostId ? (isHost ? 'host' : 'player') : 'spectator'
     this.setCurrentRole(nextRole)
   }
 }

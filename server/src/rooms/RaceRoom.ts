@@ -2,8 +2,9 @@ import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
 import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
-import type { RaceState } from '@/types/race'
+import type { ChatMessage, ChatSenderRole, RaceState } from '@/types/race'
 import { appEnv } from '@/config/env'
+import { createId } from '@/utils/ids'
 import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
@@ -32,6 +33,10 @@ type HostCommand =
   | { kind: 'arm'; seconds?: number }
   | { kind: 'reset' }
 
+type ChatMessagePayload = {
+  text?: string
+}
+
 export class RaceRoom extends Room<RaceRoomState> {
   maxClients = 32
 
@@ -40,8 +45,13 @@ export class RaceRoom extends Room<RaceRoomState> {
   private loop?: HostLoop
 
   private clientBoatMap = new Map<string, string>()
+  private clientIdentityMap = new Map<string, string>()
+  private clientNameMap = new Map<string, string>()
 
   private hostSessionId?: string
+  private hostClientId?: string
+
+  private chatRateMap = new Map<string, number[]>()
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
@@ -52,10 +62,14 @@ export class RaceRoom extends Room<RaceRoomState> {
     applyRaceStateToSchema(this.state.race, initialState)
     this.loop = new HostLoop(this.raceStore, undefined, undefined, {
       onTick: (state) => {
-        if (state.hostId !== this.hostSessionId) {
-          roomDebug('loop host sync', { loopHostId: state.hostId, currentHost: this.hostSessionId })
+        if (state.hostId !== this.hostClientId) {
+          roomDebug('loop host sync', {
+            loopHostId: state.hostId,
+            currentHostSession: this.hostSessionId,
+            currentHostClient: this.hostClientId,
+          })
         }
-        state.hostId = this.hostSessionId ?? state.hostId ?? ''
+        state.hostId = this.hostClientId ?? state.hostId ?? ''
         applyRaceStateToSchema(this.state.race, state)
       },
     })
@@ -105,9 +119,17 @@ export class RaceRoom extends Room<RaceRoomState> {
         this.resetRaceState()
       }
     })
+
+    this.onMessage<ChatMessagePayload>('chat', (client, payload) => {
+      this.handleChat(client, payload)
+    })
   }
 
   onJoin(client: Client, options?: Record<string, unknown>) {
+    const clientId = this.resolveClientIdentity(client, options)
+    this.clientIdentityMap.set(client.sessionId, clientId)
+    const displayName = this.resolvePlayerName(client, options)
+    this.clientNameMap.set(client.sessionId, displayName)
     this.state.playerCount += 1
     console.info('[RaceRoom] client joined', {
       clientId: client.sessionId,
@@ -172,6 +194,7 @@ export class RaceRoom extends Room<RaceRoomState> {
           draft.leaderboard.push(assignedId)
         }
       }
+      this.clientNameMap.set(client.sessionId, displayName)
     })
 
     client.send('boat_assignment', { boatId: assignedId })
@@ -186,6 +209,8 @@ export class RaceRoom extends Room<RaceRoomState> {
     const boatId = this.clientBoatMap.get(client.sessionId)
     if (!boatId) return
     this.clientBoatMap.delete(client.sessionId)
+    this.clientIdentityMap.delete(client.sessionId)
+    this.clientNameMap.delete(client.sessionId)
     roomDebug('releaseBoat', { clientId: client.sessionId, boatId })
     this.mutateState((draft) => {
       if (draft.boats[boatId]) {
@@ -207,17 +232,23 @@ export class RaceRoom extends Room<RaceRoomState> {
     return this.clientBoatMap.get(client.sessionId)
   }
 
+  private resolveClientIdentity(client: Client, options?: Record<string, unknown>) {
+    const provided = typeof options?.clientId === 'string' ? options.clientId.trim() : ''
+    return provided || client.sessionId
+  }
+
   private resolvePlayerName(client: Client, options?: Record<string, unknown>) {
     const name = typeof options?.name === 'string' ? options.name.trim() : ''
     if (name) return name
-    return `Sailor ${client.sessionId.slice(0, 4)}`
+    const clientId = this.clientIdentityMap.get(client.sessionId) ?? client.sessionId
+    return `Sailor ${clientId.slice(0, 4)}`
   }
 
   private mutateState(mutator: (draft: RaceState) => void) {
     if (!this.raceStore) return
     const draft = cloneRaceState(this.raceStore.getState())
     mutator(draft)
-    draft.hostId = this.hostSessionId ?? ''
+    draft.hostId = this.hostClientId ?? ''
     this.raceStore.setState(draft)
     applyRaceStateToSchema(this.state.race, draft)
   }
@@ -226,16 +257,19 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (!sessionId) {
       return {
         sessionId: undefined,
+        clientId: undefined,
         hostBoatId: undefined,
         hostName: undefined,
       }
     }
     const hostBoatId = this.clientBoatMap.get(sessionId)
+    const clientId = this.clientIdentityMap.get(sessionId)
     const storeName =
       hostBoatId && this.raceStore ? this.raceStore.getState().boats[hostBoatId]?.name : undefined
     const schemaName = hostBoatId ? this.state.race.boats[hostBoatId]?.name : undefined
     return {
       sessionId,
+      clientId,
       hostBoatId,
       hostName: storeName ?? schemaName,
     }
@@ -244,13 +278,14 @@ export class RaceRoom extends Room<RaceRoomState> {
   private setHost(sessionId?: string) {
     const previousHost = this.hostSessionId
     this.hostSessionId = sessionId
+    this.hostClientId = sessionId ? this.clientIdentityMap.get(sessionId) ?? sessionId : undefined
     roomDebug('setHost', {
       previousHost,
       nextHost: sessionId,
       ...this.describeHost(sessionId),
     })
     this.mutateState((draft) => {
-      draft.hostId = sessionId ?? ''
+      draft.hostId = this.hostClientId ?? ''
       if (!sessionId) {
         draft.countdownArmed = false
         draft.clockStartMs = null
@@ -297,6 +332,52 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (nextState) {
       this.loop?.reset(nextState)
     }
+  }
+
+  private handleChat(client: Client, payload: ChatMessagePayload) {
+    const text = typeof payload?.text === 'string' ? payload.text.trim() : ''
+    if (!text) return
+    const senderId = this.clientIdentityMap.get(client.sessionId) ?? client.sessionId
+    if (!this.canSendChat(senderId)) {
+      roomDebug('chat rate limited', { clientId: client.sessionId })
+      return
+    }
+    const trimmed = text.slice(0, 280)
+    const boatId = this.clientBoatMap.get(client.sessionId)
+    const senderRole: ChatSenderRole =
+      client.sessionId === this.hostSessionId
+        ? 'host'
+        : boatId
+          ? 'player'
+          : 'spectator'
+    const senderName =
+      this.clientNameMap.get(client.sessionId) ??
+      (boatId && this.state.race.boats[boatId]?.name) ??
+      this.resolvePlayerName(client)
+    const message: ChatMessage = {
+      messageId: createId('chat'),
+      raceId: this.state.race.meta.raceId,
+      senderId,
+      senderName,
+      senderRole,
+      text: trimmed,
+      ts: Date.now(),
+    }
+    this.broadcast('chat', message)
+  }
+
+  private canSendChat(clientId: string) {
+    const windowMs = 10_000
+    const limit = 5
+    const now = Date.now()
+    const recent = (this.chatRateMap.get(clientId) ?? []).filter((ts) => now - ts < windowMs)
+    if (recent.length >= limit) {
+      this.chatRateMap.set(clientId, recent)
+      return false
+    }
+    recent.push(now)
+    this.chatRateMap.set(clientId, recent)
+    return true
   }
 }
 
