@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/Smod9/onlytactics/compare/v1.3.0...v1.4.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** More pipeline tries ([6d7c071](https://github.com/Smod9/onlytactics/commit/6d7c0710af3729f49835bda2fe224c5243e60d08))
+
 # [1.3.0](https://github.com/Smod9/onlytactics/compare/v1.2.0...v1.3.0) (2025-11-27)
 
 
