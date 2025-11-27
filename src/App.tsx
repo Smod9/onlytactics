@@ -14,9 +14,24 @@ export function App() {
   const promptLogHref = `${import.meta.env.BASE_URL ?? '/'}onlytactics_prompt_log.html`
   const appVersion = `v${__APP_VERSION__}`
   const releaseUrl = __APP_RELEASE_URL__
+  const [showMaintenance, setShowMaintenance] = useState(true)
 
   return (
     <div className="app-shell">
+      {showMaintenance && (
+        <div className="maintenance-overlay" role="alertdialog" aria-modal="true">
+          <div className="maintenance-card">
+            <h2>Hang tight!</h2>
+            <p>
+              Sorry <span role="img" aria-label="smiling face">😊</span> we broke the app. I got stuck trying to deploy the
+              new backend, but you&apos;re really going to love it when it&apos;s working again.
+            </p>
+            <button type="button" onClick={() => setShowMaintenance(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
       <header className="app-header">
         <div className="brand">
           <a href="/" title="Return to landing page">

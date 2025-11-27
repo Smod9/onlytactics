@@ -25,7 +25,7 @@ COLYSEUS_BASE_URL=https://us-sea-03139935.colyseus.cloud
 ### Local development
 
 ```bash
-cd frontend/server
+cd server
 npm install
 npm run dev
 ```
