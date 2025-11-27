@@ -310,7 +310,7 @@ export class RaceRoom extends Room<RaceRoomState> {
   private resetRaceState() {
     const assignment = Array.from(this.clientBoatMap.entries()).map(([sessionId, boatId], idx) => ({
       boatId,
-      name: this.state.race.boats[boatId]?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
+      name: this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
       index: idx,
     }))
     roomDebug('resetRaceState', {
@@ -358,7 +358,7 @@ export class RaceRoom extends Room<RaceRoomState> {
           : 'spectator'
     const senderName =
       this.clientNameMap.get(client.sessionId) ??
-      (boatId && this.state.race.boats[boatId]?.name) ??
+      (boatId && this.state.race.boats.get(boatId)?.name) ??
       this.resolvePlayerName(client)
     const message: ChatMessage = {
       messageId: createId('chat'),
