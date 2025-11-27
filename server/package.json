@@ -20,6 +20,7 @@
     "colyseus": "^0.16.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "fly": "^4.6.16",
     "tsconfig-paths": "^4.2.0"
   },
   "devDependencies": {
