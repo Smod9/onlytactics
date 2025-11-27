@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/Smod9/onlytactics/compare/v1.7.0...v1.8.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** trying to port to fly io ([1cc53c2](https://github.com/Smod9/onlytactics/commit/1cc53c20aafaf34dba422533534bd685c28636c7))
+
 # [1.7.0](https://github.com/Smod9/onlytactics/compare/v1.6.0...v1.7.0) (2025-11-27)
 
 
