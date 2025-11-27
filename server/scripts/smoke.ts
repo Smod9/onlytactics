@@ -1,4 +1,5 @@
 import http from 'node:http'
+import https from 'node:https'
 import { env } from '../src/lib/env'
 
 const baseUrl =
@@ -6,10 +7,11 @@ const baseUrl =
   `http://${env.hostname === '0.0.0.0' ? '127.0.0.1' : env.hostname}:${env.port}`
 
 const target = new URL('/health', baseUrl)
+const client = target.protocol === 'https:' ? https : http
 
 const run = () =>
   new Promise<void>((resolve, reject) => {
-    const request = http.get(target, (response) => {
+    const request = client.get(target, (response) => {
       let raw = ''
       response.setEncoding('utf8')
       response.on('data', (chunk) => {

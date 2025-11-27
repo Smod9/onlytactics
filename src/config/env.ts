@@ -13,12 +13,17 @@ const toBool = (value: string | undefined, fallback = false) => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes'
 }
 
+const defaultColyseusEndpoint =
+  rawEnv.MODE === 'development' || rawEnv.NODE_ENV === 'development'
+    ? 'ws://localhost:2567'
+    : 'wss://us-sea-03139935.colyseus.cloud'
+
 export const appEnv = {
-  raceId: rawEnv.VITE_RACE_ID ?? 'dev-race',
-  clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'spectator') as ClientRole,
+  raceId: rawEnv.VITE_RACE_ID ?? 'prod-race',
+  clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'player') as ClientRole,
   clientName: rawEnv.VITE_CLIENT_NAME ?? 'Visitor',
-  netTransport: (rawEnv.VITE_NET_TRANSPORT ?? 'mqtt') as 'mqtt' | 'colyseus',
-  colyseusEndpoint: rawEnv.VITE_COLYSEUS_ENDPOINT ?? 'ws://localhost:2567',
+  netTransport: (rawEnv.VITE_NET_TRANSPORT ?? 'colyseus') as 'mqtt' | 'colyseus',
+  colyseusEndpoint: rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint,
   colyseusRoomId: rawEnv.VITE_COLYSEUS_ROOM_ID ?? 'onlytactics-dev',
   tickRateHz: toNumber(rawEnv.VITE_TICK_RATE, 10),
   hostFailoverMs: toNumber(rawEnv.VITE_HOST_FAILOVER_MS, 4000),

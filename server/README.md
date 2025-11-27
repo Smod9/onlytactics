@@ -5,6 +5,23 @@ Lightweight Colyseus Cloud game server scaffold. It exposes:
 - `GET /` – JSON banner describing the active hard-coded room.
 - `GET /health` – uptime + status payload for health checks.
 
+### Environment variables
+
+Create a `.env` in this directory (not checked into git). A typical local setup looks like:
+
+```
+PORT=2567
+COLYSEUS_HOST=0.0.0.0
+RACE_ROOM_ID=onlytactics-dev
+ENABLE_MONITOR=false
+```
+
+When testing a Colyseus Cloud deploy, you can also point the smoke test at the live URL:
+
+```
+COLYSEUS_BASE_URL=https://us-sea-03139935.colyseus.cloud
+```
+
 ### Local development
 
 ```bash
@@ -15,20 +32,10 @@ npm run dev
 
 The server listens on `http://127.0.0.1:2567` (overridable with `PORT` / `HOST`).
 
-### Smoke test
+### Smoke test (local or cloud)
 
-With the dev server running, open a second terminal:
+- **Local:** start `npm run dev` in one terminal, then run `npm run smoke` in another.  
+- **Cloud:** run `COLYSEUS_BASE_URL=https://us-sea-03139935.colyseus.cloud npm run smoke`.
 
-```bash
-cd frontend/server
-npm run smoke
-```
-
-This script hits `GET /health` and prints the JSON payload. You can also curl manually:
-
-```bash
-curl http://127.0.0.1:2567/health
-```
-
-Both steps confirm the Colyseus host is reachable before we wire up the real race state sync.
+Both variants hit `GET /health` and exit with a non-zero status if the server isn’t ready.
 
