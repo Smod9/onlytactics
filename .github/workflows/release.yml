@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   release:
@@ -39,8 +38,6 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    environment:
-      name: surge
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,7 +52,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build frontend
         run: npm run build
 
       - name: Install Surge
@@ -67,3 +64,16 @@ jobs:
           SURGE_DOMAIN: ${{ secrets.SURGE_DOMAIN }}
         run: surge ./dist "$SURGE_DOMAIN"
 
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Build Colyseus server bundle
+        working-directory: server
+        run: npm run build
+
+      - name: Deploy to Colyseus Cloud
+        working-directory: server
+        env:
+          COLYSEUS_DEPLOY_KEY: ${{ secrets.COLYSEUS_DEPLOY_KEY }}
+        run: npx @colyseus/cloud deploy --deployKey "$COLYSEUS_DEPLOY_KEY"
