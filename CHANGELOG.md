@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/Smod9/onlytactics/compare/v1.6.0...v1.7.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** Mx banner ([3acf2da](https://github.com/Smod9/onlytactics/commit/3acf2da51b20f61a620d75341e555ecefac05fdf))
+
 # [1.6.0](https://github.com/Smod9/onlytactics/compare/v1.5.0...v1.6.0) (2025-11-27)
 
 
