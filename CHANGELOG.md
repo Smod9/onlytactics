@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/Smod9/onlytactics/compare/v1.1.0...v1.2.0) (2025-11-27)
+
+
+### Features
+
+* **colyseus:** working on deploying new backend ([2376cfe](https://github.com/Smod9/onlytactics/commit/2376cfe849a0a67737ff997162d0ab6319721be5))
+
 # [1.1.0](https://github.com/Smod9/onlytactics/compare/v1.0.0...v1.1.0) (2025-11-26)
 
 
