@@ -19,9 +19,9 @@ const defaultColyseusEndpoint =
     : 'wss://onlytactics-server.fly.dev'
 
 export const appEnv = {
-  raceId: rawEnv.VITE_RACE_ID ?? 'prod-race',
-  clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'player') as ClientRole,
-  clientName: rawEnv.VITE_CLIENT_NAME ?? 'Visitor',
+  raceId: rawEnv.VITE_RACE_ID ?? 'debug-race',
+  clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'host') as ClientRole,
+  clientName: rawEnv.VITE_CLIENT_NAME ?? 'Debug Host',
   netTransport: (rawEnv.VITE_NET_TRANSPORT ?? 'colyseus') as 'mqtt' | 'colyseus',
   colyseusEndpoint: rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint,
   colyseusRoomId: rawEnv.VITE_COLYSEUS_ROOM_ID ?? 'onlytactics-dev',
@@ -34,7 +34,7 @@ export const appEnv = {
   lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 1),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 60),
   penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
-  debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
+  debugHud: toBool(rawEnv.VITE_DEBUG_HUD, true),
   debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, true),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),

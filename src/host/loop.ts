@@ -8,7 +8,22 @@ import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
 import { SPIN_HOLD_SECONDS } from '@/logic/constants'
+import { courseLegs, radialSets } from '@/config/course'
+import { distanceBetween } from '@/utils/geometry'
 import { assignLeaderboard } from '@/logic/leaderboard'
+
+const lapDebug = (...args: unknown[]) => {
+  if (!appEnv.debugHud) return
+  console.info('[lap-debug]', ...args)
+}
+
+const ROUND_MIN_RADIUS = 0
+const ROUND_MAX_RADIUS = Number.POSITIVE_INFINITY
+type RoundingProgress = {
+  legIndex: number
+  stage: number
+  activeMarkIndex?: number
+}
 
 type HostLoopOptions = {
   onEvents?: (events: RaceEvent[]) => void
@@ -19,6 +34,8 @@ export class HostLoop {
   private timer?: ReturnType<typeof setInterval>
 
   private lastTick = 0
+
+  private roundingProgress = new Map<string, RoundingProgress>()
 
   constructor(
     private store: RaceStore = raceStore,
@@ -63,6 +80,7 @@ export class HostLoop {
     clearInterval(this.timer)
     this.timer = undefined
     this.cancelSpinSequences()
+    this.roundingProgress.clear()
   }
 
   reset(state: RaceState) {
@@ -77,6 +95,7 @@ export class HostLoop {
     this.penaltyHistory.clear()
     this.raceStartWallClockMs = state.clockStartMs
     this.cancelSpinSequences()
+    this.roundingProgress.clear()
   }
 
   isRunning = () => Boolean(this.timer)
@@ -116,7 +135,7 @@ export class HostLoop {
       next.t = (Date.now() - next.clockStartMs) / 1000
     }
     this.checkRaceTimeout(next)
-    this.updateLapProgress(next)
+    const lapEvents = this.updateLapProgress(next)
 
     this.applySpinLocks(next)
     const startEvents = this.updateStartLine(next)
@@ -127,7 +146,12 @@ export class HostLoop {
       if (offender) offender.penalties += 1
     })
     const spinEvents = this.resolveSpinCompletions(next)
-    const events = [...startEvents, ...this.rules.toEvents(next, resolutions), ...spinEvents]
+    const events = [
+      ...startEvents,
+      ...this.rules.toEvents(next, resolutions),
+      ...spinEvents,
+      ...lapEvents,
+    ]
 
     Object.values(next.boats).forEach((boat) => {
       boat.fouled = false
@@ -176,30 +200,57 @@ export class HostLoop {
     state.wind.speed += (this.windSpeedTarget - state.wind.speed) * lerpFactor
   }
 
-  private updateLapProgress(state: RaceState) {
-    const marks = state.marks
-    const markCount = marks.length
-    if (!markCount) return
-
+  private updateLapProgress(state: RaceState): RaceEvent[] {
+    const lapEvents: RaceEvent[] = []
     const lapTarget = Math.max(1, state.lapsToFinish || 1)
     Object.values(state.boats).forEach((boat) => {
-      if (boat.nextMarkIndex === undefined) boat.nextMarkIndex = 0
       if (boat.lap === undefined) boat.lap = 0
       if (boat.finished) {
         boat.distanceToNextMark = 0
-        boat.inMarkZone = false
         return
       }
+      const events = this.advanceBoatLeg(boat, state, lapTarget)
+      if (events.length) {
+        lapEvents.push(...events)
+      }
+    })
+    assignLeaderboard(state)
+    return lapEvents
+  }
 
-    const nextMark = marks[boat.nextMarkIndex % markCount]
-    if (!nextMark) return
+  private advanceBoatLeg(boat: BoatState, state: RaceState, lapTarget: number) {
+    const events: RaceEvent[] = []
+    const marks = state.marks
+    const legCount = courseLegs.length
+    if (!legCount) return events
+    const progress = this.getOrCreateProgress(boat.id)
+    const leg = courseLegs[progress.legIndex % legCount]
+    const targetIndex = this.pickTargetMarkIndex(boat, state, leg, progress)
+    const targetMark = marks[targetIndex]
+    if (!targetMark) return events
 
-    const crossed = this.didCrossMarkLine(boat, nextMark, state)
-    boat.distanceToNextMark = this.distanceToLine(boat, nextMark)
+    boat.nextMarkIndex = targetIndex
+    const distance = distanceBetween(boat.pos, targetMark)
+    boat.distanceToNextMark = distance
 
-    if (crossed) {
-      boat.nextMarkIndex = (boat.nextMarkIndex + 1) % markCount
-      if (boat.nextMarkIndex === 0) {
+    if (distance > ROUND_MAX_RADIUS || distance < ROUND_MIN_RADIUS) {
+      progress.stage = 0
+      progress.activeMarkIndex = undefined
+      return events
+    }
+    const { completed, debugEvent } = this.trackRadialCrossings(boat, state, progress, targetMark, leg)
+    if (debugEvent) {
+      events.push(debugEvent)
+    }
+    if (completed) {
+      progress.stage = 0
+      progress.activeMarkIndex = undefined
+      progress.legIndex = (progress.legIndex + 1) % legCount
+      const nextLeg = courseLegs[progress.legIndex % legCount]
+      boat.nextMarkIndex = nextLeg.markIndices[0] ?? boat.nextMarkIndex
+      boat.distanceToNextMark = distanceBetween(boat.pos, state.marks[boat.nextMarkIndex] ?? targetMark)
+
+      if (progress.legIndex === 0) {
         boat.lap += 1
         if (boat.lap >= lapTarget) {
           boat.finished = true
@@ -208,53 +259,133 @@ export class HostLoop {
         }
       }
     }
-    })
-
-    assignLeaderboard(state)
+    return events
   }
 
-  private didCrossMarkLine(boat: BoatState, mark: BoatState['pos'], state: RaceState) {
-    if (!boat.prevPos) return false
-    if (state.marks[0] === mark) {
-      return this.crossedHorizontalLine(boat, mark.y, 1)
+  private getOrCreateProgress(boatId: string): RoundingProgress {
+    let progress = this.roundingProgress.get(boatId)
+    if (!progress) {
+      progress = {
+        legIndex: 0,
+        stage: 0,
+      }
+      this.roundingProgress.set(boatId, progress)
     }
-    const gate = this.getGateCenter(state)
-    if (gate && Math.abs(gate.y - mark.y) < 1) {
-      const minX = Math.min(state.leewardGate.left.x, state.leewardGate.right.x)
-      const maxX = Math.max(state.leewardGate.left.x, state.leewardGate.right.x)
-      return this.crossedHorizontalLine(boat, gate.y, -1, { minX, maxX })
-    }
-    return this.distanceToLine(boat, mark) <= 30
+    return progress
   }
 
-  private crossedHorizontalLine(
+  private pickTargetMarkIndex(
     boat: BoatState,
-    lineY: number,
-    direction: 1 | -1,
-    segment?: { minX: number; maxX: number },
+    state: RaceState,
+    leg: (typeof courseLegs)[number],
+    progress: RoundingProgress,
   ) {
-    if (!boat.prevPos) return false
-    const prevY = boat.prevPos.y
-    const currentY = boat.pos.y
-    if (currentY === prevY) return false
-    if (direction === 1) {
-      if (!(prevY < lineY && currentY >= lineY)) return false
-    } else if (!(prevY > lineY && currentY <= lineY)) {
-      return false
+    const marks = state.marks
+    const options = leg.markIndices
+    if (!options.length) return 0
+    if (progress.activeMarkIndex !== undefined && options.includes(progress.activeMarkIndex)) {
+      return progress.activeMarkIndex
     }
-    if (!segment) return true
-    const t = (lineY - prevY) / (currentY - prevY)
-    const intersectX = boat.prevPos.x + (boat.pos.x - boat.prevPos.x) * t
-    return intersectX >= segment.minX && intersectX <= segment.maxX
+    let bestIndex = options[0]
+    let bestDistance = Infinity
+    options.forEach((idx) => {
+      const mark = marks[idx]
+      if (!mark) return
+      const dist = distanceBetween(boat.pos, mark)
+      if (dist < bestDistance) {
+        bestDistance = dist
+        bestIndex = idx
+      }
+    })
+    progress.activeMarkIndex = bestIndex
+    return bestIndex
   }
 
-  private getGateCenter(state: RaceState) {
-    const { left, right } = state.leewardGate
-    return { x: (left.x + right.x) / 2, y: (left.y + right.y) / 2 }
+  private trackRadialCrossings(
+    boat: BoatState,
+    state: RaceState,
+    progress: RoundingProgress,
+    mark: { x: number; y: number },
+    leg: (typeof courseLegs)[number],
+  ) {
+    const kind: 'windward' | 'leeward' = leg.kind === 'leeward' ? 'leeward' : 'windward'
+    const rounding: 'port' | 'starboard' = leg.rounding === 'port' ? 'port' : 'starboard'
+    const radialTargets = radialSets[kind][rounding]
+    const totalStages = radialTargets.length
+    const stage = progress.stage
+    const step = radialTargets[stage]
+    if (!step) {
+      return { completed: true, debugEvent: undefined }
+    }
+
+    const axis = step.axis
+    const threshold = axis === 'x' ? mark.x : mark.y
+    const prevPos = boat.prevPos ?? boat.pos
+    const prevValue = prevPos[axis]
+    const currentValue = boat.pos[axis]
+    const direction = step.direction
+    const crossed =
+      direction === 1
+        ? prevValue <= threshold && currentValue >= threshold
+        : prevValue >= threshold && currentValue <= threshold
+
+    let finished = false
+    let debugEvent: RaceEvent | undefined
+    if (crossed) {
+      progress.stage += 1
+      debugEvent = this.buildLapDebugEvent(boat, state, {
+        leg,
+        stage: progress.stage,
+        crossed,
+        distance: boat.distanceToNextMark ?? 0,
+        stagesTotal: totalStages,
+      })
+      if (progress.stage >= totalStages) {
+        finished = true
+      }
+    }
+
+    if (appEnv.debugHud) {
+      lapDebug('radial_state', {
+        boatId: boat.id,
+        leg: leg.sequence,
+        stage,
+        axis,
+        direction,
+        threshold,
+        prevValue,
+        currentValue,
+        crossed,
+      })
+    }
+
+    return {
+      completed: finished,
+      debugEvent,
+    }
   }
 
-  private distanceToLine(boat: BoatState, point: { x: number; y: number }) {
-    return Math.abs(boat.pos.y - point.y)
+  private buildLapDebugEvent(
+    boat: BoatState,
+    state: RaceState,
+    info: {
+      leg: (typeof courseLegs)[number]
+      stage: number
+      crossed: boolean
+      distance: number
+      stagesTotal: number
+    },
+  ): RaceEvent {
+    const message = `[lap-debug] ${boat.name} leg=${info.leg.sequence} stage=${info.stage}/${info.stagesTotal} crossed=${info.crossed} dir=${info.leg.rounding} dist=${info.distance.toFixed(1)}m lap=${boat.lap}`
+    lapDebug(message)
+    return {
+      eventId: createId('lap-debug'),
+      kind: 'rule_hint',
+      ruleId: 'other',
+      t: state.t,
+      boats: [boat.id],
+      message,
+    }
   }
 
   private updateStartLine(state: RaceState): RaceEvent[] {

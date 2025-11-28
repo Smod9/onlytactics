@@ -3,6 +3,8 @@ import { appEnv } from '@/config/env'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
+import { raceStore } from '@/state/raceStore'
+import { courseMarkAnnotations, radialSets } from '@/config/course'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
@@ -117,6 +119,7 @@ class BoatView {
 export class RaceScene {
   private waterLayer = new Graphics()
   private courseLayer = new Graphics()
+  private overlayLayer = new Container()
   private boatLayer = new Container()
   private hudLayer = new Container()
   private windArrow = new Graphics()
@@ -152,12 +155,7 @@ export class RaceScene {
   private boats = new Map<string, BoatView>()
 
   constructor(private app: Application) {
-    this.app.stage.addChild(
-      this.waterLayer,
-      this.courseLayer,
-      this.boatLayer,
-      this.hudLayer,
-    )
+    this.app.stage.addChild(this.waterLayer, this.courseLayer, this.overlayLayer, this.boatLayer, this.hudLayer)
 
     this.countdownLabel.anchor.set(0.5)
     this.countdownTime.anchor.set(0.5)
@@ -220,6 +218,8 @@ export class RaceScene {
     this.drawStartLine(state, map)
     this.drawMarks(state, map)
     this.drawLeewardGate(state, map)
+    this.drawDebugCrossingGuides(state, map)
+    this.drawDebugAnnotations(state, map)
   }
 
   private drawMarks(state: RaceState, map: ScreenMapper) {
@@ -229,10 +229,133 @@ export class RaceScene {
       this.courseLayer.fill({ color: 0xffff00, alpha: 0.8 })
       this.courseLayer.circle(x, y, 6)
       this.courseLayer.fill()
-      this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff })
-      this.courseLayer.moveTo(x + 10, y - 10)
-      this.courseLayer.lineTo(x + 10 + index * 4, y - 10)
+      this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
       this.drawZoneCircle({ x, y }, 60)
+    })
+  }
+
+  private drawDebugAnnotations(state: RaceState, map: ScreenMapper) {
+    this.overlayLayer.removeChildren()
+    if (!appEnv.debugHud) return
+    this.drawMarkRadials(state, map)
+    this.drawMarkLabels(state, map)
+    this.drawNextMarkHighlight(state, map)
+    this.drawCrossingMarkers(state, map)
+  }
+
+  private drawMarkRadials(state: RaceState, map: ScreenMapper) {
+    const radialLength = 70
+    courseMarkAnnotations.forEach((annotation) => {
+      const mark = state.marks[annotation.markIndex]
+      if (!mark) return
+      const { x, y } = map(mark)
+      const color = annotation.rounding === 'port' ? 0x00ffc3 : 0xff9ecd
+      const kind: 'windward' | 'leeward' = annotation.kind === 'leeward' ? 'leeward' : 'windward'
+      const steps = radialSets[kind][annotation.rounding]
+      steps.forEach((step, idx) => {
+        const dx = step.axis === 'x' ? step.direction : 0
+        const dy = step.axis === 'y' ? -step.direction : 0
+        const endX = x + dx * radialLength
+        const endY = y + dy * radialLength
+        const line = new Graphics()
+        line.setStrokeStyle({ width: 2, color, alpha: 0.6 })
+        line.moveTo(x, y)
+        line.lineTo(endX, endY)
+        line.stroke()
+        const tag = new Text({
+          text: `${idx + 1}`,
+          style: { fill: color, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
+        })
+        tag.anchor.set(0.5)
+        tag.position.set(endX, endY)
+        this.overlayLayer.addChild(line, tag)
+      })
+    })
+  }
+
+  private drawMarkLabels(state: RaceState, map: ScreenMapper) {
+    const legCounts: Record<string, number> = {}
+    courseMarkAnnotations.forEach((annotation) => {
+      const mark = state.marks[annotation.markIndex]
+      if (!mark) return
+      const key = annotation.sequences.join('-')
+      legCounts[key] = (legCounts[key] ?? 0) + 1
+    })
+
+    const variantIndex: Record<string, number> = {}
+
+    courseMarkAnnotations.forEach((annotation) => {
+      const mark = state.marks[annotation.markIndex]
+      if (!mark) return
+      const key = annotation.sequences.join('-')
+      const count = legCounts[key]
+      if (count > 1) {
+        variantIndex[key] = (variantIndex[key] ?? 0) + 1
+      }
+      const variant = count > 1 ? variantIndex[key] : undefined
+      const suffix = count > 1 ? `.${variant}` : ''
+      const textLabel = `M${annotation.sequences.join('/')}${suffix}`
+
+      const { x, y } = map(mark)
+      const label = new Text({
+        text: textLabel,
+        style: {
+          fill: '#ffffff',
+          fontSize: 12,
+          fontFamily: 'IBM Plex Mono, monospace',
+          fontWeight: 'bold',
+        },
+      })
+      label.anchor.set(0.5)
+      label.position.set(x, y - 20)
+      this.overlayLayer.addChild(label)
+    })
+  }
+
+  private drawNextMarkHighlight(state: RaceState, map: ScreenMapper) {
+    const boat = state.boats[identity.boatId]
+    if (!boat) return
+    const mark = state.marks[boat.nextMarkIndex ?? 0]
+    if (!mark) return
+    const { x, y } = map(mark)
+    const circle = new Graphics()
+    circle.setStrokeStyle({ width: 3, color: 0x00ffc3, alpha: 0.9 })
+    circle.circle(x, y, 24)
+    circle.stroke()
+    const label = new Text({
+      text: 'Next mark',
+      style: { fill: '#00ffc3', fontSize: 12, fontFamily: 'IBM Plex Mono, monospace' },
+    })
+    label.anchor.set(0.5)
+    label.position.set(x, y - 32)
+    this.overlayLayer.addChild(circle, label)
+  }
+
+  private drawCrossingMarkers(state: RaceState, map: ScreenMapper) {
+    if (!appEnv.debugHud) return
+    const lapEvents = raceStore
+      .getRecentEvents()
+      .filter((event) => event.kind === 'rule_hint' && event.message.startsWith('[lap-debug]'))
+      .slice(-6)
+    lapEvents.forEach((event) => {
+      event.boats?.forEach((boatId) => {
+        const boat = state.boats[boatId]
+        if (!boat) return
+        const pos = map(boat.pos)
+        const marker = new Graphics()
+        marker.setStrokeStyle({ width: 2, color: 0x00ffc3, alpha: 0.8 })
+        marker.circle(pos.x, pos.y, 16)
+        marker.stroke()
+        const label = new Text({
+          text: event.message.replace('[lap-debug]', '').trim(),
+          style: { fill: '#00ffc3', fontSize: 12, fontFamily: 'IBM Plex Mono, monospace', align: 'left' },
+        })
+        label.anchor.set(0, 0.5)
+        label.position.set(pos.x + 18, pos.y)
+        const group = new Container()
+        group.addChild(marker, label)
+        this.overlayLayer.addChild(group)
+      })
     })
   }
 
@@ -323,6 +446,55 @@ export class RaceScene {
       this.courseLayer.fill()
       this.drawZoneCircle(gateMark, 48)
     })
+  }
+
+  private drawDebugCrossingGuides(state: RaceState, map: ScreenMapper) {
+    if (!appEnv.debugHud) return
+    const guideColor = 0x32e5ff
+
+    const windward = state.marks[0]
+    if (windward) {
+      const span = 400
+      const start = map({ x: windward.x - span, y: windward.y })
+      const end = map({ x: windward.x + span, y: windward.y })
+      this.drawGuideLine(start, end, 1, guideColor)
+    }
+
+    const gateY = (state.leewardGate.left.y + state.leewardGate.right.y) / 2
+    const minX = Math.min(state.leewardGate.left.x, state.leewardGate.right.x)
+    const maxX = Math.max(state.leewardGate.left.x, state.leewardGate.right.x)
+    const gateStart = map({ x: minX, y: gateY })
+    const gateEnd = map({ x: maxX, y: gateY })
+    this.drawGuideLine(gateStart, gateEnd, 1, guideColor)
+  }
+
+  private drawGuideLine(
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    direction: 1 | -1,
+    color: number,
+  ) {
+    this.courseLayer.setStrokeStyle({ width: 2, color, alpha: 0.5 })
+    this.courseLayer.moveTo(start.x, start.y)
+    this.courseLayer.lineTo(end.x, end.y)
+    this.courseLayer.stroke()
+    const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }
+    this.drawDirectionArrow(mid, direction, color)
+  }
+
+  private drawDirectionArrow(center: { x: number; y: number }, direction: 1 | -1, color: number) {
+    const length = 28
+    const tip = { x: center.x, y: center.y + direction * length }
+    const tail = { x: center.x, y: center.y - direction * length }
+    const wing = 9
+    this.courseLayer.setStrokeStyle({ width: 2, color, alpha: 0.5 })
+    this.courseLayer.moveTo(tail.x, tail.y)
+    this.courseLayer.lineTo(tip.x, tip.y)
+    this.courseLayer.moveTo(tip.x, tip.y)
+    this.courseLayer.lineTo(tip.x - 6, tip.y - direction * wing)
+    this.courseLayer.moveTo(tip.x, tip.y)
+    this.courseLayer.lineTo(tip.x + 6, tip.y - direction * wing)
+    this.courseLayer.stroke()
   }
 
   private drawZoneCircle(center: { x: number; y: number }, radius: number) {
