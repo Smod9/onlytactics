@@ -38,18 +38,12 @@ export const ProgressStepper = ({ boat }: Props) => {
     <div className="progress-stepper">
       {steps.map((step, index) => {
         const status = statusForSequence(step.sequence)
-        const nextStatus = steps[index + 1] ? statusForSequence(steps[index + 1].sequence) : status
         return (
           <div key={step.sequence} className={`progress-step status-${status}`}>
             <div className="progress-bullet">
               <span>{step.sequence}</span>
             </div>
-            <div className="progress-label">{step.label}</div>
-            {index < steps.length - 1 && (
-              <div className={`progress-connector status-${status === 'done' && nextStatus !== 'done' ? 'active' : status}`}>
-                <span />
-              </div>
-            )}
+            {index < steps.length - 1 && <div className="progress-connector" />}
           </div>
         )
       })}

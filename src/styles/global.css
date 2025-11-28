@@ -570,55 +570,42 @@ button {
 
 .progress-stepper {
   position: fixed;
-  top: 16px;
+  top: 18px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(0, 0, 0, 0.25);
+  gap: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   z-index: 20;
+  font-size: 0.7rem;
 }
 
 .progress-step {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .progress-bullet {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
 }
 
 .progress-connector {
-  width: 60px;
+  width: 36px;
   height: 2px;
   background: rgba(255, 255, 255, 0.15);
-  position: relative;
-}
-
-.progress-connector span {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.5);
-  transform-origin: left;
 }
 
 .progress-label {
