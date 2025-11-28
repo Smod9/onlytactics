@@ -33,6 +33,7 @@ export type BoatState = {
   name: string
   color: number
   pos: Vec2
+  prevPos?: Vec2
   headingDeg: number
   desiredHeadingDeg: number
   speed: number

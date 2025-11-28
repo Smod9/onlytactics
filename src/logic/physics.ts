@@ -12,6 +12,7 @@ import {
   STALL_SPEED_FACTOR,
   TURN_RATE_DEG,
 } from './constants'
+import { appEnv } from '@/config/env'
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value))
@@ -143,7 +144,7 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     applyStallDecay(boat, dt)
 
     const awa = apparentWindAngle(boat.headingDeg, state.wind.directionDeg)
-    let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET)
+    let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET) * appEnv.speedMultiplier
     if (boat.stallTimer > 0) {
       targetSpeed *= STALL_SPEED_FACTOR
     }
@@ -151,6 +152,9 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
 
     const courseRad = degToRad(boat.headingDeg)
     const speedMs = boat.speed * KNOTS_TO_MS
+    boat.prevPos = boat.prevPos ?? { x: boat.pos.x, y: boat.pos.y }
+    boat.prevPos.x = boat.pos.x
+    boat.prevPos.y = boat.pos.y
     boat.pos.x += Math.sin(courseRad) * speedMs * dt
     boat.pos.y -= Math.cos(courseRad) * speedMs * dt
   })

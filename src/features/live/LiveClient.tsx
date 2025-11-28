@@ -29,6 +29,7 @@ export const LiveClient = () => {
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [needsName, setNeedsName] = useState(!identity.clientName)
+  const [idleSuspended, setIdleSuspended] = useState(false)
   const headerCtaEl =
     typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
@@ -52,6 +53,57 @@ export const LiveClient = () => {
     }
   }, [network, needsName])
 
+  useEffect(() => {
+    if (needsName || idleSuspended) return
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+    const timeoutMs = appEnv.clientIdleTimeoutMs
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return
+
+    let idleTimer: ReturnType<typeof window.setTimeout> | undefined
+
+    const expireForIdle = () => {
+      setIdleSuspended(true)
+      network.stop()
+    }
+
+    const resetIdleTimer = () => {
+      window.clearTimeout(idleTimer)
+      idleTimer = window.setTimeout(expireForIdle, timeoutMs)
+    }
+
+    const handleActivity = () => {
+      if (document.hidden) return
+      resetIdleTimer()
+    }
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        resetIdleTimer()
+      }
+    }
+
+    resetIdleTimer()
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'pointerdown',
+      'pointermove',
+      'keydown',
+      'wheel',
+      'touchstart',
+    ]
+
+    activityEvents.forEach((event) => window.addEventListener(event, handleActivity))
+    window.addEventListener('focus', handleActivity)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.clearTimeout(idleTimer)
+      activityEvents.forEach((event) => window.removeEventListener(event, handleActivity))
+      window.removeEventListener('focus', handleActivity)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [idleSuspended, needsName, network, appEnv.clientIdleTimeoutMs])
+
   const role = useSyncExternalStore<RaceRole>(
     (listener) => network.onRoleChange(listener),
     () => network.getRole(),
@@ -73,6 +125,12 @@ export const LiveClient = () => {
     setClientName(trimmed)
     setNeedsName(false)
     network.announcePresence('online')
+  }
+
+  const resumeFromIdle = () => {
+    if (!idleSuspended) return
+    setIdleSuspended(false)
+    void network.start()
   }
 
   const headerPortal =
@@ -119,6 +177,17 @@ export const LiveClient = () => {
                 Join Race
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {idleSuspended && (
+        <div className="username-gate">
+          <div className="username-card">
+            <h2>You went idle</h2>
+            <p>We paused your connection so someone else can host while you’re away.</p>
+            <button type="button" onClick={resumeFromIdle}>
+              Rejoin Race
+            </button>
           </div>
         </div>
       )}

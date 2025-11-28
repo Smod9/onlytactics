@@ -34,6 +34,7 @@ export const appEnv = {
     150,
   ),
   lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 3),
+  speedMultiplier: toNumber(rawEnv.SPEED_MULTIPLIER ?? rawEnv.VITE_SPEED_MULTIPLIER, 1),
 } as const
 
 export type AppEnv = typeof appEnv

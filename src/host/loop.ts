@@ -1,4 +1,4 @@
-import { stepRaceState, clamp as physicsClamp } from '@/logic/physics'
+import { stepRaceState, clamp as physicsClamp, normalizeDeg } from '@/logic/physics'
 import { RulesEngine, type RuleResolution } from '@/logic/rules'
 import { cloneRaceState } from '@/state/factories'
 import { raceStore, RaceStore } from '@/state/raceStore'
@@ -7,6 +7,7 @@ import { createSeededRandom } from '@/utils/rng'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
+import { SPIN_HOLD_SECONDS } from '@/logic/constants'
 
 type HostLoopOptions = {
   onEvents?: (events: RaceEvent[]) => void
@@ -44,6 +45,10 @@ export class HostLoop {
   private courseSideSign?: number
   private penaltyHistory = new Map<string, number>()
   private raceStartWallClockMs: number | null = null
+  private spinTimers = new Map<string, NodeJS.Timeout[]>()
+  private spinningBoats = new Set<string>()
+  private pendingSpinClears = new Set<string>()
+  private spinSeq = 0
 
   start() {
     if (this.timer) return
@@ -56,6 +61,7 @@ export class HostLoop {
     if (!this.timer) return
     clearInterval(this.timer)
     this.timer = undefined
+    this.cancelSpinSequences()
   }
 
   reset(state: RaceState) {
@@ -69,6 +75,7 @@ export class HostLoop {
     this.courseSideSign = undefined
     this.penaltyHistory.clear()
     this.raceStartWallClockMs = state.clockStartMs
+    this.cancelSpinSequences()
   }
 
   isRunning = () => Boolean(this.timer)
@@ -98,6 +105,10 @@ export class HostLoop {
       if (!boat) return
       boat.lastInputSeq = seq
       boat.lastInputAppliedAt = appliedAt
+      if (input.spin === 'full') {
+        this.startSpinSequence(boatId)
+        delete inputs[boatId]
+      }
     })
     this.applyWindOscillation(next, dt)
     if (next.clockStartMs) {
@@ -106,6 +117,7 @@ export class HostLoop {
     this.checkRaceTimeout(next)
     this.updateLapProgress(next)
 
+    this.applySpinLocks(next)
     const startEvents = this.updateStartLine(next)
     const rawResolutions = this.rules.evaluate(next)
     const resolutions = this.filterPenalties(rawResolutions, next.t)
@@ -113,7 +125,8 @@ export class HostLoop {
       const offender = next.boats[violation.offenderId]
       if (offender) offender.penalties += 1
     })
-    const events = [...startEvents, ...this.rules.toEvents(next, resolutions)]
+    const spinEvents = this.resolveSpinCompletions(next)
+    const events = [...startEvents, ...this.rules.toEvents(next, resolutions), ...spinEvents]
 
     Object.values(next.boats).forEach((boat) => {
       boat.fouled = false
@@ -228,23 +241,38 @@ export class HostLoop {
   }
 
   private didCrossMarkLine(boat: BoatState, mark: BoatState['pos'], state: RaceState) {
+    if (!boat.prevPos) return false
     if (state.marks[0] === mark) {
       return this.crossedHorizontalLine(boat, mark.y, 1)
     }
     const gate = this.getGateCenter(state)
     if (gate && Math.abs(gate.y - mark.y) < 1) {
-      return this.crossedHorizontalLine(boat, gate.y, -1)
+      const minX = Math.min(state.leewardGate.left.x, state.leewardGate.right.x)
+      const maxX = Math.max(state.leewardGate.left.x, state.leewardGate.right.x)
+      return this.crossedHorizontalLine(boat, gate.y, -1, { minX, maxX })
     }
     return this.distanceToLine(boat, mark) <= 30
   }
 
-  private crossedHorizontalLine(boat: BoatState, lineY: number, direction: 1 | -1) {
-    const prevY = boat.pos.y - boat.speed
+  private crossedHorizontalLine(
+    boat: BoatState,
+    lineY: number,
+    direction: 1 | -1,
+    segment?: { minX: number; maxX: number },
+  ) {
+    if (!boat.prevPos) return false
+    const prevY = boat.prevPos.y
     const currentY = boat.pos.y
+    if (currentY === prevY) return false
     if (direction === 1) {
-      return prevY < lineY && currentY >= lineY
+      if (!(prevY < lineY && currentY >= lineY)) return false
+    } else if (!(prevY > lineY && currentY <= lineY)) {
+      return false
     }
-    return prevY > lineY && currentY <= lineY
+    if (!segment) return true
+    const t = (lineY - prevY) / (currentY - prevY)
+    const intersectX = boat.prevPos.x + (boat.pos.x - boat.prevPos.x) * t
+    return intersectX >= segment.minX && intersectX <= segment.maxX
   }
 
   private getGateCenter(state: RaceState) {
@@ -370,6 +398,81 @@ export class HostLoop {
       clearInterval(this.timer)
       this.timer = undefined
     }
+  }
+
+  private startSpinSequence(boatId: string) {
+    if (this.spinTimers.has(boatId)) return
+    const state = this.store.getState()
+    const boat = state.boats[boatId]
+    if (!boat) return
+    this.spinningBoats.add(boatId)
+    const origin = boat.desiredHeadingDeg ?? boat.headingDeg ?? 0
+    const headings = [origin + 120, origin + 240, origin].map((deg) => normalizeDeg(deg))
+    const timers: NodeJS.Timeout[] = []
+    let delay = 0
+    headings.forEach((heading, index) => {
+      const timer = setTimeout(() => {
+        this.injectSpinHeading(boatId, heading)
+        if (index === headings.length - 1) {
+          this.pendingSpinClears.add(boatId)
+          this.spinTimers.delete(boatId)
+        }
+      }, delay)
+      timers.push(timer)
+      delay += SPIN_HOLD_SECONDS * 1000
+    })
+    this.spinTimers.set(boatId, timers)
+  }
+
+  private injectSpinHeading(boatId: string, heading: number) {
+    const payload = {
+      boatId,
+      desiredHeadingDeg: normalizeDeg(heading),
+      absoluteHeadingDeg: normalizeDeg(heading),
+      tClient: Date.now(),
+      seq: this.spinSeq++,
+    }
+    this.store.upsertInput(payload)
+  }
+
+  private applySpinLocks(state: RaceState) {
+    this.spinningBoats.forEach((boatId) => {
+      const boat = state.boats[boatId]
+      if (boat) boat.rightsSuspended = true
+    })
+  }
+
+  private resolveSpinCompletions(state: RaceState) {
+    const events: RaceEvent[] = []
+    this.pendingSpinClears.forEach((boatId) => {
+      const boat = state.boats[boatId]
+      if (!boat) return
+      this.spinningBoats.delete(boatId)
+      boat.rightsSuspended = false
+      if (boat.penalties > 0) {
+        boat.penalties -= 1
+        boat.fouled = boat.penalties > 0
+        events.push({
+          eventId: createId('event'),
+          kind: 'rule_hint',
+          ruleId: 'other',
+          boats: [boatId],
+          t: state.t,
+          message: `${boat.name} completed a 360° spin and cleared a penalty (${boat.penalties} remaining)`,
+        })
+      } else {
+        boat.fouled = false
+      }
+    })
+    this.pendingSpinClears.clear()
+    return events
+  }
+
+  private cancelSpinSequences() {
+    this.spinTimers.forEach((timers) => timers.forEach((id) => clearTimeout(id)))
+    this.spinTimers.clear()
+    this.spinningBoats.clear()
+    this.pendingSpinClears.clear()
   }
 }
 

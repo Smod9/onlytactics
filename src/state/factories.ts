@@ -68,6 +68,8 @@ export const createBoatState = (
   const jitterXRange = columnCount > 1 ? Math.min(step * 0.6, 120) : 120
   const jitterYRange = 40
   const jitter = (range: number) => (Math.random() - 0.5) * range
+  const spawnX = baseX + jitter(jitterXRange)
+  const spawnY = baseY + jitter(jitterYRange)
   return {
     id: id ?? createId(`boat${index + 1}`),
     name,
@@ -81,7 +83,9 @@ export const createBoatState = (
     finishTime: undefined,
     distanceToNextMark: undefined,
     penalties: 0,
-    pos: { x: baseX + jitter(jitterXRange), y: baseY + jitter(jitterYRange) },
+    pos: { x: spawnX, y: spawnY },
+    prevPos: { x: spawnX, y: spawnY },
+    prevPos: { x: baseX + jitter(jitterXRange), y: baseY + jitter(jitterYRange) },
     speed: 0,
     stallTimer: 0,
     overEarly: false,

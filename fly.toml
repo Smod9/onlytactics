@@ -1,5 +1,5 @@
 app = "onlytactics-server"
-primary_region = "lhr"
+primary_region = "sjc"
 
 [build]
   dockerfile = "server/Dockerfile"
