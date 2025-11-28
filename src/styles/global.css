@@ -568,6 +568,154 @@ button {
   color: #b7c2ff;
 }
 
+.progress-stepper {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  z-index: 20;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.progress-bullet {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.progress-connector {
+  width: 60px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  position: relative;
+}
+
+.progress-connector span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.5);
+  transform-origin: left;
+}
+
+.progress-label {
+  font-weight: 600;
+}
+
+.status-done .progress-bullet {
+  border-color: #7df5b8;
+  color: #7df5b8;
+}
+
+.status-active .progress-bullet {
+  border-color: #ffe29f;
+  color: #ffe29f;
+}
+
+.status-pending .progress-bullet {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.status-done .progress-label {
+  color: #7df5b8;
+}
+
+.status-active .progress-label {
+  color: #ffe29f;
+}
+
+.status-pending .progress-label {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.mark-checklist {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.mark-checklist h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9adff9;
+}
+
+.mark-checklist ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checklist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.checklist-item:last-child {
+  border-bottom: none;
+}
+
+.marker-label {
+  flex: 1;
+  margin-right: 0.5rem;
+}
+
+.marker-status {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.status-done .marker-label,
+.status-done .marker-status {
+  color: #7df5b8;
+}
+
+.status-active .marker-label,
+.status-active .marker-status {
+  color: #ffe29f;
+}
+
+.status-pending .marker-label,
+.status-pending .marker-status {
+  color: rgba(255, 255, 255, 0.45);
+}
+
 .chat-header {
   display: flex;
   align-items: center;

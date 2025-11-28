@@ -225,7 +225,7 @@ export class HostLoop {
     if (!legCount) return events
     const progress = this.getOrCreateProgress(boat.id)
     const leg = courseLegs[progress.legIndex % legCount]
-    const targetIndex = this.pickTargetMarkIndex(boat, state, leg, progress)
+    let targetIndex = this.pickTargetMarkIndex(boat, state, leg, progress)
     const targetMark = marks[targetIndex]
     if (!targetMark) return events
 
@@ -245,12 +245,22 @@ export class HostLoop {
     if (completed) {
       progress.stage = 0
       progress.activeMarkIndex = undefined
-      progress.legIndex = (progress.legIndex + 1) % legCount
+      const completedSequence = leg.sequence
+      let wrapped = false
+      let safety = 0
+      do {
+        progress.legIndex = (progress.legIndex + 1) % legCount
+        if (progress.legIndex === 0) wrapped = true
+        safety += 1
+        if (safety > legCount) break
+      } while (courseLegs[progress.legIndex % legCount].sequence === completedSequence)
+
       const nextLeg = courseLegs[progress.legIndex % legCount]
-      boat.nextMarkIndex = nextLeg.markIndices[0] ?? boat.nextMarkIndex
+      targetIndex = this.pickTargetMarkIndex(boat, state, nextLeg, progress)
+      boat.nextMarkIndex = targetIndex
       boat.distanceToNextMark = distanceBetween(boat.pos, state.marks[boat.nextMarkIndex] ?? targetMark)
 
-      if (progress.legIndex === 0) {
+      if (wrapped) {
         boat.lap += 1
         if (boat.lap >= lapTarget) {
           boat.finished = true

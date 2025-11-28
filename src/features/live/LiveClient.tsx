@@ -19,6 +19,8 @@ import { identity, setClientName } from '@/net/identity'
 import { startRosterWatcher } from '@/state/rosterStore'
 import { RosterPanel } from './RosterPanel'
 import { TacticianPopout } from './TacticianPopout'
+import { MarkChecklist } from './MarkChecklist'
+import { ProgressStepper } from './ProgressStepper'
 import type { RaceRole } from '@/types/race'
 import { OnScreenControls } from './OnScreenControls'
 
@@ -161,6 +163,7 @@ export const LiveClient = () => {
   return (
     <div className="live-client">
       {headerPortal}
+      <ProgressStepper boat={playerBoat} />
       {needsName && (
         <div className="username-gate">
           <div className="username-card">

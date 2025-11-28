@@ -78,24 +78,24 @@ export const radialSets: Record<'windward' | 'leeward', Record<'port' | 'starboa
   windward: {
     port: [
       { axis: 'x', direction: 1 }, // 3 o'clock
-      { axis: 'y', direction: 1 }, // 12 o'clock (screen coords up => negative)
+      { axis: 'y', direction: -1 }, // 12 o'clock (moving toward lower Y)
       { axis: 'x', direction: -1 }, // 9 o'clock
     ],
     starboard: [
       { axis: 'x', direction: -1 }, // 9 o'clock
-      { axis: 'y', direction: 1 }, // 12 o'clock
+      { axis: 'y', direction: -1 }, // 12 o'clock
       { axis: 'x', direction: 1 }, // 3 o'clock
     ],
   },
   leeward: {
     port: [
       { axis: 'x', direction: -1 }, // 9 o'clock
-      { axis: 'y', direction: -1 }, // 6 o'clock (positive Y is up, so downwind is -1)
+      { axis: 'y', direction: 1 }, // 6 o'clock
       { axis: 'x', direction: 1 }, // 3 o'clock
     ],
     starboard: [
       { axis: 'x', direction: 1 }, // 3 o'clock
-      { axis: 'y', direction: -1 }, // 6 o'clock
+      { axis: 'y', direction: 1 }, // 6 o'clock
       { axis: 'x', direction: -1 }, // 9 o'clock
     ],
   },

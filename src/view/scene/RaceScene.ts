@@ -4,7 +4,7 @@ import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
 import { raceStore } from '@/state/raceStore'
-import { courseMarkAnnotations, radialSets } from '@/config/course'
+import { courseLegs, courseMarkAnnotations, radialSets } from '@/config/course'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
@@ -254,7 +254,7 @@ export class RaceScene {
       const steps = radialSets[kind][annotation.rounding]
       steps.forEach((step, idx) => {
         const dx = step.axis === 'x' ? step.direction : 0
-        const dy = step.axis === 'y' ? -step.direction : 0
+        const dy = step.axis === 'y' ? step.direction : 0
         const endX = x + dx * radialLength
         const endY = y + dy * radialLength
         const line = new Graphics()
@@ -297,38 +297,41 @@ export class RaceScene {
       const textLabel = `M${annotation.sequences.join('/')}${suffix}`
 
       const { x, y } = map(mark)
-      const label = new Text({
-        text: textLabel,
-        style: {
-          fill: '#ffffff',
-          fontSize: 12,
-          fontFamily: 'IBM Plex Mono, monospace',
-          fontWeight: 'bold',
-        },
-      })
-      label.anchor.set(0.5)
-      label.position.set(x, y - 20)
-      this.overlayLayer.addChild(label)
+    const label = new Text({
+      text: textLabel,
+      style: {
+        fill: '#ffffff',
+        fontSize: 12,
+        fontFamily: 'IBM Plex Mono, monospace',
+        fontWeight: 'bold',
+      },
+    })
+    label.anchor.set(0.5)
+    label.position.set(x, y - 20)
+    this.overlayLayer.addChild(label)
     })
   }
 
   private drawNextMarkHighlight(state: RaceState, map: ScreenMapper) {
     const boat = state.boats[identity.boatId]
     if (!boat) return
-    const mark = state.marks[boat.nextMarkIndex ?? 0]
-    if (!mark) return
-    const { x, y } = map(mark)
-    const circle = new Graphics()
-    circle.setStrokeStyle({ width: 3, color: 0x00ffc3, alpha: 0.9 })
-    circle.circle(x, y, 24)
-    circle.stroke()
-    const label = new Text({
-      text: 'Next mark',
-      style: { fill: '#00ffc3', fontSize: 12, fontFamily: 'IBM Plex Mono, monospace' },
+    const currentLeg = courseLegs.find((entry) => entry.markIndices.includes(boat.nextMarkIndex ?? -1))
+    const marksToHighlight =
+      currentLeg && currentLeg.sequence
+        ? courseLegs
+            .filter((entry) => entry.sequence === currentLeg.sequence)
+            .flatMap((entry) => entry.markIndices)
+        : [boat.nextMarkIndex ?? 0]
+    marksToHighlight.forEach((markIndex) => {
+      const mark = state.marks[markIndex]
+      if (!mark) return
+      const { x, y } = map(mark)
+      const circle = new Graphics()
+      circle.setStrokeStyle({ width: 3, color: 0x00ffc3, alpha: 0.9 })
+      circle.circle(x, y, 24)
+      circle.stroke()
+      this.overlayLayer.addChild(circle)
     })
-    label.anchor.set(0.5)
-    label.position.set(x, y - 32)
-    this.overlayLayer.addChild(circle, label)
   }
 
   private drawCrossingMarkers(state: RaceState, map: ScreenMapper) {
