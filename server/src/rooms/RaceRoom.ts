@@ -5,6 +5,8 @@ import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state
 import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState } from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
+import { assignLeaderboard } from '@/logic/leaderboard'
+import { placeBoatNearNextMark } from '@/logic/debugPlacement'
 import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
@@ -32,6 +34,9 @@ type InputMessage = {
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
   | { kind: 'reset' }
+  | { kind: 'debug_lap'; boatId: string }
+  | { kind: 'debug_finish'; boatId: string }
+  | { kind: 'debug_warp'; boatId: string }
 
 type ChatMessagePayload = {
   text?: string
@@ -118,6 +123,12 @@ export class RaceRoom extends Room<RaceRoomState> {
         this.armCountdown(command.seconds ?? appEnv.countdownSeconds)
       } else if (command.kind === 'reset') {
         this.resetRaceState()
+      } else if (command.kind === 'debug_lap') {
+        this.debugAdvanceLap(command.boatId)
+      } else if (command.kind === 'debug_finish') {
+        this.debugFinishBoat(command.boatId)
+      } else if (command.kind === 'debug_warp') {
+        this.debugWarpBoat(command.boatId)
       }
     })
 
@@ -305,6 +316,52 @@ export class RaceRoom extends Room<RaceRoomState> {
       draft.clockStartMs = Date.now() + seconds * 1000
       draft.t = -seconds
     })
+  }
+
+  private debugAdvanceLap(boatId: string) {
+    if (!boatId) return
+    roomDebug('debugAdvanceLap', { boatId, ...this.describeHost(this.hostSessionId) })
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boat.lap = Math.min((boat.lap ?? 0) + 1, draft.lapsToFinish)
+      boat.nextMarkIndex = 0
+      if (boat.lap >= draft.lapsToFinish) {
+        this.finishBoatDraft(boat, draft)
+      }
+      assignLeaderboard(draft)
+    })
+  }
+
+  private debugFinishBoat(boatId: string) {
+    if (!boatId) return
+    roomDebug('debugFinishBoat', { boatId, ...this.describeHost(this.hostSessionId) })
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boat.lap = draft.lapsToFinish
+      this.finishBoatDraft(boat, draft)
+      assignLeaderboard(draft)
+    })
+  }
+
+  private debugWarpBoat(boatId: string) {
+    if (!boatId) return
+    roomDebug('debugWarpBoat', { boatId, ...this.describeHost(this.hostSessionId) })
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      placeBoatNearNextMark(boat, draft)
+      assignLeaderboard(draft)
+    })
+  }
+
+  private finishBoatDraft(boat: RaceState['boats'][string], draft: RaceState) {
+    boat.finished = true
+    boat.finishTime = draft.t
+    boat.distanceToNextMark = 0
+    boat.nextMarkIndex = 0
+    boat.inMarkZone = false
   }
 
   private resetRaceState() {

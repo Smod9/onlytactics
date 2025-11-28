@@ -19,11 +19,14 @@ import type {
   PlayerInput,
   RaceEvent,
   RaceRole,
+  RaceState,
 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { replayRecorder } from '@/replay/manager'
 import { SPIN_HOLD_SECONDS } from '@/logic/constants'
 import { normalizeDeg, quantizeHeading } from '@/logic/physics'
+import { assignLeaderboard } from '@/logic/leaderboard'
+import { placeBoatNearNextMark } from '@/logic/debugPlacement'
 
 type PresencePayload = {
   clientId: string
@@ -62,6 +65,49 @@ export class HostController extends BaseController {
       (boatId, update) => this.sendInputForBoat(boatId, update),
       (boatId) => this.queueSpin(boatId),
     )
+  }
+
+  debugAdvanceBoatLap(boatId: string) {
+    this.withBoat(boatId, (boat, draft) => {
+      boat.lap = Math.min((boat.lap ?? 0) + 1, draft.lapsToFinish)
+      boat.nextMarkIndex = 0
+      if (boat.lap >= draft.lapsToFinish) {
+        this.finishBoat(boat, draft)
+      }
+    })
+  }
+
+  debugFinishBoat(boatId: string) {
+    this.withBoat(boatId, (boat, draft) => {
+      boat.lap = draft.lapsToFinish
+      this.finishBoat(boat, draft)
+    })
+  }
+
+  private finishBoat(boat: RaceState['boats'][string], draft: RaceState) {
+    boat.finished = true
+    boat.finishTime = draft.t
+    boat.distanceToNextMark = 0
+    boat.nextMarkIndex = 0
+    boat.inMarkZone = false
+  }
+
+  debugTeleportBoatToNextMark(boatId: string) {
+    this.withBoat(boatId, (boat, draft) => {
+      placeBoatNearNextMark(boat, draft)
+    })
+  }
+
+  private withBoat(
+    boatId: string,
+    mutator: (boat: RaceState['boats'][string], draft: RaceState) => void,
+  ) {
+    this.store.patchState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      mutator(boat, draft)
+      assignLeaderboard(draft)
+    })
   }
 
   protected async onStart() {

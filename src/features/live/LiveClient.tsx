@@ -303,7 +303,7 @@ export const LiveClient = () => {
       <TacticianPopout />
       {showDebug && (
         <div className="debug-dock">
-          <DebugPanel onClose={() => setShowDebug(false)} />
+          <DebugPanel onClose={() => setShowDebug(false)} network={network} />
         </div>
       )}
     </div>

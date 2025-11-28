@@ -9,6 +9,11 @@ type ColyseusStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
   | { kind: 'reset' }
+  | { kind: 'debug_lap'; boatId: string }
+  | { kind: 'debug_finish'; boatId: string }
+  | { kind: 'debug_warp'; boatId: string }
+  | { kind: 'debug_lap'; boatId: string }
+  | { kind: 'debug_finish'; boatId: string }
 
 type RaceRoomSchema = {
   race: {

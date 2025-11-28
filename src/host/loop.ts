@@ -8,6 +8,7 @@ import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
 import { SPIN_HOLD_SECONDS } from '@/logic/constants'
+import { assignLeaderboard } from '@/logic/leaderboard'
 
 type HostLoopOptions = {
   onEvents?: (events: RaceEvent[]) => void
@@ -209,35 +210,7 @@ export class HostLoop {
     }
     })
 
-    const boats = Object.values(state.boats)
-    boats.sort((a, b) => this.compareLeaderboard(a, b))
-    state.leaderboard = boats.map((boat) => boat.id)
-  }
-
-  private compareLeaderboard(a: BoatState, b: BoatState) {
-    if (a.finished && b.finished) {
-      if ((a.finishTime ?? Infinity) !== (b.finishTime ?? Infinity)) {
-        return (a.finishTime ?? Infinity) - (b.finishTime ?? Infinity)
-      }
-    } else if (a.finished !== b.finished) {
-      return a.finished ? -1 : 1
-    }
-
-    const aPenalty = a.penalties > 0 || a.overEarly
-    const bPenalty = b.penalties > 0 || b.overEarly
-    if (aPenalty !== bPenalty) {
-      return aPenalty ? 1 : -1
-    }
-
-    if (b.lap !== a.lap) {
-      return b.lap - a.lap
-    }
-
-    if (b.nextMarkIndex !== a.nextMarkIndex) {
-      return b.nextMarkIndex - a.nextMarkIndex
-    }
-
-    return (a.distanceToNextMark ?? Infinity) - (b.distanceToNextMark ?? Infinity)
+    assignLeaderboard(state)
   }
 
   private didCrossMarkLine(boat: BoatState, mark: BoatState['pos'], state: RaceState) {
