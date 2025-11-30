@@ -1,3 +1,19 @@
+# [1.11.0](https://github.com/Smod9/onlytactics/compare/v1.10.0...v1.11.0) (2025-11-30)
+
+
+### Bug Fixes
+
+* **penalty turns:** resolves regression with penalty turns ([e980ec3](https://github.com/Smod9/onlytactics/commit/e980ec39bbaad321550b8087a0a3f164e437028d))
+
+
+### Features
+
+* **adjust course:** Moves everything 'down' and drops right hand pin in gate to make it less right favored ([d79ffa7](https://github.com/Smod9/onlytactics/commit/d79ffa78c426385455f8233482acc3bbffd3cbc7))
+* **auto_vmg:** Auto vmg working now. hit space once to go to vmgMode - any other control exits it ([a9c9945](https://github.com/Smod9/onlytactics/commit/a9c994562746b16ec1d05ad8ab6eaffa9e7b4007))
+* **boats move faster:** Boats now move across the screen twice as fast by adjusting knots_to_ms ([ac3a15f](https://github.com/Smod9/onlytactics/commit/ac3a15f7a11bedfbb795d98fc7bef3ddd1d44d4f))
+* **tack_lock:** Disabled the lock when tacking. you can now hit return again to abandon a tack ([255a99e](https://github.com/Smod9/onlytactics/commit/255a99e24730bf565346edd37b063531a080162b))
+* **tacking cost:** Adds more variables to fine tune how expensive a tack is, and makes them meaningfully more costly. Also increases turn rate ([f56544e](https://github.com/Smod9/onlytactics/commit/f56544e3a0fc996812af4a016bfc5b120c2cd036))
+
 # [1.10.0](https://github.com/Smod9/onlytactics/compare/v1.9.0...v1.10.0) (2025-11-27)
 
 
