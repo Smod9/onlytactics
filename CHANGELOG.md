@@ -1,3 +1,11 @@
+# [1.12.0](https://github.com/Smod9/onlytactics/compare/v1.11.0...v1.12.0) (2025-11-30)
+
+
+### Features
+
+* **ui polish:** Hides a bunch of buttons, adds more social tags, and updates the version number ([1819cdf](https://github.com/Smod9/onlytactics/commit/1819cdf589cb6cf87454bf5060c83b9035ecc304))
+* **ui polish:** Moves chat to stage, moves name to header, adds flow for name change ([2cfe678](https://github.com/Smod9/onlytactics/commit/2cfe6785afc2699345f08e8c7020392cb132f25f))
+
 # [1.11.0](https://github.com/Smod9/onlytactics/compare/v1.10.0...v1.11.0) (2025-11-30)
 
 
