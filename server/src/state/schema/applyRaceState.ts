@@ -25,7 +25,8 @@ const upsertBoat = (target: BoatStateSchema, source: BoatState) => {
   target.finishTime = source.finishTime ?? 0
   target.distanceToNextMark = source.distanceToNextMark ?? 0
   target.penalties = source.penalties ?? 0
-  target.stallTimer = source.stallTimer ?? 0
+    target.stallTimer = source.stallTimer ?? 0
+    target.tackTimer = source.tackTimer ?? 0
   target.overEarly = Boolean(source.overEarly)
   target.fouled = Boolean(source.fouled)
   target.lastInputSeq = source.lastInputSeq ?? 0

@@ -15,6 +15,7 @@ import {
   HEADING_STEP_DEG,
   MAX_DOWNWIND_ANGLE_DEG,
   TACK_LOCK_ENABLED,
+  TACK_MIN_TIME_SECONDS,
   TURN_RATE_DEG,
 } from '@/logic/constants'
 
@@ -122,7 +123,9 @@ export const useTacticianControls = (
       const setLockForHeading = (target: number) => {
         if (!TACK_LOCK_ENABLED) return
         const diff = Math.abs(angleDiff(target, boat.headingDeg))
-        const seconds = diff / TURN_RATE_DEG + 0.5
+        // Calculate time based on turn rate, but enforce minimum tack time
+        const calculatedSeconds = diff / TURN_RATE_DEG + 0.5
+        const seconds = Math.max(calculatedSeconds, TACK_MIN_TIME_SECONDS)
         lockUntilRef.current = now + seconds * 1000
       }
 

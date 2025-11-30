@@ -10,6 +10,9 @@ import {
   NO_GO_ANGLE_DEG,
   STALL_DURATION_S,
   STALL_SPEED_FACTOR,
+  TACK_MIN_ANGLE_DEG,
+  TACK_MIN_TIME_SECONDS,
+  TACK_SPEED_PENALTY,
   TURN_RATE_DEG,
 } from './constants'
 
@@ -126,6 +129,11 @@ const applyStallDecay = (boat: BoatState, dt: number) => {
   boat.stallTimer = Math.max(0, boat.stallTimer - dt)
 }
 
+const applyTackTimer = (boat: BoatState, dt: number) => {
+  if (boat.tackTimer <= 0) return
+  boat.tackTimer = Math.max(0, boat.tackTimer - dt)
+}
+
 export type InputMap = Record<string, PlayerInput>
 
 export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) => {
@@ -182,12 +190,29 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     clampDesiredHeading(boat, desiredHeading, state.wind.directionDeg)
     steerTowardsDesired(boat, dt)
     applyStallDecay(boat, dt)
+    applyTackTimer(boat, dt)
 
     const awa = apparentWindAngle(boat.headingDeg, state.wind.directionDeg)
     let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET)
     if (boat.stallTimer > 0) {
       targetSpeed *= STALL_SPEED_FACTOR
     }
+    
+    // Apply speed penalty during tacks (significant turns)
+    // Start tack timer when a significant turn begins
+    const headingError = Math.abs(angleDiff(boat.desiredHeadingDeg, boat.headingDeg))
+    if (headingError > TACK_MIN_ANGLE_DEG) {
+      // If starting a new tack, set timer to minimum duration
+      if (boat.tackTimer <= 0) {
+        boat.tackTimer = TACK_MIN_TIME_SECONDS
+      }
+    }
+    
+    // Apply speed penalty while tack timer is active
+    if (boat.tackTimer > 0) {
+      targetSpeed *= TACK_SPEED_PENALTY
+    }
+    
     boat.speed = smoothSpeed(boat.speed, targetSpeed, dt)
 
     const courseRad = degToRad(boat.headingDeg)
