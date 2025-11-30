@@ -154,6 +154,22 @@ export class GameNetwork {
     this.controller?.updateLocalInput?.({ spin: 'full', clientSeq: seq })
   }
 
+  updateVmgMode(vmgMode: boolean, seq: number) {
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendInput({
+        boatId: identity.boatId,
+        seq,
+        vmgMode,
+        tClient: Date.now(),
+      })
+      return
+    }
+    this.controller?.updateLocalInput?.({
+      vmgMode,
+      clientSeq: seq,
+    })
+  }
+
   private async setRole(role: RaceRole) {
     netLog('setRole()', { nextRole: role })
     this.setStatus('joining')

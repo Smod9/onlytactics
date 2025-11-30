@@ -136,8 +136,45 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
 
   Object.values(state.boats).forEach((boat) => {
     const input = inputs[boat.id]
-    const desiredHeading =
-      input?.desiredHeadingDeg ?? boat.desiredHeadingDeg ?? boat.headingDeg
+    
+    // Update VMG mode from input
+    if (input?.vmgMode !== undefined) {
+      boat.vmgMode = input.vmgMode
+    }
+    
+    // Initialize vmgMode to false if undefined
+    if (boat.vmgMode === undefined) {
+      boat.vmgMode = false
+    }
+    
+    // If there's a heading input, exit VMG mode (user is taking manual control)
+    const hasHeadingInput = input?.desiredHeadingDeg !== undefined ||
+      input?.absoluteHeadingDeg !== undefined ||
+      input?.deltaHeadingDeg !== undefined
+    if (hasHeadingInput && boat.vmgMode) {
+      boat.vmgMode = false
+    }
+    
+    // If in VMG mode, continuously recalculate optimal heading every tick
+    let desiredHeading: number
+    if (boat.vmgMode) {
+      // Use current desired heading or actual heading to determine tack
+      // This ensures we maintain the current tack even as the boat turns
+      const currentHeading = boat.desiredHeadingDeg ?? boat.headingDeg
+      const headingDiff = angleDiff(currentHeading, state.wind.directionDeg)
+      const tackSign = headingDiff >= 0 ? 1 : -1
+      const absAwa = Math.abs(headingDiff)
+      const vmgAngles = computeVmgAngles(state.wind.speed)
+      const isUpwind = absAwa <= 90
+      const targetAwa = isUpwind ? vmgAngles.upwindAwa : vmgAngles.downwindAwa
+      const calculatedHeading = headingFromAwa(state.wind.directionDeg, tackSign * targetAwa)
+      // Quantize to ensure heading updates even with small wind changes
+      desiredHeading = quantizeHeading(calculatedHeading)
+    } else {
+      desiredHeading =
+        input?.desiredHeadingDeg ?? boat.desiredHeadingDeg ?? boat.headingDeg
+    }
+    
     clampDesiredHeading(boat, desiredHeading, state.wind.directionDeg)
     steerTowardsDesired(boat, dt)
     applyStallDecay(boat, dt)

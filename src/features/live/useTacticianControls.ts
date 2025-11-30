@@ -40,9 +40,15 @@ export const useTacticianControls = (
   const seqRef = useRef(0)
   const pendingRef = useRef(new Map<number, number>())
   const lastAckSeqRef = useRef(0)
+  const vmgModeRef = useRef(false)
 
   useEffect(() => {
     raceRef.current = raceState
+    // Sync vmgModeRef with current boat state
+    const boat = raceState.boats[identity.boatId]
+    if (boat?.vmgMode !== undefined) {
+      vmgModeRef.current = boat.vmgMode
+    }
   }, [raceState])
 
   useEffect(() => {
@@ -109,18 +115,27 @@ export const useTacticianControls = (
         lockUntilRef.current = now + seconds * 1000
       }
 
+      const exitVmgMode = () => {
+        if (vmgModeRef.current) {
+          vmgModeRef.current = false
+          const seq = (seqRef.current += 1)
+          pendingRef.current.set(seq, performance.now())
+          networkRef.current?.updateVmgMode(false, seq)
+        }
+      }
+
       switch (key) {
         case 'Space': {
-          const isUpwind = absAwa <= 90
-          const targetAwa = isUpwind ? vmgAngles.upwindAwa : vmgAngles.downwindAwa
-          const heading = headingFromAwa(
-            state.wind.directionDeg,
-            tackSign * targetAwa,
-          )
-          sendHeading(heading)
+          // Toggle VMG mode
+          vmgModeRef.current = !vmgModeRef.current
+          const seq = (seqRef.current += 1)
+          pendingRef.current.set(seq, performance.now())
+          networkRef.current?.updateVmgMode(vmgModeRef.current, seq)
+          event.preventDefault()
           break
         }
         case 'Enter': {
+          exitVmgMode()
           const isUpwind = absAwa < 90
           const nextSign = -tackSign || 1
           const targetAwa = isUpwind ? vmgAngles.upwindAwa : vmgAngles.downwindAwa
@@ -130,6 +145,7 @@ export const useTacticianControls = (
           break
         }
         case 'ArrowUp': {
+          exitVmgMode()
           event.preventDefault()
           const desiredAbs = Math.max(absAwa - HEADING_STEP_DEG, 0)
           const heading = headingFromAwa(
@@ -140,6 +156,7 @@ export const useTacticianControls = (
           break
         }
         case 'ArrowDown': {
+          exitVmgMode()
           event.preventDefault()
           const desiredAbs = Math.min(absAwa + HEADING_STEP_DEG, MAX_DOWNWIND_ANGLE_DEG)
           const heading = headingFromAwa(
@@ -150,6 +167,7 @@ export const useTacticianControls = (
           break
         }
         case 'KeyS': {
+          exitVmgMode()
           event.preventDefault()
           const seq = (seqRef.current += 1)
           pendingRef.current.set(seq, performance.now())

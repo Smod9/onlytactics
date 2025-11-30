@@ -27,6 +27,7 @@ type InputMessage = {
   absoluteHeadingDeg?: number
   deltaHeadingDeg?: number
   spin?: 'full'
+  vmgMode?: boolean
 }
 
 type HostCommand =
@@ -95,6 +96,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         absoluteHeadingDeg: message.absoluteHeadingDeg,
         deltaHeadingDeg: message.deltaHeadingDeg,
         spin: message.spin,
+        vmgMode: message.vmgMode,
         tClient: Date.now(),
       }
       this.raceStore.upsertInput(payload)
