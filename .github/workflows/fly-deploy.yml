@@ -1,0 +1,26 @@
+name: Manual Fly Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
+      - name: Deploy to Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_IO_DEPLOY_KEY }}
+        run: |
+          fly auth token "$FLY_API_TOKEN"
+          fly deploy \
+            --config fly.toml \
+            --app onlytactics-server \
+            --region sjc \
+            --max-instances 1
+
