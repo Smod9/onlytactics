@@ -35,6 +35,14 @@ export class RaceStore {
   getState = () => this.state
 
   setState = (next: RaceState) => {
+    if (import.meta.env.DEV) {
+      console.debug('[race-store] setState', {
+        phase: next.phase,
+        boats: Object.keys(next.boats).length,
+        marks: next.marks.length,
+        t: next.t,
+      })
+    }
     this.state = next
     this.emit()
   }

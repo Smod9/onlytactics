@@ -1,4 +1,4 @@
-import { stepRaceState, clamp as physicsClamp } from '@/logic/physics'
+import { stepRaceState, clamp as physicsClamp, normalizeDeg } from '@/logic/physics'
 import { RulesEngine, type RuleResolution } from '@/logic/rules'
 import { cloneRaceState } from '@/state/factories'
 import { raceStore, RaceStore } from '@/state/raceStore'
@@ -7,6 +7,25 @@ import { createSeededRandom } from '@/utils/rng'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
+import { SPIN_HOLD_SECONDS } from '@/logic/constants'
+import { assignLeaderboard } from '@/logic/leaderboard'
+
+const lapDebug = (...args: unknown[]) => {
+  if (!appEnv.debugHud) return
+  console.info('[lap-debug]', ...args)
+}
+
+const SERVER_BOAT_RADIUS_METERS = 6
+
+type CrossingResult = {
+  crossed: boolean
+  reason: 'ok' | 'no_prev' | 'wrong_direction' | 'outside_segment' | 'too_far'
+  direction: 1 | -1
+  lineY: number
+  prevY?: number
+  currentY?: number
+  intersectX?: number
+}
 
 type HostLoopOptions = {
   onEvents?: (events: RaceEvent[]) => void
@@ -44,6 +63,10 @@ export class HostLoop {
   private courseSideSign?: number
   private penaltyHistory = new Map<string, number>()
   private raceStartWallClockMs: number | null = null
+  private spinTimers = new Map<string, NodeJS.Timeout[]>()
+  private spinningBoats = new Set<string>()
+  private pendingSpinClears = new Set<string>()
+  private spinSeq = 0
 
   start() {
     if (this.timer) return
@@ -56,6 +79,7 @@ export class HostLoop {
     if (!this.timer) return
     clearInterval(this.timer)
     this.timer = undefined
+    this.cancelSpinSequences()
   }
 
   reset(state: RaceState) {
@@ -69,6 +93,7 @@ export class HostLoop {
     this.courseSideSign = undefined
     this.penaltyHistory.clear()
     this.raceStartWallClockMs = state.clockStartMs
+    this.cancelSpinSequences()
   }
 
   isRunning = () => Boolean(this.timer)
@@ -87,6 +112,7 @@ export class HostLoop {
     } else if (next.phase === 'prestart' && !next.countdownArmed) {
       next.t = -appEnv.countdownSeconds
     }
+    this.resolveBoatSeparation(next)
     if (next.phase === 'running' && !this.raceStartWallClockMs) {
       this.raceStartWallClockMs = Date.now() - next.t * 1000
     }
@@ -98,14 +124,19 @@ export class HostLoop {
       if (!boat) return
       boat.lastInputSeq = seq
       boat.lastInputAppliedAt = appliedAt
+      if (input.spin === 'full') {
+        this.startSpinSequence(boatId)
+        delete inputs[boatId]
+      }
     })
     this.applyWindOscillation(next, dt)
     if (next.clockStartMs) {
       next.t = (Date.now() - next.clockStartMs) / 1000
     }
     this.checkRaceTimeout(next)
-    this.updateLapProgress(next)
+    const lapEvents = this.updateLapProgress(next)
 
+    this.applySpinLocks(next)
     const startEvents = this.updateStartLine(next)
     const rawResolutions = this.rules.evaluate(next)
     const resolutions = this.filterPenalties(rawResolutions, next.t)
@@ -113,7 +144,13 @@ export class HostLoop {
       const offender = next.boats[violation.offenderId]
       if (offender) offender.penalties += 1
     })
-    const events = [...startEvents, ...this.rules.toEvents(next, resolutions)]
+    const spinEvents = this.resolveSpinCompletions(next)
+    const events = [
+      ...startEvents,
+      ...this.rules.toEvents(next, resolutions),
+      ...spinEvents,
+      ...lapEvents,
+    ]
 
     Object.values(next.boats).forEach((boat) => {
       boat.fouled = false
@@ -162,7 +199,8 @@ export class HostLoop {
     state.wind.speed += (this.windSpeedTarget - state.wind.speed) * lerpFactor
   }
 
-  private updateLapProgress(state: RaceState) {
+  private updateLapProgress(state: RaceState): RaceEvent[] {
+    const debugEvents: RaceEvent[] = []
     const marks = state.marks
     const markCount = marks.length
     if (!markCount) return
@@ -180,7 +218,10 @@ export class HostLoop {
     const nextMark = marks[boat.nextMarkIndex % markCount]
     if (!nextMark) return
 
-    const crossed = this.didCrossMarkLine(boat, nextMark, state)
+    const markIndexBefore = boat.nextMarkIndex
+    const lapBefore = boat.lap
+    const crossingResult = this.didCrossMarkLine(boat, nextMark, state)
+    const crossed = crossingResult.crossed
     boat.distanceToNextMark = this.distanceToLine(boat, nextMark)
 
     if (crossed) {
@@ -194,57 +235,105 @@ export class HostLoop {
         }
       }
     }
+    if (appEnv.debugHud) {
+      const dir = crossingResult.direction === 1 ? 'downwind' : 'upwind'
+      const message = `[lap-debug] ${boat.name} mark=${markIndexBefore + 1}/${
+        markCount
+      } crossed=${crossed} reason=${crossingResult.reason} dir=${dir} dist=${boat.distanceToNextMark.toFixed(
+        1,
+      )}m lap=${lapBefore}->${boat.lap}`
+      debugEvents.push({
+        eventId: createId('lap-debug'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        t: state.t,
+        boats: [boat.id],
+        message,
+      })
+      lapDebug('mark_crossing', {
+        boatId: boat.id,
+        boatName: boat.name,
+        markIndexBefore,
+        markIndexAfter: boat.nextMarkIndex,
+        lapBefore,
+        lapAfter: boat.lap,
+        crossed,
+        reason: crossingResult.reason,
+        direction: dir,
+        distance: boat.distanceToNextMark,
+        lineY: crossingResult.lineY,
+        prevY: crossingResult.prevY,
+        currentY: crossingResult.currentY,
+        intersectX: crossingResult.intersectX,
+      })
+    }
     })
 
-    const boats = Object.values(state.boats)
-    boats.sort((a, b) => this.compareLeaderboard(a, b))
-    state.leaderboard = boats.map((boat) => boat.id)
+    assignLeaderboard(state)
+    return debugEvents
   }
 
-  private compareLeaderboard(a: BoatState, b: BoatState) {
-    if (a.finished && b.finished) {
-      if ((a.finishTime ?? Infinity) !== (b.finishTime ?? Infinity)) {
-        return (a.finishTime ?? Infinity) - (b.finishTime ?? Infinity)
-      }
-    } else if (a.finished !== b.finished) {
-      return a.finished ? -1 : 1
+  private didCrossMarkLine(boat: BoatState, mark: BoatState['pos'], state: RaceState): CrossingResult {
+    if (!boat.prevPos) {
+      return { crossed: false, reason: 'no_prev', direction: -1, lineY: mark.y }
     }
-
-    const aPenalty = a.penalties > 0 || a.overEarly
-    const bPenalty = b.penalties > 0 || b.overEarly
-    if (aPenalty !== bPenalty) {
-      return aPenalty ? 1 : -1
-    }
-
-    if (b.lap !== a.lap) {
-      return b.lap - a.lap
-    }
-
-    if (b.nextMarkIndex !== a.nextMarkIndex) {
-      return b.nextMarkIndex - a.nextMarkIndex
-    }
-
-    return (a.distanceToNextMark ?? Infinity) - (b.distanceToNextMark ?? Infinity)
-  }
-
-  private didCrossMarkLine(boat: BoatState, mark: BoatState['pos'], state: RaceState) {
     if (state.marks[0] === mark) {
-      return this.crossedHorizontalLine(boat, mark.y, 1)
+      return this.crossedHorizontalLine(boat, mark.y, -1)
     }
     const gate = this.getGateCenter(state)
     if (gate && Math.abs(gate.y - mark.y) < 1) {
-      return this.crossedHorizontalLine(boat, gate.y, -1)
+      const minX = Math.min(state.leewardGate.left.x, state.leewardGate.right.x)
+      const maxX = Math.max(state.leewardGate.left.x, state.leewardGate.right.x)
+      return this.crossedHorizontalLine(boat, gate.y, 1, { minX, maxX })
     }
-    return this.distanceToLine(boat, mark) <= 30
+    const within = this.distanceToLine(boat, mark) <= 10000
+    return {
+      crossed: within,
+      reason: within ? 'ok' : 'too_far',
+      direction: -1,
+      lineY: mark.y,
+      prevY: boat.prevPos.y,
+      currentY: boat.pos.y,
+    }
   }
 
-  private crossedHorizontalLine(boat: BoatState, lineY: number, direction: 1 | -1) {
-    const prevY = boat.pos.y - boat.speed
-    const currentY = boat.pos.y
-    if (direction === 1) {
-      return prevY < lineY && currentY >= lineY
+  private crossedHorizontalLine(
+    boat: BoatState,
+    lineY: number,
+    direction: 1 | -1,
+    segment?: { minX: number; maxX: number },
+  ): CrossingResult {
+    if (!boat.prevPos) {
+      return { crossed: false, reason: 'no_prev', direction, lineY }
     }
-    return prevY > lineY && currentY <= lineY
+    const prevY = boat.prevPos.y
+    const currentY = boat.pos.y
+    const base = {
+      direction,
+      lineY,
+      prevY,
+      currentY,
+    }
+    if (currentY === prevY) {
+      return { ...base, crossed: false, reason: 'wrong_direction' }
+    }
+    if (direction === 1) {
+      if (!(prevY < lineY && currentY >= lineY)) {
+        return { ...base, crossed: false, reason: 'wrong_direction' }
+      }
+    } else if (!(prevY > lineY && currentY <= lineY)) {
+      return { ...base, crossed: false, reason: 'wrong_direction' }
+    }
+    if (!segment) {
+      return { ...base, crossed: true, reason: 'ok' }
+    }
+    const t = (lineY - prevY) / (currentY - prevY)
+    const intersectX = boat.prevPos.x + (boat.pos.x - boat.prevPos.x) * t
+    const inside = intersectX >= segment.minX && intersectX <= segment.maxX
+    if (!inside) {
+      return { ...base, crossed: false, reason: 'outside_segment', intersectX }
+    }
+    return { ...base, crossed: true, reason: 'ok', intersectX }
   }
 
   private getGateCenter(state: RaceState) {
@@ -339,6 +428,37 @@ export class HostLoop {
     return events
   }
 
+  private resolveBoatSeparation(state: RaceState) {
+    const boats = Object.values(state.boats)
+    if (boats.length < 2) return
+    const minDistance = SERVER_BOAT_RADIUS_METERS * 2
+    const minDistanceSq = minDistance * minDistance
+    for (let i = 0; i < boats.length; i += 1) {
+      for (let j = i + 1; j < boats.length; j += 1) {
+        const a = boats[i]
+        const b = boats[j]
+        const dx = b.pos.x - a.pos.x
+        const dy = b.pos.y - a.pos.y
+        const distSq = dx * dx + dy * dy
+        if (distSq === 0) {
+          const offset = minDistance / 2
+          a.pos.x -= offset
+          b.pos.x += offset
+          continue
+        }
+        if (distSq >= minDistanceSq) continue
+        const dist = Math.sqrt(distSq)
+        const overlap = (minDistance - dist) / 2
+        const nx = dx / dist
+        const ny = dy / dist
+        a.pos.x -= nx * overlap
+        a.pos.y -= ny * overlap
+        b.pos.x += nx * overlap
+        b.pos.y += ny * overlap
+      }
+    }
+  }
+
   private filterPenalties(resolutions: RuleResolution[], currentTime: number) {
     return resolutions.filter((violation) => {
       const key = `${violation.offenderId}:${violation.ruleId}`
@@ -370,6 +490,81 @@ export class HostLoop {
       clearInterval(this.timer)
       this.timer = undefined
     }
+  }
+
+  private startSpinSequence(boatId: string) {
+    if (this.spinTimers.has(boatId)) return
+    const state = this.store.getState()
+    const boat = state.boats[boatId]
+    if (!boat) return
+    this.spinningBoats.add(boatId)
+    const origin = boat.desiredHeadingDeg ?? boat.headingDeg ?? 0
+    const headings = [origin + 120, origin + 240, origin].map((deg) => normalizeDeg(deg))
+    const timers: NodeJS.Timeout[] = []
+    let delay = 0
+    headings.forEach((heading, index) => {
+      const timer = setTimeout(() => {
+        this.injectSpinHeading(boatId, heading)
+        if (index === headings.length - 1) {
+          this.pendingSpinClears.add(boatId)
+          this.spinTimers.delete(boatId)
+        }
+      }, delay)
+      timers.push(timer)
+      delay += SPIN_HOLD_SECONDS * 1000
+    })
+    this.spinTimers.set(boatId, timers)
+  }
+
+  private injectSpinHeading(boatId: string, heading: number) {
+    const payload = {
+      boatId,
+      desiredHeadingDeg: normalizeDeg(heading),
+      absoluteHeadingDeg: normalizeDeg(heading),
+      tClient: Date.now(),
+      seq: this.spinSeq++,
+    }
+    this.store.upsertInput(payload)
+  }
+
+  private applySpinLocks(state: RaceState) {
+    this.spinningBoats.forEach((boatId) => {
+      const boat = state.boats[boatId]
+      if (boat) boat.rightsSuspended = true
+    })
+  }
+
+  private resolveSpinCompletions(state: RaceState) {
+    const events: RaceEvent[] = []
+    this.pendingSpinClears.forEach((boatId) => {
+      const boat = state.boats[boatId]
+      if (!boat) return
+      this.spinningBoats.delete(boatId)
+      boat.rightsSuspended = false
+      if (boat.penalties > 0) {
+        boat.penalties -= 1
+        boat.fouled = boat.penalties > 0
+        events.push({
+          eventId: createId('event'),
+          kind: 'rule_hint',
+          ruleId: 'other',
+          boats: [boatId],
+          t: state.t,
+          message: `${boat.name} completed a 360° spin and cleared a penalty (${boat.penalties} remaining)`,
+        })
+      } else {
+        boat.fouled = false
+      }
+    })
+    this.pendingSpinClears.clear()
+    return events
+  }
+
+  private cancelSpinSequences() {
+    this.spinTimers.forEach((timers) => timers.forEach((id) => clearTimeout(id)))
+    this.spinTimers.clear()
+    this.spinningBoats.clear()
+    this.pendingSpinClears.clear()
   }
 }
 

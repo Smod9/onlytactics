@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { PixiStage } from '@/view/PixiStage'
+import { PhaserStage } from '@/view/PhaserStage'
 import { listReplayIndex, loadRecording, type ReplayIndexEntry } from '@/replay/storage'
 import type { ReplayFrame, ReplayRecording } from '@/types/race'
 import { raceStore } from '@/state/raceStore'
@@ -120,7 +120,7 @@ export const ReplayClient = () => {
         </div>
       </aside>
       <section className="replay-stage">
-        <PixiStage />
+        <PhaserStage />
         <div className="replay-controls">
           <div className="playback-controls">
             <button
