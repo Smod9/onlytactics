@@ -20,4 +20,3 @@ jobs:
         run: |
           fly auth token "$FLY_API_TOKEN"
           fly deploy
-

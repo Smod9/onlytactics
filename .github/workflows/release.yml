@@ -1,9 +1,7 @@
 name: Semantic Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   release:
@@ -62,4 +60,3 @@ jobs:
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
           SURGE_DOMAIN: ${{ secrets.SURGE_DOMAIN }}
         run: surge ./dist "$SURGE_DOMAIN"
-        if: ${{ github.ref == 'refs/heads/main' }}
