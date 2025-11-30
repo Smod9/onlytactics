@@ -148,16 +148,20 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     }
     
     // If there's a heading input, exit VMG mode (user is taking manual control)
-    const hasHeadingInput = input?.desiredHeadingDeg !== undefined ||
+    // But skip this check during spins (rightsSuspended) since spins inject headings
+    const hasHeadingInput = !boat.rightsSuspended && (
+      input?.desiredHeadingDeg !== undefined ||
       input?.absoluteHeadingDeg !== undefined ||
       input?.deltaHeadingDeg !== undefined
+    )
     if (hasHeadingInput && boat.vmgMode) {
       boat.vmgMode = false
     }
     
     // If in VMG mode, continuously recalculate optimal heading every tick
+    // Skip VMG recalculation during spins (when rightsSuspended is true)
     let desiredHeading: number
-    if (boat.vmgMode) {
+    if (boat.vmgMode && !boat.rightsSuspended) {
       // Use current desired heading or actual heading to determine tack
       // This ensures we maintain the current tack even as the boat turns
       const currentHeading = boat.desiredHeadingDeg ?? boat.headingDeg
