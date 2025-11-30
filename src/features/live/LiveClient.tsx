@@ -80,7 +80,9 @@ export const LiveClient = () => {
     role === 'host' && headerCtaEl
       ? createPortal(
           <div className="header-controls">
-            {/* <ReplaySaveButton /> */}
+            <div style={{ display: 'none' }}>
+              <ReplaySaveButton />
+            </div>
             <button
               type="button"
               className="start-sequence"

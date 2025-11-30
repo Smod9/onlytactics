@@ -122,7 +122,7 @@ export const ReplayClient = () => {
       <section className="replay-stage">
         <PixiStage />
         <div className="replay-controls">
-          {/* <div className="playback-controls">
+          <div className="playback-controls" style={{ display: 'none' }}>
             <button
               type="button"
               disabled={!recording}
@@ -154,7 +154,7 @@ export const ReplayClient = () => {
               disabled={!recording}
             />
             <span>{time.toFixed(1)}s / {duration.toFixed(1)}s</span>
-          </div> */}
+          </div>
           <div className="replay-chat">
             <h3>Chat</h3>
             <div className="replay-chat-log">

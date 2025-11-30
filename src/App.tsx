@@ -71,7 +71,7 @@ export function App() {
               <PencilIcon />
             </button>
           )}
-          {/* <div className="mode-switcher">
+          <div className="mode-switcher" style={{ display: 'none' }}>
             {MODES.map(({ label, value }) => (
               <button
                 key={value}
@@ -82,7 +82,7 @@ export function App() {
                 {label}
               </button>
             ))}
-          </div> */}
+          </div>
           <nav className="header-links" aria-label="Project resources">
             <a
               className="icon-link"
