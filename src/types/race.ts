@@ -44,6 +44,7 @@ export type BoatState = {
   distanceToNextMark?: number
   penalties: number
   stallTimer: number
+  tackTimer: number
   overEarly: boolean
   fouled: boolean
   lastInputSeq?: number

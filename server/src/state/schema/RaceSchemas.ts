@@ -97,6 +97,9 @@ export class BoatStateSchema extends Schema {
   @type('number')
   stallTimer = 0
 
+  @type('number')
+  tackTimer = 0
+
   @type('boolean')
   overEarly = false
 
