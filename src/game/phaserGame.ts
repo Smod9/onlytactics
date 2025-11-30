@@ -70,7 +70,7 @@ const ensureGame = (parent: HTMLDivElement): PhaserSingleton => {
     if (IS_DEV) {
       console.debug('[phaser-game] scene ready', {
         active: scene.sys.isActive(),
-        created: scene.scene?.settings?.isCreated,
+        status: scene.scene?.settings?.status,
       })
     }
     singleton.readyCallbacks.forEach((listener) => listener(scene))
@@ -90,14 +90,20 @@ const ensureGame = (parent: HTMLDivElement): PhaserSingleton => {
         console.debug('[phaser-game] RaceScene not found, registering')
       }
       const instance = new GameScene()
-      game.scene.add('RaceScene', instance, true)
+      const originalCreate = instance.create?.bind(instance)
+      instance.create = function () {
+        const result = originalCreate?.()
+        emitReady(instance)
+        return result
+      }
+      game.scene.add('RaceScene', instance, false)
       scene = instance
+      game.scene.start('RaceScene')
+      return
     }
 
     if (scene.sys.isActive()) {
       emitReady(scene)
-    } else {
-      scene.events?.once(Phaser.Scenes.Events.CREATE, () => emitReady(scene as GameScene))
     }
   }
 

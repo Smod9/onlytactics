@@ -22,11 +22,23 @@ I can't (and won't) maintain this on my own, I've never liked sailing single han
 
 ```bash
 npm install
-cp env.example .env    # adjust values if needed (contains CloudAMQP defaults)
+cd server  
+npm install 
+```
+
+
+## Run the game client and server
+
+```bash  # adjust values if needed (contains CloudAMQP defaults)
 npm run dev            # starts Vite and connects to the remote broker
 ```
 
-The dev server now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new broker. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
+In another terminal:
+```bash
+npm run server
+```
+
+The dev client now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new broker. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
 
 ## Tactician controls
 

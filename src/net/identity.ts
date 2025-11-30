@@ -20,7 +20,8 @@ const ensureSessionId = (
 
 const clientId = ensureSessionId(CLIENT_ID_KEY, () => createId('client'), readJson, writeJson)
 const boatId = ensureSessionId(BOAT_ID_KEY, () => createId('boat'))
-const clientName = readJson<string | null>(CLIENT_NAME_KEY, null)
+const defaultClientName = import.meta.env.DEV ? 'MamboKing' : null
+const clientName = readJson<string | null>(CLIENT_NAME_KEY, defaultClientName)
 
 export const identity = {
   clientId,
