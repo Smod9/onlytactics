@@ -1,4 +1,4 @@
-export const KNOTS_TO_MS = 0.514444
+export const KNOTS_TO_MS = 0.514444 * 2
 export const MAX_SPEED_KTS = 12
 export const TURN_RATE_DEG = 60
 export const ACCELERATION_RATE = 0.6
