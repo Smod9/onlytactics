@@ -14,6 +14,7 @@ import {
 import {
   HEADING_STEP_DEG,
   MAX_DOWNWIND_ANGLE_DEG,
+  TACK_LOCK_ENABLED,
   TURN_RATE_DEG,
 } from '@/logic/constants'
 
@@ -81,7 +82,7 @@ export const useTacticianControls = (
       }
 
       const now = performance.now()
-      if (lockUntilRef.current > now) {
+      if (TACK_LOCK_ENABLED && lockUntilRef.current > now) {
         event.preventDefault()
         return
       }
@@ -109,12 +110,6 @@ export const useTacticianControls = (
         event.preventDefault()
       }
 
-      const setLockForHeading = (target: number) => {
-        const diff = Math.abs(angleDiff(target, boat.headingDeg))
-        const seconds = diff / TURN_RATE_DEG + 0.5
-        lockUntilRef.current = now + seconds * 1000
-      }
-
       const exitVmgMode = () => {
         if (vmgModeRef.current) {
           vmgModeRef.current = false
@@ -122,6 +117,13 @@ export const useTacticianControls = (
           pendingRef.current.set(seq, performance.now())
           networkRef.current?.updateVmgMode(false, seq)
         }
+      }
+
+      const setLockForHeading = (target: number) => {
+        if (!TACK_LOCK_ENABLED) return
+        const diff = Math.abs(angleDiff(target, boat.headingDeg))
+        const seconds = diff / TURN_RATE_DEG + 0.5
+        lockUntilRef.current = now + seconds * 1000
       }
 
       switch (key) {
