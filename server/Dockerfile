@@ -2,11 +2,16 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app/server
 
-COPY server/package*.json ./
-RUN npm ci --omit=dev
+COPY package*.json ./
+# Install all dependencies (including dev) for building
+RUN npm ci
 
-COPY server ./
-COPY src ../src
+COPY . .
+
+# Copy src directory (copied into server as src-parent by build script)
+# Move it to the parent directory where tsconfig expects it
+COPY src-parent /tmp/src-parent
+RUN mv /tmp/src-parent /app/src
 
 RUN npm run build
 
@@ -18,7 +23,8 @@ ENV NODE_ENV=production
 ENV PORT=8080
 
 COPY --from=builder /app/server/package*.json ./
-COPY --from=builder /app/server/node_modules ./node_modules
+# Reinstall only production dependencies
+RUN npm ci --omit=dev
 COPY --from=builder /app/server/dist ./dist
 COPY --from=builder /app/server/src ./src
 COPY --from=builder /app/src ../src
