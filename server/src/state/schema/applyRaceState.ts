@@ -31,6 +31,7 @@ const upsertBoat = (target: BoatStateSchema, source: BoatState) => {
   target.lastInputSeq = source.lastInputSeq ?? 0
   target.lastInputAppliedAt = source.lastInputAppliedAt ?? 0
   target.rightsSuspended = Boolean(source.rightsSuspended)
+  target.vmgMode = Boolean(source.vmgMode)
 }
 
 export const applyRaceStateToSchema = (target: RaceStateSchema, source: RaceState) => {

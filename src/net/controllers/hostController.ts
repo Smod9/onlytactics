@@ -142,6 +142,9 @@ export class HostController extends BaseController {
           : typeof update.desiredHeadingDeg === 'number'
             ? quantizeHeading(update.desiredHeadingDeg)
             : undefined
+      if (update.vmgMode !== undefined) {
+        payload.vmgMode = update.vmgMode
+      }
       if (typeof absolute === 'number') {
         payload.absoluteHeadingDeg = absolute
         payload.desiredHeadingDeg = absolute
@@ -151,7 +154,8 @@ export class HostController extends BaseController {
       }
       if (
         typeof payload.absoluteHeadingDeg !== 'number' &&
-        typeof payload.deltaHeadingDeg !== 'number'
+        typeof payload.deltaHeadingDeg !== 'number' &&
+        update.vmgMode === undefined
       ) {
         return
       }
@@ -261,6 +265,17 @@ export class HostController extends BaseController {
       desired = quantizeHeading(baseHeading)
     }
 
+    // Allow vmgMode updates even without heading changes
+    if (input.vmgMode !== undefined && typeof desired !== 'number') {
+      this.store.upsertInput({
+        ...input,
+        vmgMode: input.vmgMode,
+        tClient: timestamp,
+        seq: seq ?? input.seq ?? -1,
+      })
+      return
+    }
+
     if (typeof desired !== 'number') {
       return
     }
@@ -268,6 +283,7 @@ export class HostController extends BaseController {
     this.store.upsertInput({
       ...input,
       desiredHeadingDeg: desired,
+      vmgMode: input.vmgMode,
       tClient: timestamp,
       seq: seq ?? input.seq ?? -1,
     })

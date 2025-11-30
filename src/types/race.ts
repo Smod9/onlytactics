@@ -49,6 +49,7 @@ export type BoatState = {
   lastInputSeq?: number
   lastInputAppliedAt?: number
   rightsSuspended: boolean
+  vmgMode?: boolean
   ai?: BoatAiConfig
 }
 
@@ -87,6 +88,7 @@ export type PlayerInput = {
   absoluteHeadingDeg?: number
   deltaHeadingDeg?: number
   spin?: 'full'
+  vmgMode?: boolean
 }
 
 export type RuleId = '10' | '11' | '12' | '18' | '29' | 'other'

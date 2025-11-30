@@ -111,6 +111,9 @@ export class BoatStateSchema extends Schema {
 
   @type('boolean')
   rightsSuspended = false
+
+  @type('boolean')
+  vmgMode = false
 }
 
 export class RaceStateSchema extends Schema {
