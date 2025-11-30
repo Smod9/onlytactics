@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Build artifacts
+server/src-parent
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
