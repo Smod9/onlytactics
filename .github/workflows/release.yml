@@ -50,6 +50,8 @@ jobs:
         run: npm ci
 
       - name: Build frontend
+        env:
+          VITE_COUNTDOWN_SECONDS: "180"
         run: npm run build
 
       - name: Install Surge

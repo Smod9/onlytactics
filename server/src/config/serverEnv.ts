@@ -18,7 +18,7 @@ export const appEnv = {
   tickRateHz: toNumber(rawEnv.TICK_RATE_HZ ?? rawEnv.VITE_TICK_RATE, 10),
   hostFailoverMs: toNumber(rawEnv.HOST_FAILOVER_MS ?? rawEnv.VITE_HOST_FAILOVER_MS, 4000),
   hostHeartbeatMs: toNumber(rawEnv.HOST_HEARTBEAT_MS ?? rawEnv.VITE_HOST_HEARTBEAT_MS, 5000),
-  countdownSeconds: toNumber(rawEnv.COUNTDOWN_SECONDS ?? rawEnv.VITE_COUNTDOWN_SECONDS, 60),
+  countdownSeconds: toNumber(rawEnv.COUNTDOWN_SECONDS ?? rawEnv.VITE_COUNTDOWN_SECONDS, 180),
   penaltyCooldownSeconds: toNumber(
     rawEnv.PENALTY_COOLDOWN_SECONDS ?? rawEnv.VITE_PENALTY_COOLDOWN_SECONDS,
     15,
