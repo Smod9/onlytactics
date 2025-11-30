@@ -14,7 +14,8 @@ let displayVersion = fallbackVersion
 
 try {
   const changelog = readFileSync(new URL('./CHANGELOG.md', import.meta.url), 'utf-8')
-  const headingMatch = changelog.match(/^#\s+([\w.+-]+)\s+\(([^)]+)\)/m)
+  // Match semantic-release format: # [1.10.0](link) (date)
+  const headingMatch = changelog.match(/^#\s+\[([\w.+-]+)\]\([^)]+\)\s+\(([^)]+)\)/m)
   if (headingMatch) {
     const [, version, date] = headingMatch
     displayVersion = version
