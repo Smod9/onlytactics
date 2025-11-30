@@ -59,12 +59,12 @@ export const ChatPanel = ({ network }: Props) => {
         <span>{roleToSender(role)}</span>
       </div>
       <div className="chat-log" ref={scrollRef}>
-        {chat.map((message) => (
+        {chat.slice(-8).map((message) => (
           <div
             key={message.messageId}
             className={`chat-message chat-${message.senderRole}`}
           >
-            <span className="chat-author">{message.senderName}</span>
+            <span className="chat-author">{message.senderName}:</span>
             <span className="chat-text">{message.text}</span>
           </div>
         ))}
@@ -87,7 +87,9 @@ export const ChatPanel = ({ network }: Props) => {
           Send
         </button>
       </div>
-      {status && <p className="chat-status">{status}</p>}
+      <p className="chat-status" style={{ visibility: status ? 'visible' : 'hidden' }}>
+        {status || '\u00A0'}
+      </p>
     </div>
   )
 }
