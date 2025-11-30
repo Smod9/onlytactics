@@ -296,7 +296,10 @@ export class HostController extends BaseController {
     if (!boat) return
     this.store.patchState((draft) => {
       const target = draft.boats[boatId]
-      if (target) target.rightsSuspended = true
+      if (target) {
+        target.rightsSuspended = true
+        target.vmgMode = false // Disable VMG mode during spin
+      }
     })
     const origin = boat.desiredHeadingDeg ?? boat.headingDeg
     const headings = [
