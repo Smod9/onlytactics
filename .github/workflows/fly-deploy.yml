@@ -6,6 +6,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -14,7 +17,6 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@v1
 
       - name: Deploy to Fly
-        working-directory: server
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_IO_DEPLOY_KEY }}
         run: |
