@@ -76,32 +76,44 @@ export const LiveClient = () => {
     network.announcePresence('online')
   }
 
+  const isCurrentHost = race.hostId === identity.clientId
+  const showHostControls = role === 'host' && isCurrentHost
+
+  const headerControls = showHostControls ? (
+      <div className="header-controls">
+        <div style={{ display: 'none' }}>
+          <ReplaySaveButton />
+        </div>
+        <button
+          type="button"
+          className="start-sequence"
+          onClick={() => network.setAiEnabled(!race.aiEnabled)}
+          style={{ display: 'none' }}
+        >
+          {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
+        </button>
+        <button
+          type="button"
+          className="start-sequence"
+          onClick={() => network.resetRace()}
+        >
+          Restart Race
+        </button>
+      </div>
+    ) : (
+      <div className="header-controls">
+        <button
+          type="button"
+          className="start-sequence"
+          onClick={() => network.requestHostRole()}
+        >
+          Become Host
+        </button>
+      </div>
+    )
+
   const headerPortal =
-    role === 'host' && headerCtaEl
-      ? createPortal(
-          <div className="header-controls">
-            <div style={{ display: 'none' }}>
-              <ReplaySaveButton />
-            </div>
-            <button
-              type="button"
-              className="start-sequence"
-              onClick={() => network.setAiEnabled(!race.aiEnabled)}
-              style={{ display: 'none' }}
-            >
-              {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
-            </button>
-            <button
-              type="button"
-              className="start-sequence"
-              onClick={() => network.resetRace()}
-            >
-              Restart Race
-            </button>
-          </div>,
-          headerCtaEl,
-        )
-      : null
+    headerCtaEl && headerControls ? createPortal(headerControls, headerCtaEl) : null
 
   return (
     <div className="live-client">
@@ -152,7 +164,7 @@ export const LiveClient = () => {
             Waiting for host to start the sequence&hellip;
           </p>
         )}
-        {role === 'host' && race.phase === 'prestart' && !race.countdownArmed && (
+        {showHostControls && race.phase === 'prestart' && !race.countdownArmed && (
           <button
             type="button"
             className="start-sequence"
@@ -193,7 +205,10 @@ export const LiveClient = () => {
                 return (
                   <li key={boatId}>
                     <span className="leaderboard-position">{index + 1}.</span>
-                    <span className="leaderboard-name">{boat.name}</span>
+                    <span className="leaderboard-name">
+                      {boat.name}
+                      {boat.id === race.hostId && <span className="host-tag"> (Host)</span>}
+                    </span>
                     <span className="leaderboard-meta">
                       {finished ? 'Finished' : `Lap ${lap}/${race.lapsToFinish}`}
                     </span>

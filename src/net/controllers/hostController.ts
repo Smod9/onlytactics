@@ -50,6 +50,7 @@ export class HostController extends BaseController {
   private localSeq = new Map<string, number>()
   private aiManager: AiManager
   private aiEnabled = appEnv.aiEnabled
+  private suppressHostRelease = false
 
   constructor(private store: RaceStore = raceStore) {
     super()
@@ -98,12 +99,15 @@ export class HostController extends BaseController {
     if (this.publishTimer) clearInterval(this.publishTimer)
     this.cancelActiveSpins()
     this.aiManager.stop()
-    this.mqtt.publish(hostTopic, null, { retain: true })
-    this.store.patchState((draft) => {
-      if (draft.hostId === identity.clientId) {
-        draft.hostId = undefined
-      }
-    })
+    if (!this.suppressHostRelease) {
+      this.mqtt.publish(hostTopic, null, { retain: true })
+      this.store.patchState((draft) => {
+        if (draft.hostId === identity.clientId) {
+          draft.hostId = undefined
+        }
+      })
+    }
+    this.suppressHostRelease = false
   }
 
   private async claimHost() {
@@ -453,6 +457,10 @@ export class HostController extends BaseController {
       this.aiManager.stop()
       this.removeAiBoats()
     }
+  }
+
+  setSuppressHostRelease(value: boolean) {
+    this.suppressHostRelease = value
   }
 }
 

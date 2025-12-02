@@ -37,8 +37,8 @@ export class GameNetwork {
   private status: NetworkStatus = 'idle'
 
   private statusListeners = new Set<(status: NetworkStatus) => void>()
-
   private stateUnsubscribe?: () => void
+  private hostUnsubscribe?: () => void
   private hostMonitorTimer?: number
   private lastStateAt = Date.now()
   private knownHostId?: string
@@ -47,6 +47,8 @@ export class GameNetwork {
   private stopRequested = false
   private lastLoggedHostId?: string
   private chatListeners = new Set<(message: ChatMessage) => void>()
+  private demotePending = false
+  private skipHostRelease = false
 
   async start() {
     if (this.startPromise) return this.startPromise
@@ -79,6 +81,8 @@ export class GameNetwork {
     this.stopHostMonitor()
     this.stateUnsubscribe?.()
     this.stateUnsubscribe = undefined
+    this.hostUnsubscribe?.()
+    this.hostUnsubscribe = undefined
   }
 
   getRole() {
@@ -173,7 +177,11 @@ export class GameNetwork {
   private async setRole(role: RaceRole) {
     netLog('setRole()', { nextRole: role })
     this.setStatus('joining')
+    if (this.controller instanceof HostController && this.skipHostRelease) {
+      this.controller.setSuppressHostRelease(true)
+    }
     this.controller?.stop()
+    this.skipHostRelease = false
     if (role === 'host') {
       this.controller = new HostController()
       this.playerController = undefined
@@ -201,6 +209,21 @@ export class GameNetwork {
   private async promoteToHost() {
     netLog('promoteToHost()')
     await this.setRole('host')
+  }
+
+  async requestHostRole() {
+    if (this.currentRole === 'host') return
+    if (this.promotePending) {
+      netLog('requestHostRole skipped: pending promotion')
+      return
+    }
+    this.promotePending = true
+    try {
+      netLog('requestHostRole()')
+      await this.promoteToHost()
+    } finally {
+      this.promotePending = false
+    }
   }
 
   private resolveInitialRole() {
@@ -336,6 +359,17 @@ export class GameNetwork {
     })
   }
 
+  private ensureHostSubscription() {
+    if (this.hostUnsubscribe || this.useColyseus()) return
+    this.hostUnsubscribe = mqttClient.subscribe<HostAnnouncement>(hostTopic, (payload) => {
+      const hostId = payload?.clientId
+      this.knownHostId = hostId
+      if (hostId && this.currentRole === 'host' && hostId !== identity.clientId) {
+        void this.demoteFromHost('announcement')
+      }
+    })
+  }
+
   private startHostMonitor() {
     if (this.hostMonitorTimer) return
     this.hostMonitorTimer = window.setInterval(() => this.checkHostHeartbeat(), 1000)
@@ -378,6 +412,7 @@ export class GameNetwork {
       return
     }
     this.ensureStateSubscription()
+    this.ensureHostSubscription()
     this.setStatus('looking_for_host')
     this.announcePresence('online')
     const role = await this.resolveInitialRole()
@@ -447,6 +482,20 @@ export class GameNetwork {
     }
     const nextRole: RaceRole = hostId ? (isHost ? 'host' : 'player') : 'spectator'
     this.setCurrentRole(nextRole)
+  }
+
+  private async demoteFromHost(reason: 'announcement' | 'state') {
+    if (this.currentRole !== 'host') return
+    if (this.demotePending) return
+    this.demotePending = true
+    netLog('demoteFromHost()', { reason })
+    this.skipHostRelease = true
+    try {
+      await this.setRole('player')
+    } finally {
+      this.skipHostRelease = false
+      this.demotePending = false
+    }
   }
 }
 

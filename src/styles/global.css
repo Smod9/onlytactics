@@ -742,6 +742,12 @@ button {
   font-weight: 600;
 }
 
+.host-tag {
+  font-size: 0.8em;
+  color: #ffcf70;
+  font-weight: 500;
+}
+
 .leaderboard-meta {
   font-size: 0.8rem;
   color: #b7c2ff;

@@ -35,8 +35,10 @@ export const RosterPanel = ({ role }: Props) => {
                 entry.status === 'online' ? '' : ' offline'
               }`}
             >
-              <span className="name">{entry.name}</span>
-              {isHost && <span className="badge">Host</span>}
+              <span className="name">
+                {entry.name}
+                {isHost && <span className="host-tag"> (Host)</span>}
+              </span>
               <span className="role">{roleLabel(entry.role)}</span>
             </li>
           )
