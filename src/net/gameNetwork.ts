@@ -203,24 +203,6 @@ export class GameNetwork {
     await this.setRole('host')
   }
 
-  async requestHostRole() {
-    if (this.useColyseus()) {
-      netLog('requestHostRole skipped (colyseus transport)')
-      return
-    }
-    if (this.currentRole === 'host') return
-    if (this.promotePending) {
-      netLog('requestHostRole skipped: promotion already pending')
-      return
-    }
-    this.promotePending = true
-    try {
-      await this.promoteToHost()
-    } finally {
-      this.promotePending = false
-    }
-  }
-
   private resolveInitialRole() {
     return new Promise<RaceRole>((resolve) => {
       let resolved = false
