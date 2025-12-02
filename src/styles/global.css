@@ -1112,20 +1112,18 @@ kbd {
   gap: 3rem;
 }
 
-.landing-shell > * {
-  width: min(100%, 1120px);
-}
 
 .landing-hero {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
-  align-items: stretch;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
 }
 
 @media (max-width: 900px) {
   .landing-hero {
     grid-template-columns: 1fr;
+    gap: 2rem;
   }
 }
 
@@ -1147,10 +1145,19 @@ kbd {
   gap: 1.2rem;
 }
 
+.landing-social-top {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 .landing-hero-video {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .landing-section {
@@ -1280,6 +1287,33 @@ kbd {
 .landing-footer .note {
   font-size: 0.9rem;
   color: #7f8db4;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #b7c2ff;
+  transition: all 0.2s ease;
+}
+
+.social-link:hover,
+.social-link:focus-visible {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8ff;
+  transform: translateY(-1px);
+}
+
+.social-link svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .replay-chat-log {
