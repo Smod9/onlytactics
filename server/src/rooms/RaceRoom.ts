@@ -120,18 +120,6 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
 
     this.onMessage<HostCommand>('host_command', (client, command) => {
-      if (client.sessionId !== this.hostSessionId) {
-        console.warn('[RaceRoom] ignoring host command from non-host', {
-          clientId: client.sessionId,
-          command,
-        })
-        roomDebug('host_command ignored', {
-          clientId: client.sessionId,
-          command,
-          hostSessionId: this.hostSessionId,
-        })
-        return
-      }
       roomDebug('host_command', { clientId: client.sessionId, command })
       if (command.kind === 'arm') {
         this.armCountdown(command.seconds ?? appEnv.countdownSeconds)

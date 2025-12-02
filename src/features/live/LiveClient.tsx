@@ -27,6 +27,7 @@ export const LiveClient = () => {
   const race = useRaceState()
   const [network] = useState(() => new GameNetwork())
   const [showDebug, setShowDebug] = useState(false)
+  const [hostActionPending, setHostActionPending] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [needsName, setNeedsName] = useState(!identity.clientName)
   const headerCtaEl =
@@ -67,6 +68,8 @@ export const LiveClient = () => {
 
   useTacticianControls(network, role)
 
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+
   const submitName = (event: FormEvent) => {
     event.preventDefault()
     const trimmed = nameEntry.trim()
@@ -76,13 +79,37 @@ export const LiveClient = () => {
     network.announcePresence('online')
   }
 
+  const ensureHostForLocalAction = async () => {
+    if (appEnv.netTransport !== 'mqtt') return
+    if (network.getRole() === 'host') return
+    setHostActionPending(true)
+    try {
+      await network.requestHostRole()
+    } finally {
+      setHostActionPending(false)
+    }
+  }
+
+  const handleStartSequence = async () => {
+    await ensureHostForLocalAction()
+    network.armCountdown(appEnv.countdownSeconds)
+  }
+
+  const confirmResetRace = () => {
+    setShowResetConfirm(true)
+  }
+
+  const handleResetRace = async () => {
+    await ensureHostForLocalAction()
+    network.resetRace()
+    setShowResetConfirm(false)
+  }
+
   const headerPortal =
-    role === 'host' && headerCtaEl
+    headerCtaEl
       ? createPortal(
           <div className="header-controls">
-            <div style={{ display: 'none' }}>
-              <ReplaySaveButton />
-            </div>
+            {/* <ReplaySaveButton /> */}
             <button
               type="button"
               className="start-sequence"
@@ -94,7 +121,8 @@ export const LiveClient = () => {
             <button
               type="button"
               className="start-sequence"
-              onClick={() => network.resetRace()}
+              onClick={confirmResetRace}
+              disabled={hostActionPending}
             >
               Restart Race
             </button>
@@ -152,13 +180,16 @@ export const LiveClient = () => {
             Waiting for host to start the sequence&hellip;
           </p>
         )}
-        {role === 'host' && race.phase === 'prestart' && !race.countdownArmed && (
+        {race.phase === 'prestart' && !race.countdownArmed && (
           <button
             type="button"
             className="start-sequence"
-            onClick={() => network.armCountdown(appEnv.countdownSeconds)}
+            onClick={() => {
+              void handleStartSequence()
+            }}
+            disabled={hostActionPending}
           >
-            Start {appEnv.countdownSeconds}s Sequence
+            Start {Math.round(appEnv.countdownSeconds / 60)} minute Sequence
           </button>
         )}
         {playerBoat && (
@@ -232,6 +263,29 @@ export const LiveClient = () => {
         {showDebug ? 'Hide Debug' : 'Show Debug'}
       </button>
       <TacticianPopout />
+      {showResetConfirm && (
+        <div className="username-gate">
+          <div className="username-card">
+            <h2>Restart Race?</h2>
+            <p>
+              This will cancel the current race for everyone and start the countdown over. Are you
+              sure you want to continue?
+            </p>
+            <div className="username-form-actions">
+              <button
+                type="button"
+                className="username-form-cancel"
+                onClick={() => setShowResetConfirm(false)}
+              >
+                Never mind
+              </button>
+              <button type="button" disabled={hostActionPending} onClick={() => void handleResetRace()}>
+                Yes, restart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showDebug && (
         <div className="debug-dock">
           <DebugPanel onClose={() => setShowDebug(false)} />
