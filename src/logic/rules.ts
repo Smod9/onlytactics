@@ -112,7 +112,7 @@ export class RulesEngine {
     b: BoatState,
   ): RuleResolution[] {
     const distanceApart = distance(a, b)
-    if (distanceApart > 20) return []
+    if (distanceApart > PORT_STARBOARD_DISTANCE) return []
     const tackA = getTack(a, state.wind.directionDeg)
     const tackB = getTack(b, state.wind.directionDeg)
     if (tackA !== tackB) return []
