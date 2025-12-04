@@ -1,3 +1,23 @@
+# [1.13.0](https://github.com/Smod9/onlytactics/compare/v1.12.0...v1.13.0) (2025-12-04)
+
+
+### Bug Fixes
+
+* **crashbox:** Tightens up the crashbox to not include the name and allow dipping ([f2b9873](https://github.com/Smod9/onlytactics/commit/f2b98733e4bd7f4f16975340663f449d3d68a3c9))
+* **port-starboard:** The rule was broken, and is now fixed ([87f6925](https://github.com/Smod9/onlytactics/commit/87f6925e393db0530cb4b92672a6e3c6985ddbfb))
+
+
+### Features
+
+* **any host:** Anyone can start and restart the race now for these early days. ([57cf594](https://github.com/Smod9/onlytactics/commit/57cf5940f487e88564b11ae808623848f96cbf8d))
+* **moves gate:** Moves leeward gate further down the course ([92fc58f](https://github.com/Smod9/onlytactics/commit/92fc58fe8d9e4c2b395d7c1d00f9495d2e2a809a))
+* **social links:** Adds social links to home page for easy access ([d55ec89](https://github.com/Smod9/onlytactics/commit/d55ec896dab84cbfe855d7fc6e4e970f81af5a42))
+
+
+### Reverts
+
+* Revert "feat(any host): Anyone can start and restart the race now for these e…" ([484315f](https://github.com/Smod9/onlytactics/commit/484315f0694b10ea37d4a5ed5191bb3578f6da70))
+
 # [1.12.0](https://github.com/Smod9/onlytactics/compare/v1.11.0...v1.12.0) (2025-11-30)
 
 
