@@ -521,7 +521,7 @@ button {
 .event-list {
   flex: 1;
   overflow-y: auto;
-  max-height: 220px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
