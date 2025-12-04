@@ -90,6 +90,7 @@ export type PlayerInput = {
   deltaHeadingDeg?: number
   spin?: 'full'
   vmgMode?: boolean
+  clearPenalty?: boolean
 }
 
 export type RuleId = '10' | '11' | '12' | '18' | '29' | 'other'

@@ -74,7 +74,7 @@ export const useTacticianControls = (
       }
 
       const key = event.code ?? event.key
-      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS'].includes(key)) {
+      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP'].includes(key)) {
         return
       }
       if (event.repeat) {
@@ -177,6 +177,11 @@ export const useTacticianControls = (
           const seq = (seqRef.current += 1)
           pendingRef.current.set(seq, performance.now())
           networkRef.current?.requestSpin(seq)
+          break
+        }
+        case 'KeyP': {
+          event.preventDefault()
+          networkRef.current?.clearOnePenalty()
           break
         }
         default:

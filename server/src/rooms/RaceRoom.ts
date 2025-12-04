@@ -30,6 +30,7 @@ type InputMessage = {
   deltaHeadingDeg?: number
   spin?: 'full'
   vmgMode?: boolean
+  clearPenalty?: boolean
 }
 
 type HostCommand =
@@ -93,6 +94,12 @@ export class RaceRoom extends Room<RaceRoomState> {
       if (!this.raceStore) return
       const boatId = this.resolveBoatId(client, message.boatId)
       if (!boatId) return
+      
+      // Handle penalty clear requests
+      if (message.clearPenalty) {
+        this.clearPenalty(boatId)
+        return
+      }
       
       // Handle spin requests: queue a 360° spin sequence
       if (message.spin === 'full') {
