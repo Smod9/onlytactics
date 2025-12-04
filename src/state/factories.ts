@@ -23,8 +23,9 @@ const defaultStartLine = {
 }
 
 const defaultLeewardGate = {
-  left: { x: -40, y: -20 },
-  right: { x: 40, y: -10 },
+  left: { x: -40, y: 63
+   },
+  right: { x: 40, y: 70 },
 }
 
 const structuredCopy = <T>(value: T): T => {
