@@ -328,16 +328,45 @@ export class HostLoop {
       return { completed: true, debugEvent: undefined }
     }
 
-    const axis = step.axis
-    const threshold = axis === 'x' ? mark.x : mark.y
     const prevPos = boat.prevPos ?? boat.pos
-    const prevValue = prevPos[axis]
-    const currentValue = boat.pos[axis]
-    const direction = step.direction
-    const crossed =
-      direction === 1
-        ? prevValue <= threshold && currentValue >= threshold
-        : prevValue >= threshold && currentValue <= threshold
+    
+    // The visual radial extends along `step.axis` in `step.direction`.
+    // To cross that visual ray, we check the PERPENDICULAR axis threshold,
+    // but only when we're in the sector where the ray exists.
+    //
+    // For axis='x', direction=1 (ray extends east): 
+    //   - Ray is at y=mark.y, extending from mark.x to +infinity
+    //   - Crossing means: x >= mark.x (in sector) AND path crosses y=mark.y
+    //
+    // For axis='y', direction=-1 (ray extends north):
+    //   - Ray is at x=mark.x, extending from mark.y to -infinity  
+    //   - Crossing means: y <= mark.y (in sector) AND path crosses x=mark.x
+    
+    const perpAxis = step.axis === 'x' ? 'y' : 'x'
+    const perpThreshold = perpAxis === 'x' ? mark.x : mark.y
+    const sectorAxis = step.axis
+    const sectorThreshold = sectorAxis === 'x' ? mark.x : mark.y
+    
+    const prevPerpValue = prevPos[perpAxis]
+    const currPerpValue = boat.pos[perpAxis]
+    const prevSectorValue = prevPos[sectorAxis]
+    const currSectorValue = boat.pos[sectorAxis]
+    
+    // Check if we're in the sector where this ray exists (or were in it during the crossing)
+    const currInSector = step.direction === 1
+      ? currSectorValue >= sectorThreshold
+      : currSectorValue <= sectorThreshold
+    const prevInSector = step.direction === 1
+      ? prevSectorValue >= sectorThreshold
+      : prevSectorValue <= sectorThreshold
+    const inSector = currInSector || prevInSector
+    
+    // Check if we crossed the perpendicular threshold (in either direction)
+    // The sector check ensures this is a valid crossing of the visual ray
+    const crossedPerp = (prevPerpValue < perpThreshold && currPerpValue >= perpThreshold) ||
+                        (prevPerpValue > perpThreshold && currPerpValue <= perpThreshold)
+    
+    const crossed = inSector && crossedPerp
 
     let finished = false
     let debugEvent: RaceEvent | undefined
@@ -360,12 +389,16 @@ export class HostLoop {
         boatId: boat.id,
         leg: leg.sequence,
         stage,
-        axis,
-        direction,
-        threshold,
-        prevValue,
-        currentValue,
+        sectorAxis,
+        perpAxis,
+        inSector,
+        crossedPerp,
         crossed,
+        currSectorValue,
+        sectorThreshold,
+        prevPerpValue,
+        currPerpValue,
+        perpThreshold,
       })
     }
 

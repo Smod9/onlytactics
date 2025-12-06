@@ -86,7 +86,6 @@ export const createBoatState = (
     penalties: 0,
     pos: { x: spawnX, y: spawnY },
     prevPos: { x: spawnX, y: spawnY },
-    prevPos: { x: baseX + jitter(jitterXRange), y: baseY + jitter(jitterYRange) },
     speed: 0,
     stallTimer: 0,
     tackTimer: 0,
