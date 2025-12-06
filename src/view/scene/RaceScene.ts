@@ -224,7 +224,7 @@ export class RaceScene {
 
   private drawMarks(state: RaceState, map: ScreenMapper) {
     this.courseLayer.setStrokeStyle({ width: 2, color: 0x5174b3, alpha: 0.6 })
-    state.marks.forEach((mark, index) => {
+    state.marks.forEach((mark) => {
       const { x, y } = map(mark)
       this.courseLayer.fill({ color: 0xffff00, alpha: 0.8 })
       this.courseLayer.circle(x, y, 6)

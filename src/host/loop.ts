@@ -244,7 +244,7 @@ export class HostLoop {
     
     // Handle FINISH line specially
     if (currentLeg.kind === 'finish' && currentLeg.finishLineIndices) {
-      const finishEvents = this.advanceFinishLeg(boat, state, progress, currentLeg, lapTarget)
+      const finishEvents = this.advanceFinishLeg(boat, state, currentLeg, lapTarget)
       events.push(...finishEvents)
       return events
     }
@@ -400,7 +400,6 @@ export class HostLoop {
   private advanceFinishLeg(
     boat: BoatState,
     state: RaceState,
-    progress: RoundingProgress,
     leg: (typeof courseLegs)[number],
     _lapTarget: number,
   ): RaceEvent[] {
