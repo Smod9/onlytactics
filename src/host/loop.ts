@@ -228,6 +228,13 @@ export class HostLoop {
     const progress = this.getOrCreateProgress(boat.id)
     const currentLeg = courseLegs[progress.legIndex % legCount]
 
+    // Handle START line specially
+    if (currentLeg.kind === 'start' && currentLeg.finishLineIndices) {
+      const startEvents = this.advanceStartLeg(boat, state, progress, currentLeg)
+      events.push(...startEvents)
+      return events
+    }
+
     // Handle GATE legs specially
     if (currentLeg.kind === 'gate' && currentLeg.gateMarkIndices) {
       const gateEvents = this.advanceGateLeg(boat, state, progress, currentLeg, lapTarget)
@@ -275,6 +282,115 @@ export class HostLoop {
       this.advanceToNextSequence(boat, state, progress, currentLeg, lapTarget)
     }
     return events
+  }
+
+  /**
+   * Handle start line crossing.
+   * Boat must cross between committee and pin marks (from pre-start side to course side).
+   */
+  private advanceStartLeg(
+    boat: BoatState,
+    state: RaceState,
+    progress: RoundingProgress,
+    leg: (typeof courseLegs)[number],
+  ): RaceEvent[] {
+    const events: RaceEvent[] = []
+    const marks = state.marks
+    const [committeeIdx, pinIdx] = leg.finishLineIndices!
+    const committeeMark = marks[committeeIdx] ?? state.startLine.committee
+    const pinMark = marks[pinIdx] ?? state.startLine.pin
+    
+    const committee = committeeMark ?? state.startLine.committee
+    const pin = pinMark ?? state.startLine.pin
+
+    // Calculate midpoint for distance display
+    const midpoint = {
+      x: (committee.x + pin.x) / 2,
+      y: (committee.y + pin.y) / 2,
+    }
+    const distance = distanceBetween(boat.pos, midpoint)
+    boat.nextMarkIndex = committeeIdx
+    boat.distanceToNextMark = distance
+
+    // Only allow crossing after race has started (t >= 0)
+    if (state.t < 0) {
+      return events
+    }
+
+    // Check if boat crossed the start line (from pre-start side TO course side)
+    const crossed = this.checkStartLineCrossing(boat, state, committee, pin)
+    
+    if (crossed) {
+      lapDebug('boat_started', {
+        boatId: boat.id,
+        startTime: state.t.toFixed(2),
+      })
+      
+      // Advance to next sequence (windward mark)
+      progress.legIndex += 1
+      progress.stage = 0
+      
+      // Update next mark to windward
+      const nextLeg = courseLegs[progress.legIndex % courseLegs.length]
+      boat.nextMarkIndex = nextLeg.markIndices[0]
+      const nextMark = state.marks[boat.nextMarkIndex]
+      boat.distanceToNextMark = nextMark ? distanceBetween(boat.pos, nextMark) : 0
+      
+      events.push({
+        eventId: createId('start'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        t: state.t,
+        boats: [boat.id],
+        message: `${boat.name} crossed the start line`,
+      })
+    }
+
+    return events
+  }
+
+  /**
+   * Check if boat crossed the start line (from pre-start side to course side)
+   */
+  private checkStartLineCrossing(
+    boat: BoatState,
+    state: RaceState,
+    committee: { x: number; y: number },
+    pin: { x: number; y: number },
+  ): boolean {
+    const prevPos = boat.prevPos ?? boat.pos
+    
+    // Line vector from committee to pin
+    const lineVec = { x: pin.x - committee.x, y: pin.y - committee.y }
+    
+    // Determine course side based on wind direction
+    const windRad = (state.baselineWindDeg * Math.PI) / 180
+    const windVec = { x: Math.sin(windRad), y: -Math.cos(windRad) }
+    const cross = lineVec.x * windVec.y - lineVec.y * windVec.x
+    const courseSideSign = cross >= 0 ? 1 : -1
+    
+    // Calculate position relative to committee
+    const prevRel = { x: prevPos.x - committee.x, y: prevPos.y - committee.y }
+    const currRel = { x: boat.pos.x - committee.x, y: boat.pos.y - committee.y }
+    
+    // Cross product to determine which side of line
+    const prevCross = lineVec.x * prevRel.y - lineVec.y * prevRel.x
+    const currCross = lineVec.x * currRel.y - lineVec.y * currRel.x
+    
+    const prevOnCourseSide = prevCross * courseSideSign > 0
+    const currOnCourseSide = currCross * courseSideSign > 0
+    
+    // Crossed if we went from pre-start side TO course side
+    const crossedLine = !prevOnCourseSide && currOnCourseSide
+    
+    // Also check that we're between the marks
+    const lineLen = Math.sqrt(lineVec.x * lineVec.x + lineVec.y * lineVec.y)
+    if (lineLen === 0) return false
+    
+    const t = (currRel.x * lineVec.x + currRel.y * lineVec.y) / (lineLen * lineLen)
+    const betweenMarks = t >= -0.1 && t <= 1.1
+    
+    return crossedLine && betweenMarks
   }
 
   /**
@@ -476,6 +592,11 @@ export class HostLoop {
       lapDebug('gate_radial_state', {
         boatId: boat.id,
         gateSide: progress.gateSide,
+        activeMarkIndex: progress.activeMarkIndex,
+        markX: chosenMark.x.toFixed(1),
+        markY: chosenMark.y.toFixed(1),
+        boatX: boat.pos.x.toFixed(1),
+        boatY: boat.pos.y.toFixed(1),
         stage: progress.stage,
         radialStage,
         stepAxis: step.axis,

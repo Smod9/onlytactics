@@ -74,7 +74,7 @@ export const useTacticianControls = (
       }
 
       const key = event.code ?? event.key
-      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP'].includes(key)) {
+      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP', 'KeyJ'].includes(key)) {
         return
       }
       if (event.repeat) {
@@ -182,6 +182,12 @@ export const useTacticianControls = (
         case 'KeyP': {
           event.preventDefault()
           networkRef.current?.clearOnePenalty()
+          break
+        }
+        case 'KeyJ': {
+          // Debug: Jump to next mark
+          event.preventDefault()
+          networkRef.current?.debugJumpBoatToNextMark(identity.boatId)
           break
         }
         default:
