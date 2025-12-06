@@ -525,6 +525,23 @@ export class HostLoop {
     const distToRight = distanceBetween(boat.pos, rightMark)
     boat.nextMarkIndex = distToLeft < distToRight ? leftIdx : rightIdx
     boat.distanceToNextMark = Math.min(distToLeft, distToRight)
+    
+    // Debug: log gate entry state when close
+    if (appEnv.debugHud && distanceToGate < 150) {
+      lapDebug('gate_approach', {
+        boatId: boat.id,
+        stage: progress.stage,
+        gateSide: progress.gateSide,
+        activeMarkIndex: progress.activeMarkIndex,
+        boatX: boat.pos.x.toFixed(1),
+        boatY: boat.pos.y.toFixed(1),
+        closestMark: distToLeft < distToRight ? 'left' : 'right',
+        distToLeft: distToLeft.toFixed(1),
+        distToRight: distToRight.toFixed(1),
+        leftMarkPos: `(${leftMark.x}, ${leftMark.y})`,
+        rightMarkPos: `(${rightMark.x}, ${rightMark.y})`,
+      })
+    }
 
     // If too far from gate, don't track
     if (distanceToGate > ROUND_MAX_RADIUS) {
@@ -536,6 +553,10 @@ export class HostLoop {
 
     // STAGE 0: Cross the gate line
     if (progress.stage === 0) {
+      // Ensure gate-specific progress is clean when starting fresh
+      progress.gateSide = undefined
+      progress.activeMarkIndex = undefined
+      
       const crossed = this.checkGateLineCrossing(boat, leftMark, rightMark)
       if (crossed) {
         // Determine which side they went: left of midpoint = left mark, right = right mark
@@ -731,6 +752,34 @@ export class HostLoop {
       }
     }
     
+    // After completing windward-return, check if this is the final lap
+    // If NOT final lap, skip finish and go back to gate
+    const isFinalLap = boat.lap >= lapTarget - 1
+    const completedWindwardReturn = completedLeg.kind === 'windward' && completedLeg.id === 'windward-return'
+    
+    if (completedWindwardReturn && !isFinalLap) {
+      // Go directly to gate (seq 2), skipping finish
+      const gateLeg = courseLegs.find(leg => leg.kind === 'gate')
+      if (gateLeg) {
+        progress.legIndex = courseLegs.indexOf(gateLeg)
+        // Reset gate progress for the new gate rounding
+        progress.stage = 0
+        progress.gateSide = undefined
+        progress.activeMarkIndex = undefined
+        
+        boat.nextMarkIndex = gateLeg.markIndices[0]
+        const nextMark = state.marks[boat.nextMarkIndex]
+        boat.distanceToNextMark = nextMark ? distanceBetween(boat.pos, nextMark) : 0
+        
+        lapDebug('advanced_to_gate_for_next_lap', {
+          boatId: boat.id,
+          lap: boat.lap,
+          lapTarget,
+        })
+        return
+      }
+    }
+    
     // Advance past all legs with the completed sequence
     let safety = 0
     do {
@@ -742,7 +791,7 @@ export class HostLoop {
     // Check if we wrapped around to a leg that uses the same mark we just completed
     // This happens when going from seq 3 (windward-return) back to seq 1 (windward-entry)
     // Since we're already AT the windward mark, skip seq 1 and go to seq 2 (gate)
-    const nextLeg = courseLegs[progress.legIndex % legCount]
+    let nextLeg = courseLegs[progress.legIndex % legCount]
     const nextMarkIndices = new Set(nextLeg.markIndices)
     const sameMarkAsBefore = [...completedMarkIndices].some(idx => nextMarkIndices.has(idx))
     
@@ -765,6 +814,14 @@ export class HostLoop {
 
     // Update boat's next mark
     const finalNextLeg = courseLegs[progress.legIndex % legCount]
+    
+    // If entering gate, reset gate-specific progress
+    if (finalNextLeg.kind === 'gate') {
+      progress.stage = 0
+      progress.gateSide = undefined
+      progress.activeMarkIndex = undefined
+    }
+    
     const nextMarkIndex = finalNextLeg.markIndices[0]
     boat.nextMarkIndex = nextMarkIndex
     const nextMark = state.marks[nextMarkIndex]

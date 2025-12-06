@@ -1,97 +1,120 @@
 import { courseLegs } from '@/config/course'
-import type { BoatState } from '@/types/race'
+import type { BoatState, RaceState } from '@/types/race'
 import { useMemo } from 'react'
+import { useRaceState } from '@/state/hooks'
 
 type Props = {
   boat?: BoatState
 }
 
-type StepInfo = {
-  sequence: number
+type RaceStep = {
+  id: string
   label: string
-  kind?: string
-}
-
-const buildSteps = (): StepInfo[] => {
-  const sequences = new Map<number, { labels: string[]; kind?: string }>()
-  courseLegs.forEach((leg) => {
-    const existing = sequences.get(leg.sequence) ?? { labels: [], kind: leg.kind }
-    existing.labels.push(leg.label)
-    sequences.set(leg.sequence, existing)
-  })
-  return Array.from(sequences.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([sequence, { labels, kind }]) => ({
-      sequence,
-      label: labels.length > 1 ? labels.join(' / ') : labels[0],
-      kind,
-    }))
+  kind: 'start' | 'windward' | 'gate' | 'finish'
+  lap: number // Which lap this step belongs to (0-indexed)
 }
 
 /**
- * Determine current sequence considering both nextMarkIndex and lap.
- * This is needed because the windward mark (index 0) is used by both
- * sequence 1 (windward-entry) and sequence 3 (windward-return).
+ * Build the race progression steps based on lapsToFinish.
+ * For a 2-lap race: Start - W - L - W - Finish
+ * For a 3-lap race: Start - W - L - W - L - W - Finish
  */
-const getCurrentSequence = (boat: BoatState | undefined, steps: StepInfo[]): number | undefined => {
-  if (!boat) return steps[0]?.sequence
+const buildRaceSteps = (lapsToFinish: number): RaceStep[] => {
+  const steps: RaceStep[] = []
   
+  // Start
+  steps.push({ id: 'start', label: 'Start', kind: 'start', lap: 0 })
+  
+  // First windward
+  steps.push({ id: 'w-0', label: 'W', kind: 'windward', lap: 0 })
+  
+  // For each lap (except the last), add L then W
+  for (let lap = 0; lap < lapsToFinish - 1; lap++) {
+    steps.push({ id: `l-${lap}`, label: 'L', kind: 'gate', lap })
+    steps.push({ id: `w-${lap + 1}`, label: 'W', kind: 'windward', lap: lap + 1 })
+  }
+  
+  // Finish
+  steps.push({ id: 'finish', label: 'Finish', kind: 'finish', lap: lapsToFinish - 1 })
+  
+  return steps
+}
+
+/**
+ * Determine which step index we're currently on based on boat state.
+ * Handles shared marks (start/finish use committee/pin; windward used twice).
+ */
+const getCurrentStepIndex = (
+  boat: BoatState | undefined,
+  steps: RaceStep[],
+  race: RaceState,
+): number => {
+  if (!boat) return 0
+  if (boat.finished) return steps.length - 1
+
   const nextMarkIndex = boat.nextMarkIndex ?? -1
   const lap = boat.lap ?? 0
-  
-  // Find all legs that contain this mark
-  const matchingLegs = courseLegs.filter((leg) => leg.markIndices.includes(nextMarkIndex))
-  
-  if (matchingLegs.length === 0) {
-    return steps[0]?.sequence
+  const lapsToFinish = race.lapsToFinish || 1
+
+  // Shared marks:
+  // - Start/Finish: committee (1) and pin (2)
+  // - Windward: mark 0 used twice (seq 1 and seq 3)
+  // - Gate: marks 3/4
+
+  // Start / Finish disambiguation
+  if (nextMarkIndex === 1 || nextMarkIndex === 2) {
+    const onFinalLap = lap >= lapsToFinish - 1
+    if (boat.finished || onFinalLap) return steps.length - 1 // Finish step
+    return 0 // Pre-start/start step
   }
-  
-  if (matchingLegs.length === 1) {
-    return matchingLegs[0].sequence
+
+  // Windward disambiguation
+  if (nextMarkIndex === 0) {
+    if (lap === 0) return 1 // First windward
+    return 1 + lap * 2 // windward-return per lap
   }
-  
-  // Multiple legs use the same mark - disambiguate based on lap
-  // If on lap > 0, we've already completed the initial sequences
-  // So windward mark (0) should be sequence 3 (windward-return), not sequence 1
-  if (lap > 0) {
-    // Prefer higher sequence numbers when on later laps
-    const sorted = matchingLegs.sort((a, b) => b.sequence - a.sequence)
-    return sorted[0].sequence
+
+  // Gate (marks 3/4) → L step for this lap
+  if (nextMarkIndex === 3 || nextMarkIndex === 4) {
+    return 2 + lap * 2
   }
-  
-  // On lap 0, use the lowest sequence (first occurrence in course)
-  const sorted = matchingLegs.sort((a, b) => a.sequence - b.sequence)
-  return sorted[0].sequence
+
+  // Fallback to current leg kind if possible
+  const currentLeg = courseLegs.find((leg) => leg.markIndices.includes(nextMarkIndex))
+  if (currentLeg?.kind === 'finish') return steps.length - 1
+  if (currentLeg?.kind === 'start') return 0
+
+  return Math.max(0, Math.min(steps.length - 1, 1 + lap * 2))
 }
 
 export const ProgressStepper = ({ boat }: Props) => {
-  const steps = useMemo(() => buildSteps(), [])
-  const currentSequence = getCurrentSequence(boat, steps)
+  const race = useRaceState()
+  const lapsToFinish = race.lapsToFinish || 1
+  
+  const steps = useMemo(() => buildRaceSteps(lapsToFinish), [lapsToFinish])
+  const currentStepIndex = getCurrentStepIndex(boat, steps, race)
 
-  const statusForSequence = (sequence: number) => {
-    if (currentSequence === undefined) return 'pending'
-    if (!boat) return sequence === currentSequence ? 'active' : 'pending'
-    // If boat has finished, all steps are done (including finish)
+  const statusForStep = (index: number) => {
+    if (!boat) return index === 0 ? 'active' : 'pending'
     if (boat.finished) return 'done'
-    if (sequence < currentSequence) return 'done'
-    if (sequence === currentSequence) return 'active'
+    if (index < currentStepIndex) return 'done'
+    if (index === currentStepIndex) return 'active'
     return 'pending'
   }
 
-  // Show label for start and finish steps
-  const shouldShowLabel = (step: StepInfo) => step.kind === 'start' || step.kind === 'finish'
+  const shouldShowLabel = (step: RaceStep) => step.kind === 'start' || step.kind === 'finish'
 
   return (
     <div className="progress-stepper">
       {steps.map((step, index) => {
-        const status = statusForSequence(step.sequence)
+        const status = statusForStep(index)
         const showLabel = shouldShowLabel(step)
         return (
-          <div key={step.sequence} className={`progress-step status-${status}`}>
+          <div key={step.id} className={`progress-step status-${status}`}>
             {showLabel && <span className="progress-label">{step.label}</span>}
             {!showLabel && (
               <div className="progress-bullet">
-                <span>{step.sequence}</span>
+                <span>{step.label}</span>
               </div>
             )}
             {index < steps.length - 1 && <div className="progress-connector" />}
