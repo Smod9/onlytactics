@@ -34,7 +34,7 @@ export const appEnv = {
   lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 1),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 180),
   penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
-  debugHud: toBool(rawEnv.VITE_DEBUG_HUD, true),
+  debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
   debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, true),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),

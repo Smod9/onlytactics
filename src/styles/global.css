@@ -707,9 +707,10 @@ button {
 }
 
 .progress-stepper {
+  --hud-width: 320px; /* approx width of hud panel; adjusts center toward stage */
   position: fixed;
   top: 18px;
-  left: 50%;
+  left: calc(50% - var(--hud-width) / 2);
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -881,16 +882,10 @@ button {
   font-size: 0.85rem;
 }
 
-.chat-host {
-  /* border removed */
-}
-
-.chat-player {
-  /* border removed */
-}
-
+.chat-host,
+.chat-player,
 .chat-spectator {
-  /* border removed */
+  border: none;
 }
 
 .chat-input {

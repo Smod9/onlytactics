@@ -260,16 +260,18 @@ export const LiveClient = () => {
                 if (!boat) return null
                 const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
                 const finished = boat.finished || internalLap >= race.lapsToFinish
-                // Check if boat is still at start (sequence 0) - nextMarkIndex 1 or 2 means they're on start line
-                const atStart = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
+                const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
+                const onFinalLap = internalLap >= race.lapsToFinish - 1
                 // Display lap as 1-indexed (internal lap 0 = "Lap 1", internal lap 1 = "Lap 2", etc.)
                 const displayLap = internalLap + 1
                 
                 let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
                 if (finished) {
                   statusText = 'Finished'
-                } else if (atStart) {
+                } else if (atLine && !onFinalLap) {
                   statusText = 'Pre-start'
+                } else if (atLine && onFinalLap) {
+                  statusText = 'Finish'
                 }
                 
                 return (
