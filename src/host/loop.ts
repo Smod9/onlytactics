@@ -584,7 +584,46 @@ export class HostLoop {
       return events
     }
 
-    // STAGES 1+: Track radials for the chosen mark
+    // STAGE 1: Commit to a mark by crossing its SOUTH radial
+    if (progress.stage === 1) {
+      // Check south radial for LEFT and RIGHT; commit to whichever is crossed
+      const leftSouth = gateRadials.left[0] // { axis:'y', direction:1 }
+      const rightSouth = gateRadials.right[0]
+
+      const { crossed: crossedLeft, debugInfo: dbgLeft } = this.checkRadialCrossing(boat, leftMark, leftSouth)
+      const { crossed: crossedRight, debugInfo: dbgRight } = this.checkRadialCrossing(boat, rightMark, rightSouth)
+
+      if (appEnv.debugHud) {
+        lapDebug('gate_commit_check', {
+          boatId: boat.id,
+          crossedLeft,
+          crossedRight,
+          leftMark: `(${leftMark.x},${leftMark.y})`,
+          rightMark: `(${rightMark.x},${rightMark.y})`,
+          ...(!crossedLeft ? { dbgLeft } : {}),
+          ...(!crossedRight ? { dbgRight } : {}),
+        })
+      }
+
+      if (crossedLeft || crossedRight) {
+        const side = crossedLeft ? 'left' : 'right'
+        const markIdx = crossedLeft ? leftIdx : rightIdx
+        progress.gateSide = side
+        progress.activeMarkIndex = markIdx
+        progress.stage = 2 // Next stage will track exit radial
+
+        events.push(this.buildLapDebugEvent(boat, state, {
+          leg,
+          stage: 2,
+          crossed: true,
+          distance: boat.distanceToNextMark ?? 0,
+          stagesTotal: 3, // gate line + south + exit
+        }))
+      }
+      return events
+    }
+
+    // STAGE 2+: Track remaining radials for the committed mark (exit radial)
     if (!progress.gateSide || progress.activeMarkIndex === undefined) {
       progress.stage = 0
       return events
@@ -593,8 +632,9 @@ export class HostLoop {
     const chosenMark = marks[progress.activeMarkIndex]
     if (!chosenMark) return events
 
-    const radials = gateRadials[progress.gateSide]
-    const radialStage = progress.stage - 1 // Subtract 1 because stage 0 was gate line
+    // Skip the south radial (index 0) because commitment already required it.
+    const radials = gateRadials[progress.gateSide].slice(1)
+    const radialStage = progress.stage - 2 // 0-based within remaining radials
     const step = radials[radialStage]
     
     if (!step) {
@@ -629,7 +669,7 @@ export class HostLoop {
 
     if (crossed) {
       progress.stage += 1
-      const totalStages = 1 + radials.length // gate line + radials
+      const totalStages = 3 // gate line + south commit + exit
       
       events.push(this.buildLapDebugEvent(boat, state, {
         leg,
