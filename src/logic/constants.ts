@@ -12,8 +12,8 @@ export const STALL_SPEED_FACTOR = 0.35 //How much a boat slows down when it stal
 export const DEFAULT_SHEET = 0.75 //How much sheet a boat has when it starts
 export const SPIN_HOLD_SECONDS = 2 //How long a boat holds when it spins
 export const TACK_LOCK_ENABLED = false //Whether a boat can tack while it is locked
-export const TACK_MIN_TIME_SECONDS = 1.8 //Minimum time (in seconds) to complete a tack, regardless of turn rate
-export const TACK_SPEED_PENALTY = 0.8 //Speed penalty factor applied during tacks (0.0 to 1.0)
+export const TACK_MIN_TIME_SECONDS = 1.0 //Minimum tack time in seconds
+export const TACK_SPEED_PENALTY = 0.7 //Speed Multiplier:lower = slower, 1.0 = no penalty
 export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be considered a tack and apply speed penalty
 
 
