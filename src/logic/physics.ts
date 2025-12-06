@@ -61,6 +61,7 @@ import {
   TACK_SPEED_PENALTY,
   TURN_RATE_DEG,
 } from './constants'
+import { appEnv } from '@/config/env'
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -315,8 +316,10 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     // STEP 1: Process VMG Mode (Velocity Made Good autopilot)
     // ========================================================================
     
-    // Ensure vmgMode is always boolean (defaults to false if not provided)
-    boat.vmgMode = !!input?.vmgMode
+    // Only update vmgMode when explicitly provided in input (preserve between ticks)
+    if (input?.vmgMode !== undefined) {
+      boat.vmgMode = input.vmgMode
+    }
 
     // If there's a heading input, exit VMG mode (user is taking manual control)
     // But skip this check during spins (rightsSuspended) since spins inject headings
@@ -375,7 +378,7 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     
     // Calculate TWA (despite variable name "awa")
     const awa = apparentWindAngle(boat.headingDeg, state.wind.directionDeg)
-    let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET)
+    let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET) * appEnv.speedMultiplier
     
     // Apply stall penalty (from sailing into no-go zone)
     if (boat.stallTimer > 0) {
@@ -411,6 +414,9 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     // Coordinate system: +X = East, +Y = South (y inverted because North is "up" on screen)
     const courseRad = degToRad(boat.headingDeg)
     const speedMs = boat.speed * KNOTS_TO_MS
+    boat.prevPos = boat.prevPos ?? { x: boat.pos.x, y: boat.pos.y }
+    boat.prevPos.x = boat.pos.x
+    boat.prevPos.y = boat.pos.y
     boat.pos.x += Math.sin(courseRad) * speedMs * dt
     boat.pos.y -= Math.cos(courseRad) * speedMs * dt  // Negative because North is up
   })

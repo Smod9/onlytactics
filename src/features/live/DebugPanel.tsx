@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { useInputTelemetry, useRaceState } from '@/state/hooks'
 import { identity } from '@/net/identity'
 import { apparentWindAngleSigned, angleDiff } from '@/logic/physics'
+import { appEnv } from '@/config/env'
+import type { GameNetwork } from '@/net/gameNetwork'
 
 const formatAngle = (deg: number) => `${deg.toFixed(1)}°`
 const formatSpeed = (speed: number) => `${speed.toFixed(2)} kts`
@@ -9,9 +11,10 @@ const formatCoord = (value: number) => `${value.toFixed(1)} m`
 
 type Props = {
   onClose?: () => void
+  network?: GameNetwork
 }
 
-export const DebugPanel = ({ onClose }: Props) => {
+export const DebugPanel = ({ onClose, network }: Props) => {
   const race = useRaceState()
   const telemetry = useInputTelemetry()
   const brokerLabel = 'Broker: CloudAMQP'
@@ -24,6 +27,8 @@ export const DebugPanel = ({ onClose }: Props) => {
       ),
     [race.boats],
   )
+  const isHost = race.hostId === identity.clientId
+  const showHostDebug = appEnv.debugHud && isHost && network
 
   return (
     <div className="debug-panel">
@@ -107,6 +112,32 @@ export const DebugPanel = ({ onClose }: Props) => {
           )
         })}
       </div>
+      {showHostDebug && (
+        <div className="debug-table">
+          <div className="debug-table-header">
+            <span>Boat</span>
+            <span>Lap</span>
+            <span>Actions</span>
+          </div>
+          {boats.map((boat) => (
+            <div key={`${boat.id}-laps`} className="debug-table-row">
+              <span>{boat.name}</span>
+              <span>{(boat.lap ?? 0) + 1}</span>
+              <span className="debug-actions">
+                <button type="button" onClick={() => network.debugJumpBoatToNextMark(boat.id)}>
+                  Jump
+                </button>
+                <button type="button" onClick={() => network.debugAdvanceBoatLap(boat.id)}>
+                  + Lap
+                </button>
+                <button type="button" onClick={() => network.debugFinishBoat(boat.id)}>
+                  Finish
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

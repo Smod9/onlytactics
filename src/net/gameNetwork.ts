@@ -303,6 +303,39 @@ export class GameNetwork {
     }
   }
 
+  debugAdvanceBoatLap(boatId: string) {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'debug_lap', boatId })
+      this.colyseusBridge?.sendHostCommand({ kind: 'debug_lap', boatId })
+      return
+    }
+    if (this.controller instanceof HostController) {
+      this.controller.debugAdvanceBoatLap(boatId)
+    }
+  }
+
+  debugFinishBoat(boatId: string) {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'debug_finish', boatId })
+      this.colyseusBridge?.sendHostCommand({ kind: 'debug_finish', boatId })
+      return
+    }
+    if (this.controller instanceof HostController) {
+      this.controller.debugFinishBoat(boatId)
+    }
+  }
+
+  debugJumpBoatToNextMark(boatId: string) {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'debug_warp', boatId })
+      this.colyseusBridge?.sendHostCommand({ kind: 'debug_warp', boatId })
+      return
+    }
+    if (this.controller instanceof HostController) {
+      this.controller.debugTeleportBoatToNextMark(boatId)
+    }
+  }
+
   resetRace() {
     if (this.useColyseus()) {
       netLog('send host command', { kind: 'reset' })

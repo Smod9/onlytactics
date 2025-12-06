@@ -19,6 +19,7 @@ import { identity, setClientName } from '@/net/identity'
 import { startRosterWatcher } from '@/state/rosterStore'
 import { RosterPanel } from './RosterPanel'
 import { TacticianPopout } from './TacticianPopout'
+import { ProgressStepper } from './ProgressStepper'
 import type { RaceRole } from '@/types/race'
 import { OnScreenControls } from './OnScreenControls'
 
@@ -29,6 +30,7 @@ export const LiveClient = () => {
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [needsName, setNeedsName] = useState(!identity.clientName)
+  const [idleSuspended, setIdleSuspended] = useState(false)
   const headerCtaEl =
     typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
@@ -52,6 +54,56 @@ export const LiveClient = () => {
     }
   }, [network, needsName])
 
+  useEffect(() => {
+    if (needsName || idleSuspended) return
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+    const timeoutMs = appEnv.clientIdleTimeoutMs
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return
+
+    let idleTimer: number | undefined
+
+    const expireForIdle = () => {
+      setIdleSuspended(true)
+      network.stop()
+    }
+
+    const resetIdleTimer = () => {
+      window.clearTimeout(idleTimer)
+      idleTimer = window.setTimeout(expireForIdle, timeoutMs)
+    }
+
+    const handleActivity = () => {
+      if (document.hidden) return
+      resetIdleTimer()
+    }
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        resetIdleTimer()
+      }
+    }
+
+    resetIdleTimer()
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'pointerdown',
+      'pointermove',
+      'keydown',
+      'wheel',
+      'touchstart',
+    ]
+
+    activityEvents.forEach((event) => window.addEventListener(event, handleActivity))
+    window.addEventListener('focus', handleActivity)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.clearTimeout(idleTimer)
+      activityEvents.forEach((event) => window.removeEventListener(event, handleActivity))
+      window.removeEventListener('focus', handleActivity)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [idleSuspended, needsName, network, appEnv.clientIdleTimeoutMs])
 
   const role = useSyncExternalStore<RaceRole>(
     (listener) => network.onRoleChange(listener),
@@ -74,6 +126,12 @@ export const LiveClient = () => {
     setClientName(trimmed)
     setNeedsName(false)
     network.announcePresence('online')
+  }
+
+  const resumeFromIdle = () => {
+    if (!idleSuspended) return
+    setIdleSuspended(false)
+    void network.start()
   }
 
   const headerPortal =
@@ -106,6 +164,7 @@ export const LiveClient = () => {
   return (
     <div className="live-client">
       {headerPortal}
+      <ProgressStepper boat={playerBoat} />
       {needsName && (
         <div className="username-gate">
           <div className="username-card">
@@ -122,6 +181,17 @@ export const LiveClient = () => {
                 Join Race
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {idleSuspended && (
+        <div className="username-gate">
+          <div className="username-card">
+            <h2>You went idle</h2>
+            <p>We paused your connection so someone else can host while you’re away.</p>
+            <button type="button" onClick={resumeFromIdle}>
+              Rejoin Race
+            </button>
           </div>
         </div>
       )}
@@ -188,15 +258,38 @@ export const LiveClient = () => {
               {race.leaderboard.slice(0, 6).map((boatId, index) => {
                 const boat = race.boats[boatId]
                 if (!boat) return null
-                const lap = Math.min(boat.lap ?? 0, race.lapsToFinish)
-                const finished = boat.finished || lap >= race.lapsToFinish
+                const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
+                const finished = boat.finished || internalLap >= race.lapsToFinish
+                const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
+                const onFinalLap = internalLap >= race.lapsToFinish - 1
+                // Display lap as 1-indexed (internal lap 0 = "Lap 1", internal lap 1 = "Lap 2", etc.)
+                const displayLap = internalLap + 1
+                const medal =
+                  finished && index === 0
+                    ? '🥇'
+                    : finished && index === 1
+                      ? '🥈'
+                      : finished && index === 2
+                        ? '🥉'
+                        : ''
+                
+                let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
+                if (finished) {
+                  statusText = 'Finished'
+                } else if (atLine && !onFinalLap) {
+                  statusText = 'Pre-start'
+                } else if (atLine && onFinalLap) {
+                  statusText = 'Finish'
+                }
+                
                 return (
                   <li key={boatId}>
                     <span className="leaderboard-position">{index + 1}.</span>
-                    <span className="leaderboard-name">{boat.name}</span>
-                    <span className="leaderboard-meta">
-                      {finished ? 'Finished' : `Lap ${lap}/${race.lapsToFinish}`}
+                    <span className="leaderboard-name">
+                      {medal && <span className="leaderboard-medal">{medal} </span>}
+                      {boat.name}
                     </span>
+                    <span className="leaderboard-meta">{statusText}</span>
                   </li>
                 )
               })}
@@ -234,7 +327,7 @@ export const LiveClient = () => {
       <TacticianPopout />
       {showDebug && (
         <div className="debug-dock">
-          <DebugPanel onClose={() => setShowDebug(false)} />
+          <DebugPanel onClose={() => setShowDebug(false)} network={network} />
         </div>
       )}
     </div>

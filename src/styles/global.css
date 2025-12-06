@@ -1,44 +1,3 @@
-/* Maintenance overlay */
-.maintenance-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(7, 10, 20, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1.5rem;
-}
-
-.maintenance-card {
-  max-width: 480px;
-  background: #0f1424;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
-  text-align: center;
-}
-
-.maintenance-card h2 {
-  margin-bottom: 0.75rem;
-}
-
-.maintenance-card button {
-  margin-top: 1.5rem;
-  background: #4b7bec;
-  border: none;
-  border-radius: 999px;
-  color: #fff;
-  padding: 0.65rem 1.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.maintenance-card button:hover {
-  opacity: 0.9;
-}
 .username-gate {
   position: fixed;
   inset: 0;
@@ -738,6 +697,10 @@ button {
   color: #9fb7ff;
 }
 
+.leaderboard-medal {
+  margin-right: 0.3rem;
+}
+
 .leaderboard-name {
   font-weight: 600;
 }
@@ -745,6 +708,142 @@ button {
 .leaderboard-meta {
   font-size: 0.8rem;
   color: #b7c2ff;
+}
+
+.progress-stepper {
+  --hud-width: 320px; /* approx width of hud panel; adjusts center toward stage */
+  position: fixed;
+  top: 18px;
+  left: calc(50% - var(--hud-width) / 2);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  z-index: 20;
+  font-size: 0.65rem;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.progress-bullet {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.6rem;
+}
+
+.progress-connector {
+  width: 12px;
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.progress-label {
+  font-weight: 600;
+}
+
+.status-done .progress-bullet {
+  border-color: #7df5b8;
+  color: #7df5b8;
+}
+
+.status-active .progress-bullet {
+  border-color: #ffe29f;
+  color: #ffe29f;
+}
+
+.status-pending .progress-bullet {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.status-done .progress-label {
+  color: #7df5b8;
+}
+
+.status-active .progress-label {
+  color: #ffe29f;
+}
+
+.status-pending .progress-label {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.mark-checklist {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.mark-checklist h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9adff9;
+}
+
+.mark-checklist ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checklist-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.checklist-item:last-child {
+  border-bottom: none;
+}
+
+.marker-label {
+  flex: 1;
+  margin-right: 0.5rem;
+}
+
+.marker-status {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.status-done .marker-label,
+.status-done .marker-status {
+  color: #7df5b8;
+}
+
+.status-active .marker-label,
+.status-active .marker-status {
+  color: #ffe29f;
+}
+
+.status-pending .marker-label,
+.status-pending .marker-status {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .chat-header {
@@ -787,16 +886,10 @@ button {
   font-size: 0.85rem;
 }
 
-.chat-host {
-  /* border removed */
-}
-
-.chat-player {
-  /* border removed */
-}
-
+.chat-host,
+.chat-player,
 .chat-spectator {
-  /* border removed */
+  border: none;
 }
 
 .chat-input {

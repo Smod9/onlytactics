@@ -23,7 +23,7 @@ export const appEnv = {
     rawEnv.PENALTY_COOLDOWN_SECONDS ?? rawEnv.VITE_PENALTY_COOLDOWN_SECONDS,
     15,
   ),
-  debugHud: toBool(rawEnv.DEBUG_HUD ?? rawEnv.VITE_DEBUG_HUD, false),
+  debugHud: toBool(rawEnv.DEBUG_HUD ?? rawEnv.VITE_DEBUG_HUD, true),
   debugNetLogs: toBool('true', true),
   fixedWind: toBool(rawEnv.FIXED_WIND ?? rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.BASELINE_WIND_DEG ?? rawEnv.VITE_BASELINE_WIND_DEG, 360),
@@ -34,6 +34,7 @@ export const appEnv = {
     150,
   ),
   lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 3),
+  speedMultiplier: toNumber(rawEnv.SPEED_MULTIPLIER ?? rawEnv.VITE_SPEED_MULTIPLIER, 1),
 } as const
 
 export type AppEnv = typeof appEnv
