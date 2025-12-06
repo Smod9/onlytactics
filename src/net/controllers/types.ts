@@ -3,6 +3,7 @@ export type ControlUpdate = {
   absoluteHeadingDeg?: number
   deltaHeadingDeg?: number
   spin?: 'full'
+  vmgMode?: boolean
   clientSeq?: number
 }
 

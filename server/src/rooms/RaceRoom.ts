@@ -2,11 +2,13 @@ import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
 import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
-import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState } from '@/types/race'
+import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState, PlayerInput } from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { assignLeaderboard } from '@/logic/leaderboard'
 import { placeBoatNearNextMark } from '@/logic/debugPlacement'
+import { normalizeDeg, quantizeHeading } from '@/logic/physics'
+import { SPIN_HOLD_SECONDS } from '@/logic/constants'
 import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
@@ -29,6 +31,8 @@ type InputMessage = {
   absoluteHeadingDeg?: number
   deltaHeadingDeg?: number
   spin?: 'full'
+  vmgMode?: boolean
+  clearPenalty?: boolean
 }
 
 type HostCommand =
@@ -57,6 +61,8 @@ export class RaceRoom extends Room<RaceRoomState> {
   private hostClientId?: string
 
   private chatRateMap = new Map<string, number[]>()
+  // Track active spins: maps boatId to array of timeout IDs for the spin sequence
+  private activeSpins = new Map<string, NodeJS.Timeout[]>()
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
@@ -93,6 +99,25 @@ export class RaceRoom extends Room<RaceRoomState> {
       if (!this.raceStore) return
       const boatId = this.resolveBoatId(client, message.boatId)
       if (!boatId) return
+      
+      // Handle penalty clear requests
+      if (message.clearPenalty) {
+        this.clearPenalty(boatId)
+        return
+      }
+      
+      // Handle spin requests: queue a 360° spin sequence
+      if (message.spin === 'full') {
+        this.queueSpin(boatId)
+        return
+      }
+      
+      // Ignore other inputs during active spin to prevent interference
+      if (this.activeSpins.has(boatId)) {
+        return
+      }
+      
+      // Process normal heading/VMG inputs
       const payload = {
         boatId,
         seq: message.seq ?? 0,
@@ -100,6 +125,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         absoluteHeadingDeg: message.absoluteHeadingDeg,
         deltaHeadingDeg: message.deltaHeadingDeg,
         spin: message.spin,
+        vmgMode: message.vmgMode,
         tClient: Date.now(),
       }
       this.raceStore.upsertInput(payload)
@@ -176,6 +202,131 @@ export class RaceRoom extends Room<RaceRoomState> {
   onDispose() {
     console.info('[RaceRoom] disposed', { roomId: this.roomId })
     this.loop?.stop()
+    // Clean up any active spins when room is disposed
+    this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
+    this.activeSpins.clear()
+  }
+  
+  /**
+   * Queue a 360° spin sequence for a boat.
+   * The spin consists of three heading changes: +120°, +240°, then back to origin.
+   * Each heading is held for SPIN_HOLD_SECONDS before moving to the next.
+   */
+  private queueSpin(boatId: string) {
+    // Prevent multiple simultaneous spins for the same boat
+    if (this.activeSpins.has(boatId)) return
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    const boat = state.boats[boatId]
+    if (!boat) return
+    
+    // Disable VMG mode and set rightsSuspended to prevent other inputs during spin
+    this.mutateState((draft) => {
+      const target = draft.boats[boatId]
+      if (target) {
+        target.rightsSuspended = true
+        target.vmgMode = false
+      }
+    })
+    
+    // Calculate the three headings for the spin sequence (120° increments)
+    const origin = boat.desiredHeadingDeg ?? boat.headingDeg
+    const headings = [
+      origin + 120,
+      origin + 240,
+      origin,
+    ].map((deg) => normalizeDeg(deg))
+    
+    // Schedule each heading change with increasing delays
+    let delay = 0
+    const timers: NodeJS.Timeout[] = headings.map((heading, index) => {
+      const timer = setTimeout(() => {
+        this.injectHeading(boatId, heading)
+        // On the last heading (back to origin), finish the spin
+        if (index === headings.length - 1) {
+          this.finishSpin(boatId)
+        }
+      }, delay)
+      delay += SPIN_HOLD_SECONDS * 1000
+      return timer
+    })
+    this.activeSpins.set(boatId, timers)
+  }
+  
+  /**
+   * Inject a heading change into the race state as part of a spin sequence.
+   * This simulates the boat turning during a 360° spin.
+   */
+  private injectHeading(boatId: string, heading: number) {
+    if (!this.raceStore) return
+    const normalized = quantizeHeading(normalizeDeg(heading))
+    const payload: PlayerInput = {
+      boatId,
+      desiredHeadingDeg: normalized,
+      absoluteHeadingDeg: normalized,
+      tClient: Date.now(),
+      seq: 0,
+    }
+    this.raceStore.upsertInput(payload)
+  }
+  
+  /**
+   * Finish a spin sequence: clean up timers and restore normal boat state.
+   * This is called after the final heading change (back to origin) completes.
+   */
+  private finishSpin(boatId: string) {
+    // Clear all timers for this spin
+    const timers = this.activeSpins.get(boatId)
+    if (timers) {
+      timers.forEach((timer) => clearTimeout(timer))
+      this.activeSpins.delete(boatId)
+    }
+    // Restore normal boat state (clear rightsSuspended flag)
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (boat) {
+        boat.rightsSuspended = false
+      }
+    })
+    // Clear one penalty if the boat has any
+    this.clearPenalty(boatId)
+  }
+  
+  /**
+   * Clear one penalty from a boat after completing a 360° spin.
+   * Creates and broadcasts an event if a penalty was cleared.
+   */
+  private clearPenalty(boatId: string) {
+    if (!this.raceStore) return
+    let cleared = false
+    let boatName: string | undefined
+    let remaining = 0
+    
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boatName = boat.name
+      if (boat.penalties > 0) {
+        boat.penalties -= 1
+        cleared = true
+      }
+      boat.fouled = boat.penalties > 0
+      remaining = boat.penalties
+    })
+    
+    // Only create event if a penalty was actually cleared
+    if (!cleared || !boatName) return
+    
+    const state = this.raceStore.getState()
+    const event: RaceEvent = {
+      eventId: createId('event'),
+      kind: 'rule_hint',
+      ruleId: 'other',
+      boats: [boatId],
+      t: state.t,
+      message: `${boatName} completed a 360° spin and cleared a penalty (${remaining} remaining)`,
+    }
+    this.broadcastEvents([event])
   }
 
   private assignBoatToClient(client: Client, options?: Record<string, unknown>) {

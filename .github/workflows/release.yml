@@ -1,9 +1,7 @@
 name: Semantic Release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   release:
@@ -37,7 +35,6 @@ jobs:
   deploy:
     needs: release
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,27 +50,15 @@ jobs:
         run: npm ci
 
       - name: Build frontend
+        env:
+          VITE_COUNTDOWN_SECONDS: "180"
         run: npm run build
 
       - name: Install Surge
         run: npm install --global surge
 
-      - name: Deploy to Surge
+      - name: Manual Surge Deploy
         env:
           SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
           SURGE_DOMAIN: ${{ secrets.SURGE_DOMAIN }}
         run: surge ./dist "$SURGE_DOMAIN"
-
-      - name: Install server dependencies
-        working-directory: server
-        run: npm ci
-
-      - name: Build Colyseus server bundle
-        working-directory: server
-        run: npm run build
-
-      - name: Deploy to Colyseus Cloud
-        working-directory: server
-        env:
-          COLYSEUS_DEPLOY_KEY: ${{ secrets.COLYSEUS_DEPLOY_KEY }}
-        run: npx @colyseus/cloud deploy --deployKey "$COLYSEUS_DEPLOY_KEY"

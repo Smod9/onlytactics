@@ -1,3 +1,47 @@
+# [1.13.0](https://github.com/Smod9/onlytactics/compare/v1.12.0...v1.13.0) (2025-12-04)
+
+
+### Bug Fixes
+
+* **crashbox:** Tightens up the crashbox to not include the name and allow dipping ([f2b9873](https://github.com/Smod9/onlytactics/commit/f2b98733e4bd7f4f16975340663f449d3d68a3c9))
+* **port-starboard:** The rule was broken, and is now fixed ([87f6925](https://github.com/Smod9/onlytactics/commit/87f6925e393db0530cb4b92672a6e3c6985ddbfb))
+
+
+### Features
+
+* **any host:** Anyone can start and restart the race now for these early days. ([57cf594](https://github.com/Smod9/onlytactics/commit/57cf5940f487e88564b11ae808623848f96cbf8d))
+* **moves gate:** Moves leeward gate further down the course ([92fc58f](https://github.com/Smod9/onlytactics/commit/92fc58fe8d9e4c2b395d7c1d00f9495d2e2a809a))
+* **social links:** Adds social links to home page for easy access ([d55ec89](https://github.com/Smod9/onlytactics/commit/d55ec896dab84cbfe855d7fc6e4e970f81af5a42))
+
+
+### Reverts
+
+* Revert "feat(any host): Anyone can start and restart the race now for these e…" ([484315f](https://github.com/Smod9/onlytactics/commit/484315f0694b10ea37d4a5ed5191bb3578f6da70))
+
+# [1.12.0](https://github.com/Smod9/onlytactics/compare/v1.11.0...v1.12.0) (2025-11-30)
+
+
+### Features
+
+* **ui polish:** Hides a bunch of buttons, adds more social tags, and updates the version number ([1819cdf](https://github.com/Smod9/onlytactics/commit/1819cdf589cb6cf87454bf5060c83b9035ecc304))
+* **ui polish:** Moves chat to stage, moves name to header, adds flow for name change ([2cfe678](https://github.com/Smod9/onlytactics/commit/2cfe6785afc2699345f08e8c7020392cb132f25f))
+
+# [1.11.0](https://github.com/Smod9/onlytactics/compare/v1.10.0...v1.11.0) (2025-11-30)
+
+
+### Bug Fixes
+
+* **penalty turns:** resolves regression with penalty turns ([e980ec3](https://github.com/Smod9/onlytactics/commit/e980ec39bbaad321550b8087a0a3f164e437028d))
+
+
+### Features
+
+* **adjust course:** Moves everything 'down' and drops right hand pin in gate to make it less right favored ([d79ffa7](https://github.com/Smod9/onlytactics/commit/d79ffa78c426385455f8233482acc3bbffd3cbc7))
+* **auto_vmg:** Auto vmg working now. hit space once to go to vmgMode - any other control exits it ([a9c9945](https://github.com/Smod9/onlytactics/commit/a9c994562746b16ec1d05ad8ab6eaffa9e7b4007))
+* **boats move faster:** Boats now move across the screen twice as fast by adjusting knots_to_ms ([ac3a15f](https://github.com/Smod9/onlytactics/commit/ac3a15f7a11bedfbb795d98fc7bef3ddd1d44d4f))
+* **tack_lock:** Disabled the lock when tacking. you can now hit return again to abandon a tack ([255a99e](https://github.com/Smod9/onlytactics/commit/255a99e24730bf565346edd37b063531a080162b))
+* **tacking cost:** Adds more variables to fine tune how expensive a tack is, and makes them meaningfully more costly. Also increases turn rate ([f56544e](https://github.com/Smod9/onlytactics/commit/f56544e3a0fc996812af4a016bfc5b120c2cd036))
+
 # [1.10.0](https://github.com/Smod9/onlytactics/compare/v1.9.0...v1.10.0) (2025-11-27)
 
 

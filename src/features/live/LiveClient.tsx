@@ -60,7 +60,7 @@ export const LiveClient = () => {
     const timeoutMs = appEnv.clientIdleTimeoutMs
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return
 
-    let idleTimer: ReturnType<typeof window.setTimeout> | undefined
+    let idleTimer: number | undefined
 
     const expireForIdle = () => {
       setIdleSuspended(true)
@@ -138,7 +138,9 @@ export const LiveClient = () => {
     role === 'host' && headerCtaEl
       ? createPortal(
           <div className="header-controls">
-            <ReplaySaveButton />
+            <div style={{ display: 'none' }}>
+              <ReplaySaveButton />
+            </div>
             <button
               type="button"
               className="start-sequence"
@@ -197,6 +199,7 @@ export const LiveClient = () => {
         <div className="stage-shell">
           <PixiStage />
           <OnScreenControls />
+          <ChatPanel network={network} />
         </div>
         <aside className="hud-panel">
         <h2>Race Feed</h2>
@@ -204,9 +207,6 @@ export const LiveClient = () => {
           Race{' '}
           <strong>{appEnv.netTransport === 'colyseus' ? appEnv.colyseusRoomId : appEnv.raceId}</strong>{' '}
           as <strong>{role}</strong>
-        </p>
-        <p>
-          You are <strong>{identity.clientName}</strong>
         </p>
         {networkStatus === 'looking_for_host' && (
           <p className="countdown-status">Looking for host&hellip;</p>
@@ -292,16 +292,15 @@ export const LiveClient = () => {
           {!events.length && <p>No rule events yet.</p>}
         </div>
         {race.phase === 'prestart' && !race.countdownArmed && <RosterPanel role={role} />}
-        <ChatPanel network={network} />
-        <button
-          type="button"
-          className="debug-toggle"
-          onClick={() => setShowDebug((value) => !value)}
-        >
-          {showDebug ? 'Hide Debug' : 'Show Debug'}
-        </button>
       </aside>
       </div>
+      <button
+        type="button"
+        className="debug-toggle"
+        onClick={() => setShowDebug((value) => !value)}
+      >
+        {showDebug ? 'Hide Debug' : 'Show Debug'}
+      </button>
       <TacticianPopout />
       {showDebug && (
         <div className="debug-dock">

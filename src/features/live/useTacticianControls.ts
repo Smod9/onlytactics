@@ -14,6 +14,8 @@ import {
 import {
   HEADING_STEP_DEG,
   MAX_DOWNWIND_ANGLE_DEG,
+  TACK_LOCK_ENABLED,
+  TACK_MIN_TIME_SECONDS,
   TURN_RATE_DEG,
 } from '@/logic/constants'
 
@@ -40,9 +42,15 @@ export const useTacticianControls = (
   const seqRef = useRef(0)
   const pendingRef = useRef(new Map<number, number>())
   const lastAckSeqRef = useRef(0)
+  const vmgModeRef = useRef(false)
 
   useEffect(() => {
     raceRef.current = raceState
+    // Sync vmgModeRef with current boat state
+    const boat = raceState.boats[identity.boatId]
+    if (boat?.vmgMode !== undefined) {
+      vmgModeRef.current = boat.vmgMode
+    }
   }, [raceState])
 
   useEffect(() => {
@@ -66,7 +74,7 @@ export const useTacticianControls = (
       }
 
       const key = event.code ?? event.key
-      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS'].includes(key)) {
+      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP'].includes(key)) {
         return
       }
       if (event.repeat) {
@@ -75,7 +83,7 @@ export const useTacticianControls = (
       }
 
       const now = performance.now()
-      if (lockUntilRef.current > now) {
+      if (TACK_LOCK_ENABLED && lockUntilRef.current > now) {
         event.preventDefault()
         return
       }
@@ -103,24 +111,36 @@ export const useTacticianControls = (
         event.preventDefault()
       }
 
+      const exitVmgMode = () => {
+        if (vmgModeRef.current) {
+          vmgModeRef.current = false
+          const seq = (seqRef.current += 1)
+          pendingRef.current.set(seq, performance.now())
+          networkRef.current?.updateVmgMode(false, seq)
+        }
+      }
+
       const setLockForHeading = (target: number) => {
+        if (!TACK_LOCK_ENABLED) return
         const diff = Math.abs(angleDiff(target, boat.headingDeg))
-        const seconds = diff / TURN_RATE_DEG + 0.5
+        // Calculate time based on turn rate, but enforce minimum tack time
+        const calculatedSeconds = diff / TURN_RATE_DEG + 0.5
+        const seconds = Math.max(calculatedSeconds, TACK_MIN_TIME_SECONDS)
         lockUntilRef.current = now + seconds * 1000
       }
 
       switch (key) {
         case 'Space': {
-          const isUpwind = absAwa <= 90
-          const targetAwa = isUpwind ? vmgAngles.upwindAwa : vmgAngles.downwindAwa
-          const heading = headingFromAwa(
-            state.wind.directionDeg,
-            tackSign * targetAwa,
-          )
-          sendHeading(heading)
+          // Toggle VMG mode
+          vmgModeRef.current = !vmgModeRef.current
+          const seq = (seqRef.current += 1)
+          pendingRef.current.set(seq, performance.now())
+          networkRef.current?.updateVmgMode(vmgModeRef.current, seq)
+          event.preventDefault()
           break
         }
         case 'Enter': {
+          exitVmgMode()
           const isUpwind = absAwa < 90
           const nextSign = -tackSign || 1
           const targetAwa = isUpwind ? vmgAngles.upwindAwa : vmgAngles.downwindAwa
@@ -130,6 +150,7 @@ export const useTacticianControls = (
           break
         }
         case 'ArrowUp': {
+          exitVmgMode()
           event.preventDefault()
           const desiredAbs = Math.max(absAwa - HEADING_STEP_DEG, 0)
           const heading = headingFromAwa(
@@ -140,6 +161,7 @@ export const useTacticianControls = (
           break
         }
         case 'ArrowDown': {
+          exitVmgMode()
           event.preventDefault()
           const desiredAbs = Math.min(absAwa + HEADING_STEP_DEG, MAX_DOWNWIND_ANGLE_DEG)
           const heading = headingFromAwa(
@@ -150,10 +172,16 @@ export const useTacticianControls = (
           break
         }
         case 'KeyS': {
+          exitVmgMode()
           event.preventDefault()
           const seq = (seqRef.current += 1)
           pendingRef.current.set(seq, performance.now())
           networkRef.current?.requestSpin(seq)
+          break
+        }
+        case 'KeyP': {
+          event.preventDefault()
+          networkRef.current?.clearOnePenalty()
           break
         }
         default:

@@ -43,13 +43,33 @@
   color: inherit;
 }
 
-.username-form button {
+.username-form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.username-form button,
+.username-card .username-form-actions button {
   padding: 0.75rem;
   border-radius: 0.5rem;
   border: none;
   background: linear-gradient(135deg, #4f7dff, #6e5bff);
   color: white;
   font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+}
+
+.username-form button:disabled,
+.username-card .username-form-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.username-form-cancel,
+.username-card .username-form-actions .username-form-cancel {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 :root {
   color-scheme: dark;
@@ -143,6 +163,38 @@ button {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.header-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.header-name:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.header-name-text {
+  font-weight: 500;
+}
+
+.header-name svg {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.header-name:hover svg {
+  opacity: 1;
 }
 
 .mode-switcher {
@@ -428,7 +480,7 @@ button {
 .event-list {
   flex: 1;
   overflow-y: auto;
-  max-height: 220px;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -510,11 +562,97 @@ button {
 /* controls panel removed */
 
 .chat-panel {
-  border-top: 1px solid #28304a;
-  padding-top: 0.75rem;
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  width: 240px;
+  max-height: 25vh;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.chat-panel .chat-header {
+  display: none;
+}
+
+.chat-panel .chat-log {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: rgba(5, 7, 15, 0.1);
+  border-radius: 0.5rem;
+  backdrop-filter: blur(4px);
+  max-height: calc(40vh - 3rem);
+}
+
+.chat-panel .chat-input {
+  pointer-events: auto;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: rgba(5, 7, 15, 0.1);
+  border-radius: 0.4rem;
+  backdrop-filter: blur(4px);
+}
+
+.chat-panel .chat-input input {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.3rem;
+  color: inherit;
+}
+
+.chat-panel .chat-input button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(79, 125, 255, 0.3);
+  border-radius: 0.3rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+.chat-panel .chat-message {
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.3rem;
+  background: rgba(0, 0, 0, 0.1);
+  font-size: 0.8rem;
+  line-height: 1.3;
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.chat-panel .chat-author {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.chat-panel .chat-text {
+  opacity: 0.85;
+  margin-left: 0.4rem;
+}
+
+.chat-panel .chat-empty {
+  display: none;
+}
+
+.chat-panel .chat-status {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  padding: 0.2rem 0.4rem;
+  min-height: 1.2em;
+  margin: 0;
+  color: #ff6b6b;
 }
 
 .leaderboard-panel {
@@ -744,15 +882,15 @@ button {
 }
 
 .chat-host {
-  border: 1px solid #ffd166;
+  /* border removed */
 }
 
 .chat-player {
-  border: 1px solid #4cc9f0;
+  /* border removed */
 }
 
 .chat-spectator {
-  border: 1px solid #adb5bd;
+  /* border removed */
 }
 
 .chat-input {
@@ -879,12 +1017,17 @@ kbd {
 }
 
 .debug-toggle {
-  margin-top: 0.5rem;
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
   padding: 0.4rem 0.8rem;
   border-radius: 0.4rem;
   border: 1px solid #3a4663;
   background: #11182a;
   color: #dfe7ff;
+  cursor: pointer;
+  z-index: 100;
+  font-size: 0.85rem;
 }
 
 .debug-dock {
@@ -1063,20 +1206,18 @@ kbd {
   gap: 3rem;
 }
 
-.landing-shell > * {
-  width: min(100%, 1120px);
-}
 
 .landing-hero {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 2rem;
-  align-items: stretch;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
 }
 
 @media (max-width: 900px) {
   .landing-hero {
     grid-template-columns: 1fr;
+    gap: 2rem;
   }
 }
 
@@ -1098,10 +1239,19 @@ kbd {
   gap: 1.2rem;
 }
 
+.landing-social-top {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
 .landing-hero-video {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .landing-section {
@@ -1231,6 +1381,33 @@ kbd {
 .landing-footer .note {
   font-size: 0.9rem;
   color: #7f8db4;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #b7c2ff;
+  transition: all 0.2s ease;
+}
+
+.social-link:hover,
+.social-link:focus-visible {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8ff;
+  transform: translateY(-1px);
+}
+
+.social-link svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 
 .replay-chat-log {

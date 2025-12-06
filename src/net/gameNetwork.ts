@@ -154,6 +154,36 @@ export class GameNetwork {
     this.controller?.updateLocalInput?.({ spin: 'full', clientSeq: seq })
   }
 
+  updateVmgMode(vmgMode: boolean, seq: number) {
+    if (this.useColyseus()) {
+      this.colyseusBridge?.sendInput({
+        boatId: identity.boatId,
+        seq,
+        vmgMode,
+        tClient: Date.now(),
+      })
+      return
+    }
+    this.controller?.updateLocalInput?.({
+      vmgMode,
+      clientSeq: seq,
+    })
+  }
+
+  clearOnePenalty() {
+    netLog('clearOnePenalty()')
+    if (!this.useColyseus()) {
+      netLog('clearOnePenalty() not supported for MQTT mode')
+      return
+    }
+    this.colyseusBridge?.sendInput({
+      boatId: identity.boatId,
+      seq: 0,
+      clearPenalty: true,
+      tClient: Date.now(),
+    })
+  }
+
   private async setRole(role: RaceRole) {
     netLog('setRole()', { nextRole: role })
     this.setStatus('joining')

@@ -28,8 +28,8 @@ const distance = (a: BoatState, b: BoatState) => {
 type Tack = 'port' | 'starboard'
 
 const getTack = (boat: BoatState, windDir: number): Tack => {
-  const relative = clampAngle180(windDir - boat.headingDeg)
-  return relative >= 0 ? 'starboard' : 'port'
+  const relative = clampAngle180(boat.headingDeg - windDir)
+  return relative >= 0 ? 'port' : 'starboard'
 }
 
 const boatPairKey = (rule: RuleId, a: string, b: string) =>
@@ -112,7 +112,7 @@ export class RulesEngine {
     b: BoatState,
   ): RuleResolution[] {
     const distanceApart = distance(a, b)
-    if (distanceApart > 20) return []
+    if (distanceApart > PORT_STARBOARD_DISTANCE) return []
     const tackA = getTack(a, state.wind.directionDeg)
     const tackB = getTack(b, state.wind.directionDeg)
     if (tackA !== tackB) return []

@@ -18,13 +18,14 @@ export const defaultBoatColors = [
 ]
 
 const defaultStartLine = {
-  pin: { x: -210, y: 80 },
-  committee: { x: 210, y: 70 },
+  pin: { x: -210, y: 120 },
+  committee: { x: 210, y: 110 },
 }
 
 const defaultLeewardGate = {
-  left: { x: -40, y: -20 },
-  right: { x: 40, y: -30 },
+  left: { x: -40, y: 63
+   },
+  right: { x: 40, y: 70 },
 }
 
 const structuredCopy = <T>(value: T): T => {
@@ -88,6 +89,7 @@ export const createBoatState = (
     prevPos: { x: baseX + jitter(jitterXRange), y: baseY + jitter(jitterYRange) },
     speed: 0,
     stallTimer: 0,
+    tackTimer: 0,
     overEarly: false,
     fouled: false,
     lastInputSeq: 0,
@@ -104,7 +106,7 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
   )
   const baselineWind = appEnv.baselineWindDeg
   const defaultMarks: Vec2[] = [
-    { x: 0, y: -240 }, // windward mark
+    { x: 0, y: -220 }, // windward mark
     defaultStartLine.committee,
     defaultStartLine.pin,
     defaultLeewardGate.left,
