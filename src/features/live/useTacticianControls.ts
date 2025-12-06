@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { appEnv } from '@/config/env'
 import type { RaceRole } from '@/types/race'
 import { useRaceState } from '@/state/hooks'
 import { identity } from '@/net/identity'
@@ -74,7 +75,9 @@ export const useTacticianControls = (
       }
 
       const key = event.code ?? event.key
-      if (!['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP', 'KeyJ'].includes(key)) {
+      const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP']
+      if (appEnv.debugHud) allowed.push('KeyJ')
+      if (!allowed.includes(key)) {
         return
       }
       if (event.repeat) {
@@ -185,6 +188,7 @@ export const useTacticianControls = (
           break
         }
         case 'KeyJ': {
+          if (!appEnv.debugHud) break
           // Debug: Jump to next mark
           event.preventDefault()
           networkRef.current?.debugJumpBoatToNextMark(identity.boatId)

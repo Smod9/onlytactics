@@ -264,6 +264,14 @@ export const LiveClient = () => {
                 const onFinalLap = internalLap >= race.lapsToFinish - 1
                 // Display lap as 1-indexed (internal lap 0 = "Lap 1", internal lap 1 = "Lap 2", etc.)
                 const displayLap = internalLap + 1
+                const medal =
+                  finished && index === 0
+                    ? '🥇'
+                    : finished && index === 1
+                      ? '🥈'
+                      : finished && index === 2
+                        ? '🥉'
+                        : ''
                 
                 let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
                 if (finished) {
@@ -277,7 +285,10 @@ export const LiveClient = () => {
                 return (
                   <li key={boatId}>
                     <span className="leaderboard-position">{index + 1}.</span>
-                    <span className="leaderboard-name">{boat.name}</span>
+                    <span className="leaderboard-name">
+                      {medal && <span className="leaderboard-medal">{medal} </span>}
+                      {boat.name}
+                    </span>
                     <span className="leaderboard-meta">{statusText}</span>
                   </li>
                 )

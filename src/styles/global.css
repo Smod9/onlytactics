@@ -697,6 +697,10 @@ button {
   color: #9fb7ff;
 }
 
+.leaderboard-medal {
+  margin-right: 0.3rem;
+}
+
 .leaderboard-name {
   font-weight: 600;
 }

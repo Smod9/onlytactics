@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useInputTelemetry, useRaceState } from '@/state/hooks'
 import { identity } from '@/net/identity'
 import { apparentWindAngleSigned, angleDiff } from '@/logic/physics'
+import { appEnv } from '@/config/env'
 import type { GameNetwork } from '@/net/gameNetwork'
 
 const formatAngle = (deg: number) => `${deg.toFixed(1)}°`
@@ -27,6 +28,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
     [race.boats],
   )
   const isHost = race.hostId === identity.clientId
+  const showHostDebug = appEnv.debugHud && isHost && network
 
   return (
     <div className="debug-panel">
@@ -110,7 +112,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
           )
         })}
       </div>
-      {isHost && network && (
+      {showHostDebug && (
         <div className="debug-table">
           <div className="debug-table-header">
             <span>Boat</span>
