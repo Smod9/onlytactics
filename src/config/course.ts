@@ -4,20 +4,31 @@ export type CourseLeg = {
   rounding: 'port' | 'starboard'
   markIndices: number[]
   label: string
-  kind?: 'windward' | 'leeward' | 'gate' | 'generic'
+  kind?: 'windward' | 'leeward' | 'gate' | 'start' | 'finish' | 'generic'
   /** For gates: indices of the two marks forming the gate line */
   gateMarkIndices?: [number, number]
+  /** For start/finish: indices of committee and pin marks forming the line */
+  finishLineIndices?: [number, number]
 }
 
 export type RadialStep = { axis: 'x' | 'y'; direction: 1 | -1 }
 
 export const courseLegs: CourseLeg[] = [
   {
+    id: 'start',
+    sequence: 0,
+    rounding: 'port', // Not used for start
+    markIndices: [1, 2], // Committee boat and pin
+    label: 'Start',
+    kind: 'start',
+    finishLineIndices: [1, 2], // Mark 1 = committee, Mark 2 = pin
+  },
+  {
     id: 'windward-entry',
     sequence: 1,
     rounding: 'port',
     markIndices: [0],
-    label: 'Windward (M1)',
+    label: 'Windward',
     kind: 'windward',
   },
   {
@@ -25,7 +36,7 @@ export const courseLegs: CourseLeg[] = [
     sequence: 2,
     rounding: 'port', // Will be determined dynamically based on which side they go
     markIndices: [3, 4], // Both gate marks - left (west) and right (east)
-    label: 'Leeward Gate',
+    label: 'Gate',
     kind: 'gate',
     gateMarkIndices: [3, 4], // Mark 3 = left/west, Mark 4 = right/east
   },
@@ -34,8 +45,17 @@ export const courseLegs: CourseLeg[] = [
     sequence: 3,
     rounding: 'port',
     markIndices: [0],
-    label: 'Windward Return (M3)',
+    label: 'Windward',
     kind: 'windward',
+  },
+  {
+    id: 'finish',
+    sequence: 4,
+    rounding: 'port', // Not used for finish
+    markIndices: [1, 2], // Committee boat and pin
+    label: 'Finish',
+    kind: 'finish',
+    finishLineIndices: [1, 2], // Mark 1 = committee, Mark 2 = pin
   },
 ]
 

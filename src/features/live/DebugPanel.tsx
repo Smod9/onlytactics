@@ -120,7 +120,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
           {boats.map((boat) => (
             <div key={`${boat.id}-laps`} className="debug-table-row">
               <span>{boat.name}</span>
-              <span>{boat.lap}</span>
+              <span>{(boat.lap ?? 0) + 1}</span>
               <span className="debug-actions">
                 <button type="button" onClick={() => network.debugJumpBoatToNextMark(boat.id)}>
                   Jump

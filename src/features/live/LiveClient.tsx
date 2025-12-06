@@ -258,14 +258,16 @@ export const LiveClient = () => {
               {race.leaderboard.slice(0, 6).map((boatId, index) => {
                 const boat = race.boats[boatId]
                 if (!boat) return null
-                const lap = Math.min(boat.lap ?? 0, race.lapsToFinish)
-                const finished = boat.finished || lap >= race.lapsToFinish
+                const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
+                const finished = boat.finished || internalLap >= race.lapsToFinish
+                // Display lap as 1-indexed (internal lap 0 = "Lap 1", internal lap 1 = "Lap 2", etc.)
+                const displayLap = internalLap + 1
                 return (
                   <li key={boatId}>
                     <span className="leaderboard-position">{index + 1}.</span>
                     <span className="leaderboard-name">{boat.name}</span>
                     <span className="leaderboard-meta">
-                      {finished ? 'Finished' : `Lap ${lap}/${race.lapsToFinish}`}
+                      {finished ? 'Finished' : `Lap ${displayLap}/${race.lapsToFinish}`}
                     </span>
                   </li>
                 )

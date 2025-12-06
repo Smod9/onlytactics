@@ -269,7 +269,7 @@ export class RaceScene {
       const mark = state.marks[annotation.markIndex]
       if (!mark) return
       const { x, y } = map(mark)
-      const color = annotation.rounding === 'port' ? 0x00ffc3 : 0xff9ecd
+      const color = annotation.rounding === 'port' ? 0xff6b6b : 0x00ffc3
       const kind: 'windward' | 'leeward' = annotation.kind === 'leeward' ? 'leeward' : 'windward'
       const steps = radialSets[kind][annotation.rounding]
       steps.forEach((step, idx) => {
@@ -340,13 +340,13 @@ export class RaceScene {
       const endX = leftScreen.x + dx * radialLength
       const endY = leftScreen.y + dy * radialLength
       const line = new Graphics()
-      line.setStrokeStyle({ width: 2, color: 0xff9ecd, alpha: 0.6 }) // Pink for starboard-ish
+      line.setStrokeStyle({ width: 2, color: 0x00ffc3, alpha: 0.6 }) // Green for starboard
       line.moveTo(leftScreen.x, leftScreen.y)
       line.lineTo(endX, endY)
       line.stroke()
       const tag = new Text({
         text: `${idx + 2}`, // +2 because stage 1 is the gate line
-        style: { fill: 0xff9ecd, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
+        style: { fill: 0x00ffc3, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
       })
       tag.anchor.set(0.5)
       tag.position.set(endX, endY)
@@ -361,13 +361,13 @@ export class RaceScene {
       const endX = rightScreen.x + dx * radialLength
       const endY = rightScreen.y + dy * radialLength
       const line = new Graphics()
-      line.setStrokeStyle({ width: 2, color: 0x00ffc3, alpha: 0.6 }) // Green for port-ish
+      line.setStrokeStyle({ width: 2, color: 0xff6b6b, alpha: 0.6 }) // Red for port
       line.moveTo(rightScreen.x, rightScreen.y)
       line.lineTo(endX, endY)
       line.stroke()
       const tag = new Text({
         text: `${idx + 2}`, // +2 because stage 1 is the gate line
-        style: { fill: 0x00ffc3, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
+        style: { fill: 0xff6b6b, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
       })
       tag.anchor.set(0.5)
       tag.position.set(endX, endY)
