@@ -1,3 +1,17 @@
+# [1.14.0](https://github.com/Smod9/onlytactics/compare/v1.13.0...v1.14.0) (2025-12-06)
+
+
+### Bug Fixes
+
+* **event-list-height:** Event list now takes up the full right side ([d8f34f6](https://github.com/Smod9/onlytactics/commit/d8f34f64e75a243df288f62b3bec1dabe4f5db2b))
+
+
+### Features
+
+* **faster-tacks:** Tacks now are less of a penalty (also fixes .env which we've gotta get out of here. ([5d1d522](https://github.com/Smod9/onlytactics/commit/5d1d52246b60229b4ab14e002960488a8598c849))
+* **Leaderboard:** (PR [#25](https://github.com/Smod9/onlytactics/issues/25)) Adds concept of legs/laps/leaderboard. Will need polish, but you can win a race now 🥇 ([4f8db55](https://github.com/Smod9/onlytactics/commit/4f8db557785a60d53e9b505fbed7d5a8ec849c31))
+* **p-key:** P now clears penalties - a debugging tool (easily abused) to clear penalties people believe were the apps fault in these early days ([74fe9f0](https://github.com/Smod9/onlytactics/commit/74fe9f07fa8539c174241f9052dd22ac2737d960))
+
 # [1.13.0](https://github.com/Smod9/onlytactics/compare/v1.12.0...v1.13.0) (2025-12-04)
 
 
