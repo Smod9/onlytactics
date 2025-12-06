@@ -4,7 +4,7 @@ import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
 import { raceStore } from '@/state/raceStore'
-import { courseLegs, courseMarkAnnotations, radialSets } from '@/config/course'
+import { courseLegs, courseMarkAnnotations, radialSets, gateRadials } from '@/config/course'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
@@ -245,7 +245,27 @@ export class RaceScene {
 
   private drawMarkRadials(state: RaceState, map: ScreenMapper) {
     const radialLength = 70
+    
+    // Track which marks are part of gates so we draw them differently
+    const gateMarkIndices = new Set<number>()
+    courseLegs.forEach((leg) => {
+      if (leg.kind === 'gate' && leg.gateMarkIndices) {
+        leg.gateMarkIndices.forEach((idx) => gateMarkIndices.add(idx))
+      }
+    })
+    
+    // Draw gate lines and radials for gate marks
+    courseLegs.forEach((leg) => {
+      if (leg.kind === 'gate' && leg.gateMarkIndices) {
+        this.drawGateRadials(state, map, leg.gateMarkIndices, radialLength)
+      }
+    })
+    
+    // Draw regular radials for non-gate marks
     courseMarkAnnotations.forEach((annotation) => {
+      // Skip gate marks - they're handled above
+      if (gateMarkIndices.has(annotation.markIndex)) return
+      
       const mark = state.marks[annotation.markIndex]
       if (!mark) return
       const { x, y } = map(mark)
@@ -270,6 +290,88 @@ export class RaceScene {
         tag.position.set(endX, endY)
         this.overlayLayer.addChild(line, tag)
       })
+    })
+  }
+  
+  private drawGateRadials(
+    state: RaceState,
+    map: ScreenMapper,
+    gateMarkIndices: [number, number],
+    radialLength: number,
+  ) {
+    const [leftIdx, rightIdx] = gateMarkIndices
+    const leftMark = state.marks[leftIdx]
+    const rightMark = state.marks[rightIdx]
+    if (!leftMark || !rightMark) return
+    
+    const leftScreen = map(leftMark)
+    const rightScreen = map(rightMark)
+    
+    // Draw the gate line (stage 1) - dashed yellow line between the two marks
+    const gateLine = new Graphics()
+    gateLine.setStrokeStyle({ width: 3, color: 0xffe066, alpha: 0.8 })
+    
+    // Draw dashed line
+    const segments = 8
+    const dx = (rightScreen.x - leftScreen.x) / segments
+    const dy = (rightScreen.y - leftScreen.y) / segments
+    for (let i = 0; i < segments; i += 2) {
+      gateLine.moveTo(leftScreen.x + dx * i, leftScreen.y + dy * i)
+      gateLine.lineTo(leftScreen.x + dx * (i + 1), leftScreen.y + dy * (i + 1))
+    }
+    gateLine.stroke()
+    
+    // Draw "1" label at midpoint of gate line
+    const midX = (leftScreen.x + rightScreen.x) / 2
+    const midY = (leftScreen.y + rightScreen.y) / 2
+    const gateLabel = new Text({
+      text: '1',
+      style: { fill: 0xffe066, fontSize: 13, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 'bold' },
+    })
+    gateLabel.anchor.set(0.5)
+    gateLabel.position.set(midX, midY - 12)
+    this.overlayLayer.addChild(gateLine, gateLabel)
+    
+    // Draw radials for left gate mark (stages 2, 3)
+    const leftSteps = gateRadials.left
+    leftSteps.forEach((step, idx) => {
+      const dx = step.axis === 'x' ? step.direction : 0
+      const dy = step.axis === 'y' ? step.direction : 0
+      const endX = leftScreen.x + dx * radialLength
+      const endY = leftScreen.y + dy * radialLength
+      const line = new Graphics()
+      line.setStrokeStyle({ width: 2, color: 0xff9ecd, alpha: 0.6 }) // Pink for starboard-ish
+      line.moveTo(leftScreen.x, leftScreen.y)
+      line.lineTo(endX, endY)
+      line.stroke()
+      const tag = new Text({
+        text: `${idx + 2}`, // +2 because stage 1 is the gate line
+        style: { fill: 0xff9ecd, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
+      })
+      tag.anchor.set(0.5)
+      tag.position.set(endX, endY)
+      this.overlayLayer.addChild(line, tag)
+    })
+    
+    // Draw radials for right gate mark (stages 2, 3)
+    const rightSteps = gateRadials.right
+    rightSteps.forEach((step, idx) => {
+      const dx = step.axis === 'x' ? step.direction : 0
+      const dy = step.axis === 'y' ? step.direction : 0
+      const endX = rightScreen.x + dx * radialLength
+      const endY = rightScreen.y + dy * radialLength
+      const line = new Graphics()
+      line.setStrokeStyle({ width: 2, color: 0x00ffc3, alpha: 0.6 }) // Green for port-ish
+      line.moveTo(rightScreen.x, rightScreen.y)
+      line.lineTo(endX, endY)
+      line.stroke()
+      const tag = new Text({
+        text: `${idx + 2}`, // +2 because stage 1 is the gate line
+        style: { fill: 0x00ffc3, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
+      })
+      tag.anchor.set(0.5)
+      tag.position.set(endX, endY)
+      this.overlayLayer.addChild(line, tag)
     })
   }
 
@@ -336,10 +438,41 @@ export class RaceScene {
 
   private drawCrossingMarkers(state: RaceState, map: ScreenMapper) {
     if (!appEnv.debugHud) return
-    const lapEvents = raceStore
+    
+    // Find the most recent completed rounding (stage = stagesTotal) per boat
+    // to filter out old markers
+    const completedRoundings = new Map<string, number>() // boatId -> event time
+    const allLapEvents = raceStore
       .getRecentEvents()
       .filter((event) => event.kind === 'rule_hint' && event.message.startsWith('[lap-debug]'))
+    
+    allLapEvents.forEach((event) => {
+      // Check if this is a completed rounding (stage equals total)
+      const stageMatch = event.message.match(/stage=(\d+)\/(\d+)/)
+      if (stageMatch) {
+        const [, stage, total] = stageMatch
+        if (stage === total) {
+          event.boats?.forEach((boatId) => {
+            const existing = completedRoundings.get(boatId) ?? 0
+            if (event.t > existing) {
+              completedRoundings.set(boatId, event.t)
+            }
+          })
+        }
+      }
+    })
+    
+    // Only show events that occurred after the last completed rounding for each boat
+    const lapEvents = allLapEvents
+      .filter((event) => {
+        const boatId = event.boats?.[0]
+        if (!boatId) return false
+        const completedAt = completedRoundings.get(boatId)
+        // Show if no completed rounding, or if this event is after the completion
+        return completedAt === undefined || event.t > completedAt
+      })
       .slice(-6)
+    
     lapEvents.forEach((event) => {
       event.boats?.forEach((boatId) => {
         const boat = state.boats[boatId]

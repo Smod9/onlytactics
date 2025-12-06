@@ -8,7 +8,7 @@ import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
 import { SPIN_HOLD_SECONDS } from '@/logic/constants'
-import { courseLegs, radialSets } from '@/config/course'
+import { courseLegs, radialSets, gateRadials } from '@/config/course'
 import { distanceBetween } from '@/utils/geometry'
 import { assignLeaderboard } from '@/logic/leaderboard'
 
@@ -18,11 +18,13 @@ const lapDebug = (...args: unknown[]) => {
 }
 
 const ROUND_MIN_RADIUS = 0
-const ROUND_MAX_RADIUS = Number.POSITIVE_INFINITY
+const ROUND_MAX_RADIUS = 500 // Only reset mark selection if very far
 type RoundingProgress = {
   legIndex: number
   stage: number
   activeMarkIndex?: number
+  /** For gates: which side ('left' or 'right') after crossing gate line */
+  gateSide?: 'left' | 'right'
 }
 
 type HostLoopOptions = {
@@ -224,52 +226,329 @@ export class HostLoop {
     const legCount = courseLegs.length
     if (!legCount) return events
     const progress = this.getOrCreateProgress(boat.id)
-    const leg = courseLegs[progress.legIndex % legCount]
-    let targetIndex = this.pickTargetMarkIndex(boat, state, leg, progress)
+    const currentLeg = courseLegs[progress.legIndex % legCount]
+    const currentSequence = currentLeg.sequence
+
+    // Handle GATE legs specially
+    if (currentLeg.kind === 'gate' && currentLeg.gateMarkIndices) {
+      const gateEvents = this.advanceGateLeg(boat, state, progress, currentLeg, lapTarget)
+      events.push(...gateEvents)
+      return events
+    }
+    
+    // For non-gate legs, use single mark logic
+    const targetIndex = currentLeg.markIndices[0]
     const targetMark = marks[targetIndex]
     if (!targetMark) return events
 
     boat.nextMarkIndex = targetIndex
     const distance = distanceBetween(boat.pos, targetMark)
     boat.distanceToNextMark = distance
+    
+    if (appEnv.debugHud && progress.stage === 0 && distance < 100) {
+      lapDebug('active_leg', {
+        boatId: boat.id,
+        targetIndex,
+        legId: currentLeg.id,
+        rounding: currentLeg.rounding,
+        kind: currentLeg.kind,
+      })
+    }
 
     if (distance > ROUND_MAX_RADIUS || distance < ROUND_MIN_RADIUS) {
       progress.stage = 0
-      progress.activeMarkIndex = undefined
       return events
     }
-    const { completed, debugEvent } = this.trackRadialCrossings(boat, state, progress, targetMark, leg)
+    
+    // Track rounding using radials
+    const { completed, debugEvent } = this.trackRadialCrossings(boat, state, progress, targetMark, currentLeg)
     if (debugEvent) {
       events.push(debugEvent)
     }
     if (completed) {
-      progress.stage = 0
-      progress.activeMarkIndex = undefined
-      const completedSequence = leg.sequence
-      let wrapped = false
-      let safety = 0
-      do {
-        progress.legIndex = (progress.legIndex + 1) % legCount
-        if (progress.legIndex === 0) wrapped = true
-        safety += 1
-        if (safety > legCount) break
-      } while (courseLegs[progress.legIndex % legCount].sequence === completedSequence)
-
-      const nextLeg = courseLegs[progress.legIndex % legCount]
-      targetIndex = this.pickTargetMarkIndex(boat, state, nextLeg, progress)
-      boat.nextMarkIndex = targetIndex
-      boat.distanceToNextMark = distanceBetween(boat.pos, state.marks[boat.nextMarkIndex] ?? targetMark)
-
-      if (wrapped) {
-        boat.lap += 1
-        if (boat.lap >= lapTarget) {
-          boat.finished = true
-          boat.finishTime = state.t
-          boat.distanceToNextMark = 0
-        }
-      }
+      this.advanceToNextSequence(boat, state, progress, currentLeg, lapTarget)
     }
     return events
+  }
+
+  /**
+   * Handle gate legs with two marks.
+   * Stage 0: Cross the gate line (line between the two marks)
+   * Stage 1+: Track radials for the specific mark they chose
+   */
+  private advanceGateLeg(
+    boat: BoatState,
+    state: RaceState,
+    progress: RoundingProgress,
+    leg: (typeof courseLegs)[number],
+    lapTarget: number,
+  ): RaceEvent[] {
+    const events: RaceEvent[] = []
+    const marks = state.marks
+    const [leftIdx, rightIdx] = leg.gateMarkIndices!
+    const leftMark = marks[leftIdx]
+    const rightMark = marks[rightIdx]
+    if (!leftMark || !rightMark) return events
+
+    // Calculate gate midpoint and distance to it
+    const gateMidpoint = {
+      x: (leftMark.x + rightMark.x) / 2,
+      y: (leftMark.y + rightMark.y) / 2,
+    }
+    const distanceToGate = distanceBetween(boat.pos, gateMidpoint)
+    
+    // Set display target to closest gate mark
+    const distToLeft = distanceBetween(boat.pos, leftMark)
+    const distToRight = distanceBetween(boat.pos, rightMark)
+    boat.nextMarkIndex = distToLeft < distToRight ? leftIdx : rightIdx
+    boat.distanceToNextMark = Math.min(distToLeft, distToRight)
+
+    // If too far from gate, don't track
+    if (distanceToGate > ROUND_MAX_RADIUS) {
+      progress.stage = 0
+      progress.gateSide = undefined
+      progress.activeMarkIndex = undefined
+      return events
+    }
+
+    // STAGE 0: Cross the gate line
+    if (progress.stage === 0) {
+      const crossed = this.checkGateLineCrossing(boat, leftMark, rightMark)
+      if (crossed) {
+        // Determine which side they went: left of midpoint = left mark, right = right mark
+        const side = boat.pos.x < gateMidpoint.x ? 'left' : 'right'
+        progress.gateSide = side
+        progress.activeMarkIndex = side === 'left' ? leftIdx : rightIdx
+        progress.stage = 1
+        
+        lapDebug('gate_line_crossed', {
+          boatId: boat.id,
+          side,
+          activeMarkIndex: progress.activeMarkIndex,
+          boatX: boat.pos.x.toFixed(1),
+          midpointX: gateMidpoint.x.toFixed(1),
+        })
+        
+        events.push(this.buildLapDebugEvent(boat, state, {
+          leg,
+          stage: 1,
+          crossed: true,
+          distance: boat.distanceToNextMark ?? 0,
+          stagesTotal: 3, // gate line + 2 radials
+        }))
+      }
+      return events
+    }
+
+    // STAGES 1+: Track radials for the chosen mark
+    if (!progress.gateSide || progress.activeMarkIndex === undefined) {
+      progress.stage = 0
+      return events
+    }
+
+    const chosenMark = marks[progress.activeMarkIndex]
+    if (!chosenMark) return events
+
+    const radials = gateRadials[progress.gateSide]
+    const radialStage = progress.stage - 1 // Subtract 1 because stage 0 was gate line
+    const step = radials[radialStage]
+    
+    if (!step) {
+      // All stages complete!
+      progress.stage = 0
+      progress.gateSide = undefined
+      progress.activeMarkIndex = undefined
+      this.advanceToNextSequence(boat, state, progress, leg, lapTarget)
+      return events
+    }
+
+    // Check radial crossing for this stage
+    const { crossed, debugInfo } = this.checkRadialCrossing(boat, chosenMark, step)
+    
+    if (appEnv.debugHud) {
+      lapDebug('gate_radial_state', {
+        boatId: boat.id,
+        gateSide: progress.gateSide,
+        stage: progress.stage,
+        radialStage,
+        stepAxis: step.axis,
+        stepDir: step.direction,
+        ...debugInfo,
+        crossed,
+      })
+    }
+
+    if (crossed) {
+      progress.stage += 1
+      const totalStages = 1 + radials.length // gate line + radials
+      
+      events.push(this.buildLapDebugEvent(boat, state, {
+        leg,
+        stage: progress.stage,
+        crossed: true,
+        distance: boat.distanceToNextMark ?? 0,
+        stagesTotal: totalStages,
+      }))
+
+      // Check if all radials done
+      if (radialStage + 1 >= radials.length) {
+        progress.stage = 0
+        progress.gateSide = undefined
+        progress.activeMarkIndex = undefined
+        this.advanceToNextSequence(boat, state, progress, leg, lapTarget)
+      }
+    }
+
+    return events
+  }
+
+  /**
+   * Check if boat crossed the gate line (horizontal line between the two gate marks)
+   */
+  private checkGateLineCrossing(
+    boat: BoatState,
+    leftMark: { x: number; y: number },
+    rightMark: { x: number; y: number },
+  ): boolean {
+    const prevPos = boat.prevPos ?? boat.pos
+    
+    // Gate line Y is average of the two marks (they might be at slightly different Y)
+    const gateLineY = (leftMark.y + rightMark.y) / 2
+    const minX = Math.min(leftMark.x, rightMark.x)
+    const maxX = Math.max(leftMark.x, rightMark.x)
+    
+    // Check if boat crossed the gate line Y threshold while between the marks
+    const prevY = prevPos.y
+    const currY = boat.pos.y
+    const crossedY = (prevY < gateLineY && currY >= gateLineY) || (prevY > gateLineY && currY <= gateLineY)
+    
+    // Must be between the gate marks (with some margin)
+    const margin = 20 // Allow some tolerance
+    const inGateX = boat.pos.x >= minX - margin && boat.pos.x <= maxX + margin
+    
+    return crossedY && inGateX
+  }
+
+  /**
+   * Check if boat crossed a single radial
+   */
+  private checkRadialCrossing(
+    boat: BoatState,
+    mark: { x: number; y: number },
+    step: { axis: 'x' | 'y'; direction: 1 | -1 },
+  ): { crossed: boolean; debugInfo: Record<string, string> } {
+    const prevPos = boat.prevPos ?? boat.pos
+    
+    // The radial extends along step.axis in step.direction from the mark
+    // To cross it, check the perpendicular axis
+    const perpAxis = step.axis === 'x' ? 'y' : 'x'
+    const perpThreshold = perpAxis === 'x' ? mark.x : mark.y
+    const sectorAxis = step.axis
+    const sectorThreshold = sectorAxis === 'x' ? mark.x : mark.y
+    
+    const prevPerpValue = prevPos[perpAxis]
+    const currPerpValue = boat.pos[perpAxis]
+    const currSectorValue = boat.pos[sectorAxis]
+    const prevSectorValue = prevPos[sectorAxis]
+    
+    // Check sector (must be on the correct side of the mark for this radial)
+    const currInSector = step.direction === 1
+      ? currSectorValue >= sectorThreshold
+      : currSectorValue <= sectorThreshold
+    const prevInSector = step.direction === 1
+      ? prevSectorValue >= sectorThreshold
+      : prevSectorValue <= sectorThreshold
+    const inSector = currInSector || prevInSector
+    
+    // Check if crossed perpendicular threshold
+    const crossedPerp = (prevPerpValue < perpThreshold && currPerpValue >= perpThreshold) ||
+                        (prevPerpValue > perpThreshold && currPerpValue <= perpThreshold)
+    
+    return {
+      crossed: inSector && crossedPerp,
+      debugInfo: {
+        inSector: String(inSector),
+        crossedPerp: String(crossedPerp),
+        currSectorValue: currSectorValue.toFixed(1),
+        sectorThreshold: sectorThreshold.toFixed(1),
+        prevPerpValue: prevPerpValue.toFixed(1),
+        currPerpValue: currPerpValue.toFixed(1),
+        perpThreshold: perpThreshold.toFixed(1),
+      },
+    }
+  }
+
+  /**
+   * Advance to next sequence after completing a leg
+   */
+  private advanceToNextSequence(
+    boat: BoatState,
+    state: RaceState,
+    progress: RoundingProgress,
+    completedLeg: (typeof courseLegs)[number],
+    lapTarget: number,
+  ) {
+    const legCount = courseLegs.length
+    const completedSequence = completedLeg.sequence
+    const completedMarkIndices = new Set(completedLeg.markIndices)
+    
+    // Increment lap after completing the gate (kind='gate')
+    if (completedLeg.kind === 'gate') {
+      boat.lap += 1
+      if (boat.lap >= lapTarget) {
+        boat.finished = true
+        boat.finishTime = state.t
+        boat.distanceToNextMark = 0
+        return
+      }
+    }
+    
+    // Advance past all legs with the completed sequence
+    let safety = 0
+    do {
+      progress.legIndex = (progress.legIndex + 1) % legCount
+      safety += 1
+      if (safety > legCount) break
+    } while (courseLegs[progress.legIndex % legCount].sequence === completedSequence)
+
+    // Check if we wrapped around to a leg that uses the same mark we just completed
+    // This happens when going from seq 3 (windward-return) back to seq 1 (windward-entry)
+    // Since we're already AT the windward mark, skip seq 1 and go to seq 2 (gate)
+    const nextLeg = courseLegs[progress.legIndex % legCount]
+    const nextMarkIndices = new Set(nextLeg.markIndices)
+    const sameMarkAsBefore = [...completedMarkIndices].some(idx => nextMarkIndices.has(idx))
+    
+    if (sameMarkAsBefore) {
+      lapDebug('skip_same_mark_sequence', {
+        boatId: boat.id,
+        completedSequence,
+        nextSequence: nextLeg.sequence,
+        sharedMarks: [...completedMarkIndices].filter(idx => nextMarkIndices.has(idx)),
+      })
+      
+      // Skip to the sequence after this one
+      const skipSequence = nextLeg.sequence
+      do {
+        progress.legIndex = (progress.legIndex + 1) % legCount
+        safety += 1
+        if (safety > legCount * 2) break
+      } while (courseLegs[progress.legIndex % legCount].sequence === skipSequence)
+    }
+
+    // Update boat's next mark
+    const finalNextLeg = courseLegs[progress.legIndex % legCount]
+    const nextMarkIndex = finalNextLeg.markIndices[0]
+    boat.nextMarkIndex = nextMarkIndex
+    const nextMark = state.marks[nextMarkIndex]
+    boat.distanceToNextMark = nextMark ? distanceBetween(boat.pos, nextMark) : 0
+    
+    lapDebug('advanced_to_sequence', {
+      boatId: boat.id,
+      newLegIndex: progress.legIndex,
+      newSequence: finalNextLeg.sequence,
+      newMarkIndex: nextMarkIndex,
+      lap: boat.lap,
+    })
   }
 
   private getOrCreateProgress(boatId: string): RoundingProgress {
@@ -282,33 +561,6 @@ export class HostLoop {
       this.roundingProgress.set(boatId, progress)
     }
     return progress
-  }
-
-  private pickTargetMarkIndex(
-    boat: BoatState,
-    state: RaceState,
-    leg: (typeof courseLegs)[number],
-    progress: RoundingProgress,
-  ) {
-    const marks = state.marks
-    const options = leg.markIndices
-    if (!options.length) return 0
-    if (progress.activeMarkIndex !== undefined && options.includes(progress.activeMarkIndex)) {
-      return progress.activeMarkIndex
-    }
-    let bestIndex = options[0]
-    let bestDistance = Infinity
-    options.forEach((idx) => {
-      const mark = marks[idx]
-      if (!mark) return
-      const dist = distanceBetween(boat.pos, mark)
-      if (dist < bestDistance) {
-        bestDistance = dist
-        bestIndex = idx
-      }
-    })
-    progress.activeMarkIndex = bestIndex
-    return bestIndex
   }
 
   private trackRadialCrossings(
@@ -387,18 +639,25 @@ export class HostLoop {
     if (appEnv.debugHud) {
       lapDebug('radial_state', {
         boatId: boat.id,
-        leg: leg.sequence,
+        legId: leg.id,
+        legSequence: leg.sequence,
+        rounding,
+        kind,
+        markX: mark.x.toFixed(1),
+        markY: mark.y.toFixed(1),
         stage,
+        stepAxis: step.axis,
+        stepDir: step.direction,
         sectorAxis,
         perpAxis,
         inSector,
         crossedPerp,
         crossed,
-        currSectorValue,
-        sectorThreshold,
-        prevPerpValue,
-        currPerpValue,
-        perpThreshold,
+        currSectorValue: currSectorValue.toFixed(1),
+        sectorThreshold: sectorThreshold.toFixed(1),
+        prevPerpValue: prevPerpValue.toFixed(1),
+        currPerpValue: currPerpValue.toFixed(1),
+        perpThreshold: perpThreshold.toFixed(1),
       })
     }
 

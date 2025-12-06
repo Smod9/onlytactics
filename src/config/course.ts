@@ -5,6 +5,8 @@ export type CourseLeg = {
   markIndices: number[]
   label: string
   kind?: 'windward' | 'leeward' | 'gate' | 'generic'
+  /** For gates: indices of the two marks forming the gate line */
+  gateMarkIndices?: [number, number]
 }
 
 export type RadialStep = { axis: 'x' | 'y'; direction: 1 | -1 }
@@ -21,18 +23,11 @@ export const courseLegs: CourseLeg[] = [
   {
     id: 'leeward-gate',
     sequence: 2,
-    rounding: 'starboard',
-    markIndices: [3],
-    label: 'Leeward Gate Right (M2.1)',
-    kind: 'leeward',
-  },
-  {
-    id: 'leeward-gate-left',
-    sequence: 2,
-    rounding: 'port',
-    markIndices: [4],
-    label: 'Leeward Gate Left (M2.2)',
-    kind: 'leeward',
+    rounding: 'port', // Will be determined dynamically based on which side they go
+    markIndices: [3, 4], // Both gate marks - left (west) and right (east)
+    label: 'Leeward Gate',
+    kind: 'gate',
+    gateMarkIndices: [3, 4], // Mark 3 = left/west, Mark 4 = right/east
   },
   {
     id: 'windward-return',
@@ -89,15 +84,33 @@ export const radialSets: Record<'windward' | 'leeward', Record<'port' | 'starboa
   },
   leeward: {
     port: [
-      { axis: 'x', direction: -1 }, // 9 o'clock
-      { axis: 'y', direction: 1 }, // 6 o'clock
-      { axis: 'x', direction: 1 }, // 3 o'clock
+      { axis: 'x', direction: -1 }, // 9 o'clock (west)
+      { axis: 'y', direction: 1 }, // 6 o'clock (south)
+      { axis: 'x', direction: 1 }, // 3 o'clock (east)
     ],
     starboard: [
-      { axis: 'x', direction: 1 }, // 3 o'clock
-      { axis: 'y', direction: 1 }, // 6 o'clock
-      { axis: 'x', direction: -1 }, // 9 o'clock
+      { axis: 'x', direction: 1 }, // 3 o'clock (east)
+      { axis: 'y', direction: 1 }, // 6 o'clock (south)
+      { axis: 'x', direction: -1 }, // 9 o'clock (west)
     ],
   },
+}
+
+/**
+ * For gate marks, stages after crossing the gate line.
+ * Left gate (west mark): approach from east, round south, exit heading north
+ * Right gate (east mark): approach from west, round south, exit heading north
+ */
+export const gateRadials: Record<'left' | 'right', RadialStep[]> = {
+  // Left/West gate mark (x=-40): boat approaches from center, goes around south side
+  left: [
+    { axis: 'y', direction: 1 }, // Cross south radial (going south of mark)
+    { axis: 'x', direction: -1 }, // Cross west radial (exiting to west/north)
+  ],
+  // Right/East gate mark (x=+40): boat approaches from center, goes around south side
+  right: [
+    { axis: 'y', direction: 1 }, // Cross south radial (going south of mark)
+    { axis: 'x', direction: 1 }, // Cross east radial (exiting to east/north)
+  ],
 }
 

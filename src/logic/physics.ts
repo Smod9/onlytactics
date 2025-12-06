@@ -316,8 +316,10 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     // STEP 1: Process VMG Mode (Velocity Made Good autopilot)
     // ========================================================================
     
-    // Ensure vmgMode is always boolean (defaults to false if not provided)
-    boat.vmgMode = !!input?.vmgMode
+    // Only update vmgMode when explicitly provided in input (preserve between ticks)
+    if (input?.vmgMode !== undefined) {
+      boat.vmgMode = input.vmgMode
+    }
 
     // If there's a heading input, exit VMG mode (user is taking manual control)
     // But skip this check during spins (rightsSuspended) since spins inject headings
