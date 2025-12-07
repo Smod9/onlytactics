@@ -31,7 +31,7 @@ export const appEnv = {
   raceTimeoutMinutes: toNumber(rawEnv.RACE_TIMEOUT_MINUTES ?? rawEnv.VITE_RACE_TIMEOUT_MINUTES, 10),
   hostPublishIntervalMs: toNumber(
     rawEnv.HOST_PUBLISH_INTERVAL_MS ?? rawEnv.VITE_HOST_PUBLISH_INTERVAL_MS,
-    150,
+    50,
   ),
   lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 3),
   speedMultiplier: toNumber(rawEnv.SPEED_MULTIPLIER ?? rawEnv.VITE_SPEED_MULTIPLIER, 1),
