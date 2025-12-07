@@ -29,11 +29,13 @@ type ControlButton = {
 }
 
 const PORT_CLUSTER: ControlButton[] = [
-  { label: 'Trim', subLabel: 'Space', code: 'Space', key: ' ', classes: 'wide' },
+  { label: 'Trim (auto VMG)', subLabel: 'Space', code: 'Space', key: ' ', classes: 'wide' },
 ]
 
 const PORT_EXTRA_CLUSTER: ControlButton[] = [
+  { label: 'Clear Penalty', subLabel: 'P', code: 'KeyP', key: 'p', classes: 'wide' },
   { label: 'Spin', subLabel: 'S', code: 'KeyS', key: 's', classes: 'wide' },
+
 ]
 
 const STARBOARD_CLUSTER: ControlButton[] = [
