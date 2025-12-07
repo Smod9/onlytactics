@@ -1,7 +1,13 @@
 import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
-import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
+import { ReplayRecorder } from '@/replay/record'
+import {
+  createBoatState,
+  createInitialRaceState,
+  createRaceMeta,
+  cloneRaceState,
+} from '@/state/factories'
 import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState, PlayerInput } from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
@@ -12,6 +18,7 @@ import { SPIN_HOLD_SECONDS } from '@/logic/constants'
 import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
+import { saveRace } from '../db/raceStorage'
 
 const roomDebug = (...args: unknown[]) => {
   if (!appEnv.debugNetLogs) return
@@ -63,17 +70,37 @@ export class RaceRoom extends Room<RaceRoomState> {
   private chatRateMap = new Map<string, number[]>()
   // Track active spins: maps boatId to array of timeout IDs for the spin sequence
   private activeSpins = new Map<string, NodeJS.Timeout[]>()
+  private replayRecorder = new ReplayRecorder()
+  private replaySaved = false
+  private persistingReplay = false
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
     console.info('[RaceRoom] created', { options, roomId: this.roomId })
     roomDebug('onCreate', { options, roomId: this.roomId })
-    const initialState = createInitialRaceState(`colyseus-${this.roomId}`)
+    const initialRaceId = createId(`race-${this.roomId}`)
+    const initialState = createInitialRaceState(initialRaceId)
     this.raceStore = new RaceStore(initialState)
     applyRaceStateToSchema(this.state.race, initialState)
+    this.replayRecorder.start(initialState)
+    this.replaySaved = false
     this.loop = new HostLoop(this.raceStore, undefined, undefined, {
-      onEvents: (events) => this.broadcastEvents(events),
+      onEvents: (events) => {
+        this.broadcastEvents(events)
+        const latestState = this.raceStore?.getState()
+        if (latestState) {
+          this.replayRecorder.recordFrame(latestState, events, true)
+        }
+      },
       onTick: (state) => {
+        this.replayRecorder.recordFrame(state, [])
+        const anyFinished = Object.values(state.boats ?? {}).some((boat) => boat.finished)
+        if (anyFinished && !this.replaySaved) {
+          void this.persistReplay('winner_recorded')
+        }
+        if (state.phase === 'finished' && !this.replaySaved) {
+          void this.persistReplay('race_finished')
+        }
         if (state.hostId !== this.hostClientId) {
           roomDebug('loop host sync', {
             loopHostId: state.hostId,
@@ -201,6 +228,7 @@ export class RaceRoom extends Room<RaceRoomState> {
 
   onDispose() {
     console.info('[RaceRoom] disposed', { roomId: this.roomId })
+    void this.persistReplay('room_dispose')
     this.loop?.stop()
     // Clean up any active spins when room is disposed
     this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
@@ -515,7 +543,31 @@ export class RaceRoom extends Room<RaceRoomState> {
     boat.inMarkZone = false
   }
 
+  private async persistReplay(reason: string, finalStateOverride?: RaceState) {
+    if (this.persistingReplay) return
+    const recording = this.replayRecorder.getRecording()
+    const finalState = finalStateOverride ?? this.raceStore?.getState()
+    if (!recording || !finalState || recording.frames.length <= 1) return
+
+    this.persistingReplay = true
+    try {
+      await saveRace(recording, cloneRaceState(finalState))
+      this.replaySaved = true
+      console.info('[RaceRoom] saved replay', { raceId: recording.meta.raceId, reason })
+    } catch (error) {
+      console.error('[RaceRoom] failed to save replay', {
+        raceId: recording?.meta.raceId,
+        reason,
+        error,
+      })
+    } finally {
+      this.persistingReplay = false
+    }
+  }
+
   private resetRaceState() {
+    const previousState = this.raceStore?.getState()
+    void this.persistReplay('race_reset', previousState)
     const assignment = Array.from(this.clientBoatMap.entries()).map(([sessionId, boatId], idx) => ({
       boatId,
       name: this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
@@ -525,11 +577,14 @@ export class RaceRoom extends Room<RaceRoomState> {
       assignments: assignment.length,
       ...this.describeHost(this.hostSessionId),
     })
+    this.replayRecorder.reset()
+    this.replaySaved = false
     this.mutateState((draft) => {
       draft.phase = 'prestart'
       draft.countdownArmed = false
       draft.clockStartMs = null
       draft.t = -appEnv.countdownSeconds
+      draft.meta = createRaceMeta(createId('race'))
       const nextBoats: RaceState['boats'] = {}
       assignment.forEach(({ boatId, name, index }) => {
         nextBoats[boatId] = createBoatState(name, index, boatId)
@@ -540,6 +595,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const nextState = this.raceStore?.getState()
     if (nextState) {
       this.loop?.reset(nextState)
+      this.replayRecorder.start(nextState)
     }
   }
 
@@ -578,6 +634,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       ts: Date.now(),
     }
     this.broadcast('chat', message)
+    this.replayRecorder.addChat(message)
   }
 
   private canSendChat(clientId: string) {
