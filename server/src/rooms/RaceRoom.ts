@@ -559,7 +559,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         ? this.clientBoatMap.get(this.hostSessionId)
         : nextState.hostBoatId
       this.raceStore?.setHostBoat(hostBoatId)
-      if (hostBoatId) {
+      if (hostBoatId && this.raceStore) {
         const mutable = this.raceStore.getState()
         mutable.hostBoatId = hostBoatId
         this.loop?.reset(mutable)

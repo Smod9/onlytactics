@@ -50,8 +50,9 @@ export const ChatPanel = ({ network }: Props) => {
         return
       }
       if (event.key === 'Escape') {
-        if (document.activeElement === inputRef.current) {
-          inputRef.current.blur()
+        const node = inputRef.current
+        if (node && document.activeElement === node) {
+          node.blur()
           event.preventDefault()
         }
       }
