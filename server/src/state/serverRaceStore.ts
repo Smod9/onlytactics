@@ -15,6 +15,12 @@ export class RaceStore {
 
   getState = () => this.state
 
+  setHostBoat = (boatId?: string) => {
+    this.state.hostBoatId = boatId ?? undefined
+  }
+
+  getHostBoat = () => this.state.hostBoatId
+
   setState = (next: RaceState) => {
     this.state = cloneRaceState(next)
   }

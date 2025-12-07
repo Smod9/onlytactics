@@ -77,6 +77,7 @@ export type RaceState = {
   countdownArmed: boolean
   clockStartMs: number | null
   hostId?: string
+  hostBoatId?: string
   lapsToFinish: number
   leaderboard: string[]
   aiEnabled: boolean

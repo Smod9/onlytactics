@@ -17,11 +17,11 @@ import { useTacticianControls } from './useTacticianControls'
 import { DebugPanel } from './DebugPanel'
 import { identity, setClientName } from '@/net/identity'
 import { startRosterWatcher } from '@/state/rosterStore'
-import { RosterPanel } from './RosterPanel'
 import { TacticianPopout } from './TacticianPopout'
 import { ProgressStepper } from './ProgressStepper'
 import type { RaceRole } from '@/types/race'
 import { OnScreenControls } from './OnScreenControls'
+import { useRoster } from '@/state/rosterStore'
 
 export const LiveClient = () => {
   const events = useRaceEvents()
@@ -103,18 +103,12 @@ export const LiveClient = () => {
       window.removeEventListener('focus', handleActivity)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [idleSuspended, needsName, network, appEnv.clientIdleTimeoutMs])
+  }, [idleSuspended, needsName, network])
 
   const role = useSyncExternalStore<RaceRole>(
     (listener) => network.onRoleChange(listener),
     () => network.getRole(),
     () => 'spectator',
-  )
-
-  const networkStatus = useSyncExternalStore<ReturnType<GameNetwork['getStatus']>>(
-    (listener) => network.onStatusChange(listener),
-    () => network.getStatus(),
-    () => 'idle',
   )
 
   useTacticianControls(network, role)
@@ -125,9 +119,29 @@ export const LiveClient = () => {
     return Number.isInteger(minutes) ? `${minutes}min` : `${minutes.toFixed(1)}min`
   }
 
+  const roster = useRoster()
+  const rosterHostName =
+    roster.hostId && roster.entries.find((entry) => entry.clientId === roster.hostId)?.name
+
   const countdownLabel = formatCountdownLabel(appEnv.countdownSeconds)
   const showStartOverlay =
     role === 'host' && race.phase === 'prestart' && !race.countdownArmed
+  const hostBoat = race.hostBoatId
+    ? race.boats[race.hostBoatId]
+    : race.hostId
+      ? race.boats[race.hostId]
+      : undefined
+  const hostName =
+    hostBoat?.name ??
+    rosterHostName ??
+    (role === 'host'
+      ? identity.clientName ?? 'You'
+      : race.hostId
+        ? `Host (${race.hostId.slice(0, 6)})`
+        : 'Host')
+  const hostNameDisplay = hostName ?? 'Host'
+  const showWaitingOverlay =
+    role !== 'host' && race.phase === 'prestart' && !race.countdownArmed
 
   const submitName = (event: FormEvent) => {
     event.preventDefault()
@@ -222,6 +236,14 @@ export const LiveClient = () => {
               </div>
             </div>
           )}
+          {showWaitingOverlay && (
+            <div className="start-sequence-overlay">
+              <div className="start-sequence-card">
+                <h2>Waiting for the start</h2>
+                <p>Waiting for Race Comittee ({hostNameDisplay}) to start the race.</p>
+              </div>
+            </div>
+          )}
           {playerBoat && (
             <div className="speed-heading-overlay">
               <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
@@ -233,26 +255,6 @@ export const LiveClient = () => {
           <ChatPanel network={network} />
         </div>
         <aside className="hud-panel">
-        <h2>Race Feed</h2>
-        <p>
-          Race{' '}
-          <strong>{appEnv.netTransport === 'colyseus' ? appEnv.colyseusRoomId : appEnv.raceId}</strong>{' '}
-          as <strong>{role}</strong>
-        </p>
-        {networkStatus === 'looking_for_host' && (
-          <p className="countdown-status">Looking for host&hellip;</p>
-        )}
-        {networkStatus === 'connecting' && (
-          <p className="countdown-status">Connecting&hellip;</p>
-        )}
-        {networkStatus === 'joining' && (
-          <p className="countdown-status">Joining race&hellip;</p>
-        )}
-        {networkStatus === 'ready' && race.phase === 'prestart' && !race.countdownArmed && (
-          <p className="countdown-status">
-            Waiting for host to start the sequence&hellip;
-          </p>
-        )}
         {playerBoat && (
           <div className="player-actions">
             {playerBoat.penalties > 0 && (
@@ -275,7 +277,9 @@ export const LiveClient = () => {
                 const boat = race.boats[boatId]
                 if (!boat) return null
                 const isHost =
-                  boatId === race.hostId || (role === 'host' && boatId === identity.boatId)
+                  (role === 'host' && boatId === identity.boatId) ||
+                  boatId === race.hostId ||
+                  boatId === race.hostBoatId
                 const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
                 const finished = boat.finished || internalLap >= race.lapsToFinish
                 const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
@@ -333,7 +337,6 @@ export const LiveClient = () => {
             ))}
           {!events.length && <p>No rule events yet.</p>}
         </div>
-        {race.phase === 'prestart' && !race.countdownArmed && <RosterPanel role={role} />}
       </aside>
       </div>
       <button

@@ -356,6 +356,10 @@ export class RaceRoom extends Room<RaceRoomState> {
         if (!draft.leaderboard.includes(assignedId)) {
           draft.leaderboard.push(assignedId)
         }
+        if (client.sessionId === this.hostSessionId) {
+          draft.hostBoatId = assignedId
+          this.raceStore?.setHostBoat(assignedId)
+        }
       }
       this.clientNameMap.set(client.sessionId, displayName)
     })
@@ -442,6 +446,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const previousHost = this.hostSessionId
     this.hostSessionId = sessionId
     this.hostClientId = sessionId ? this.clientIdentityMap.get(sessionId) ?? sessionId : undefined
+    const hostBoatId = sessionId ? this.clientBoatMap.get(sessionId) : undefined
     roomDebug('setHost', {
       previousHost,
       nextHost: sessionId,
@@ -449,11 +454,13 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
     this.mutateState((draft) => {
       draft.hostId = this.hostClientId ?? ''
+      draft.hostBoatId = hostBoatId ?? ''
       if (!sessionId) {
         draft.countdownArmed = false
         draft.clockStartMs = null
       }
     })
+    this.raceStore?.setHostBoat(hostBoatId)
   }
 
   private armCountdown(seconds: number) {
@@ -466,6 +473,10 @@ export class RaceRoom extends Room<RaceRoomState> {
       draft.countdownArmed = true
       draft.clockStartMs = Date.now() + seconds * 1000
       draft.t = -seconds
+      const hostBoatId = this.hostSessionId
+        ? this.clientBoatMap.get(this.hostSessionId)
+        : this.raceStore?.getState().hostBoatId
+      draft.hostBoatId = hostBoatId ?? draft.hostBoatId ?? ''
     })
   }
 
@@ -536,10 +547,23 @@ export class RaceRoom extends Room<RaceRoomState> {
       })
       draft.boats = nextBoats
       draft.leaderboard = assignment.map((entry) => entry.boatId)
+      const hostBoatId = this.hostSessionId
+        ? this.clientBoatMap.get(this.hostSessionId)
+        : this.raceStore?.getState().hostBoatId
+      draft.hostBoatId = hostBoatId ?? draft.hostBoatId ?? ''
     })
     const nextState = this.raceStore?.getState()
     if (nextState) {
       this.loop?.reset(nextState)
+      const hostBoatId = this.hostSessionId
+        ? this.clientBoatMap.get(this.hostSessionId)
+        : nextState.hostBoatId
+      this.raceStore?.setHostBoat(hostBoatId)
+      if (hostBoatId) {
+        const mutable = this.raceStore.getState()
+        mutable.hostBoatId = hostBoatId
+        this.loop?.reset(mutable)
+      }
     }
   }
 
