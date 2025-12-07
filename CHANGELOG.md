@@ -1,3 +1,17 @@
+# [1.16.0](https://github.com/Smod9/onlytactics/compare/v1.15.0...v1.16.0) (2025-12-07)
+
+
+### Features
+
+* **polish:** Fixes .env ([6abca31](https://github.com/Smod9/onlytactics/commit/6abca313736826eebcdb35a749c2821fb291b6d4))
+* **polish:** More clear start button, denotes who is RC in leaderboard now. Moves speed to the screen ([9132a4b](https://github.com/Smod9/onlytactics/commit/9132a4bd9299ea38664b538ac05b632873e1400a))
+* **polish:** Moves 360 button to the left ([b220f00](https://github.com/Smod9/onlytactics/commit/b220f002a719576d6bae58ebad7e4bc1ebf846f1))
+* **polish:** Moves messages to the left. ([52adfb6](https://github.com/Smod9/onlytactics/commit/52adfb610805e2c2e880462f225201128e5431fe))
+* **polish:** Moves speed and leaderboard a bit ([0745371](https://github.com/Smod9/onlytactics/commit/07453710991e1789626d49b2b8aab7dad7e5d989))
+* **polish:** Moves wind readout a bit and makes it bigger ([a2240e5](https://github.com/Smod9/onlytactics/commit/a2240e507263177cda004dcef002db369a39a9ac))
+* **polish:** Now all players can see who the RC (host) is and its clear why its not starting ([f8e2557](https://github.com/Smod9/onlytactics/commit/f8e2557714f8dcd3557fc4eb44886ed654313925))
+* **polish:** Resolves build issues ([77d9674](https://github.com/Smod9/onlytactics/commit/77d96748faf42b245bcfab7a4ca02a809f1c9c8d))
+
 # [1.15.0](https://github.com/Smod9/onlytactics/compare/v1.14.0...v1.15.0) (2025-12-07)
 
 
