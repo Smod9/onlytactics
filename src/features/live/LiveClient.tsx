@@ -250,6 +250,18 @@ export const LiveClient = () => {
                 <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
                 <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
               </div>
+              {playerBoat.penalties > 0 && (
+                <div className="spin-overlay">
+                  <button
+                    type="button"
+                    className="spin-button"
+                    onClick={() => network.requestSpin()}
+                    title="Perform a 360° spin (also clears one penalty if you have any)"
+                  >
+                    Spin to clear your penalty (360)
+                  </button>
+                </div>
+              )}
               <div className="hud-stack">
                 <div className="leaderboard-overlay">
                   <div className="leaderboard-panel">

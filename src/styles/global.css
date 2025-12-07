@@ -348,10 +348,9 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.6rem;
   pointer-events: none;
-  align-self: flex-start;
   position: absolute;
   top: 0.75rem;
-  right: 340px;
+  right: 0.75rem;
 }
 
 .speed-heading-overlay .speed-readout,
@@ -378,6 +377,13 @@ button {
   gap: 0.5rem;
   pointer-events: none;
   z-index: 4;
+}
+
+.spin-overlay {
+  position: absolute;
+  top: 5.5rem;
+  left: 1rem;
+  pointer-events: auto;
 }
 
 .leaderboard-overlay,
@@ -660,7 +666,7 @@ button {
 
 .chat-panel {
   position: absolute;
-  left: 1rem;
+  left: 0.5rem;
   top: 11rem;
   width: 240px;
   max-height: 25vh;
