@@ -17,6 +17,7 @@ const roleToSender = (role: RaceRole): ChatSenderRole => {
 export const ChatPanel = ({ network }: Props) => {
   const chat = useChatLog()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const role = useSyncExternalStore<RaceRole>(
@@ -37,6 +38,27 @@ export const ChatPanel = ({ network }: Props) => {
     if (!node) return
     node.scrollTop = node.scrollHeight
   }, [chat])
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'm' || event.key === 'M' || event.key === 'c' || event.key === 'C') {
+        const isFocused = document.activeElement === inputRef.current
+        if (!isFocused) {
+          inputRef.current?.focus()
+          event.preventDefault()
+        }
+        return
+      }
+      if (event.key === 'Escape') {
+        if (document.activeElement === inputRef.current) {
+          inputRef.current.blur()
+          event.preventDefault()
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const sendMessage = async () => {
     const result = await chatService.send(draft, roleToSender(role), network)
@@ -73,6 +95,7 @@ export const ChatPanel = ({ network }: Props) => {
       <div className="chat-input">
         <input
           type="text"
+          ref={inputRef}
           value={draft}
           placeholder="Message..."
           onChange={(event) => setDraft(event.target.value)}
