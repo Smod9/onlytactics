@@ -1,3 +1,11 @@
+# [1.15.0](https://github.com/Smod9/onlytactics/compare/v1.14.0...v1.15.0) (2025-12-07)
+
+
+### Features
+
+* **fast refresh:** Increases refresh rate to 50ms (probably could go faster) - now at 20hz - need to watch logs in a larger game ([b9b50f0](https://github.com/Smod9/onlytactics/commit/b9b50f025cef5c5b323ff34d7b455c0ed35ab231))
+* **pipelines:** Release auto on main, and status checks on all branch ([#28](https://github.com/Smod9/onlytactics/issues/28)) ([18cedf2](https://github.com/Smod9/onlytactics/commit/18cedf2f8135495a49646f3368ddfd8283d463d5))
+
 # [1.14.0](https://github.com/Smod9/onlytactics/compare/v1.13.0...v1.14.0) (2025-12-06)
 
 
