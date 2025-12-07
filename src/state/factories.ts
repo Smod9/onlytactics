@@ -126,6 +126,7 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     countdownArmed: false,
     clockStartMs: null,
     hostId: undefined,
+    hostBoatId: undefined,
     lapsToFinish: appEnv.lapsToFinish,
     leaderboard: [],
     aiEnabled: appEnv.aiEnabled,

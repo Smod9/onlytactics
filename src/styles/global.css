@@ -334,6 +334,12 @@ button {
   color: #c4cbe0;
 }
 
+.start-sequence-card .host-debug {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  color: #9fb7ff;
+}
+
 .speed-heading-overlay {
   position: absolute;
   top: 0.75rem;

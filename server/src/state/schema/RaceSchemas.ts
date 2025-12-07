@@ -156,6 +156,9 @@ export class RaceStateSchema extends Schema {
   @type('string')
   hostId = ''
 
+  @type('string')
+  hostBoatId = ''
+
   @type('number')
   lapsToFinish = 3
 

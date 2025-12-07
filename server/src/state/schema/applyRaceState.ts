@@ -49,6 +49,7 @@ export const applyRaceStateToSchema = (target: RaceStateSchema, source: RaceStat
   target.countdownArmed = source.countdownArmed
   target.clockStartMs = source.clockStartMs ?? -1
   target.hostId = source.hostId ?? ''
+  target.hostBoatId = source.hostBoatId ?? ''
   target.lapsToFinish = source.lapsToFinish
   target.aiEnabled = source.aiEnabled
 
