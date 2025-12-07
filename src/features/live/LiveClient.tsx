@@ -245,99 +245,90 @@ export const LiveClient = () => {
             </div>
           )}
           {playerBoat && (
-            <div className="speed-heading-overlay">
-              <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
-              <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
-            </div>
+            <>
+              <div className="speed-heading-overlay">
+                <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
+                <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
+              </div>
+              <div className="hud-stack">
+                <div className="leaderboard-overlay">
+                  <div className="leaderboard-panel">
+                    <h3>Leaderboard</h3>
+                    {race.leaderboard.length ? (
+                      <ol>
+                        {race.leaderboard.slice(0, 6).map((boatId, index) => {
+                          const boat = race.boats[boatId]
+                          if (!boat) return null
+                          const isHost =
+                            (role === 'host' && boatId === identity.boatId) ||
+                            boatId === race.hostId ||
+                            boatId === race.hostBoatId
+                          const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
+                          const finished = boat.finished || internalLap >= race.lapsToFinish
+                          const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
+                          const onFinalLap = internalLap >= race.lapsToFinish - 1
+                          const displayLap = internalLap + 1
+                          const medal =
+                            finished && index === 0
+                              ? '🥇'
+                              : finished && index === 1
+                                ? '🥈'
+                                : finished && index === 2
+                                  ? '🥉'
+                                  : ''
+
+                          let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
+                          if (finished) {
+                            statusText = 'Finished'
+                          } else if (atLine && !onFinalLap) {
+                            statusText = 'Pre-start'
+                          } else if (atLine && onFinalLap) {
+                            statusText = 'Finish'
+                          }
+
+                          return (
+                            <li key={boatId}>
+                              <span className="leaderboard-position">{index + 1}.</span>
+                              <span className="leaderboard-name">
+                                {medal && <span className="leaderboard-medal">{medal} </span>}
+                                {boat.name}
+                                {isHost && ' (RC)'}
+                              </span>
+                              <span className="leaderboard-meta">{statusText}</span>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    ) : (
+                      <p>No leaderboard data yet.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="events-overlay">
+                  <div className="event-list">
+                    {events
+                      .slice()
+                      .reverse()
+                      .slice(0, 10)
+                      .map((event, index) => (
+                        <div key={event.eventId} className="event-item">
+                          <span className="event-kind">
+                            #{events.length - index} {event.kind}
+                            {event.ruleId ? ` (Rule ${event.ruleId})` : ''}
+                          </span>
+                          <span className="event-message">{event.message}</span>
+                        </div>
+                      ))}
+                    {!events.length && <p>No rule events yet.</p>}
+                  </div>
+                </div>
+              </div>
+            </>
           )}
           <PixiStage />
           <OnScreenControls />
           <ChatPanel network={network} />
         </div>
-        <aside className="hud-panel">
-        {playerBoat && (
-          <div className="player-actions">
-            {playerBoat.penalties > 0 && (
-              <button
-                type="button"
-                className="spin-button"
-                onClick={() => network.requestSpin()}
-                title="Perform a 360° spin (also clears one penalty if you have any)"
-              >
-                360° Spin (S)
-              </button>
-            )}
-          </div>
-        )}
-        <div className="leaderboard-panel">
-          <h3>Leaderboard</h3>
-          {race.leaderboard.length ? (
-            <ol>
-              {race.leaderboard.slice(0, 6).map((boatId, index) => {
-                const boat = race.boats[boatId]
-                if (!boat) return null
-                const isHost =
-                  (role === 'host' && boatId === identity.boatId) ||
-                  boatId === race.hostId ||
-                  boatId === race.hostBoatId
-                const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
-                const finished = boat.finished || internalLap >= race.lapsToFinish
-                const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
-                const onFinalLap = internalLap >= race.lapsToFinish - 1
-                // Display lap as 1-indexed (internal lap 0 = "Lap 1", internal lap 1 = "Lap 2", etc.)
-                const displayLap = internalLap + 1
-                const medal =
-                  finished && index === 0
-                    ? '🥇'
-                    : finished && index === 1
-                      ? '🥈'
-                      : finished && index === 2
-                        ? '🥉'
-                        : ''
-                
-                let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
-                if (finished) {
-                  statusText = 'Finished'
-                } else if (atLine && !onFinalLap) {
-                  statusText = 'Pre-start'
-                } else if (atLine && onFinalLap) {
-                  statusText = 'Finish'
-                }
-                
-                return (
-                  <li key={boatId}>
-                    <span className="leaderboard-position">{index + 1}.</span>
-                    <span className="leaderboard-name">
-                      {medal && <span className="leaderboard-medal">{medal} </span>}
-                      {boat.name}
-                      {isHost && ' (RC)'}
-                    </span>
-                    <span className="leaderboard-meta">{statusText}</span>
-                  </li>
-                )
-              })}
-            </ol>
-          ) : (
-            <p>No leaderboard data yet.</p>
-          )}
-        </div>
-        <div className="event-list">
-          {events
-            .slice()
-            .reverse()
-            .slice(0, 10)
-            .map((event, index) => (
-              <div key={event.eventId} className="event-item">
-                <span className="event-kind">
-                  #{events.length - index} {event.kind}
-                  {event.ruleId ? ` (Rule ${event.ruleId})` : ''}
-                </span>
-                <span className="event-message">{event.message}</span>
-              </div>
-            ))}
-          {!events.length && <p>No rule events yet.</p>}
-        </div>
-      </aside>
       </div>
       <button
         type="button"
