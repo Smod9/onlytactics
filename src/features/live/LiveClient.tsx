@@ -119,6 +119,16 @@ export const LiveClient = () => {
 
   useTacticianControls(network, role)
 
+  const formatCountdownLabel = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`
+    const minutes = seconds / 60
+    return Number.isInteger(minutes) ? `${minutes}min` : `${minutes.toFixed(1)}min`
+  }
+
+  const countdownLabel = formatCountdownLabel(appEnv.countdownSeconds)
+  const showStartOverlay =
+    role === 'host' && race.phase === 'prestart' && !race.countdownArmed
+
   const submitName = (event: FormEvent) => {
     event.preventDefault()
     const trimmed = nameEntry.trim()
@@ -197,6 +207,27 @@ export const LiveClient = () => {
       )}
       <div className="live-main">
         <div className="stage-shell">
+          {showStartOverlay && (
+            <div className="start-sequence-overlay">
+              <div className="start-sequence-card">
+                <h2>🛥️ Yay! You are the Race Comittee!</h2>
+                <p> Click to start the race with a {countdownLabel} sequence.</p>
+                <button
+                  type="button"
+                  className="start-sequence"
+                  onClick={() => network.armCountdown(appEnv.countdownSeconds)}
+                >
+                  Start {countdownLabel} Sequence
+                </button>
+              </div>
+            </div>
+          )}
+          {playerBoat && (
+            <div className="speed-heading-overlay">
+              <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
+              <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
+            </div>
+          )}
           <PixiStage />
           <OnScreenControls />
           <ChatPanel network={network} />
@@ -222,23 +253,8 @@ export const LiveClient = () => {
             Waiting for host to start the sequence&hellip;
           </p>
         )}
-        {role === 'host' && race.phase === 'prestart' && !race.countdownArmed && (
-          <button
-            type="button"
-            className="start-sequence"
-            onClick={() => network.armCountdown(appEnv.countdownSeconds)}
-          >
-            Start {appEnv.countdownSeconds}s Sequence
-          </button>
-        )}
         {playerBoat && (
           <div className="player-actions">
-            <div className="speed-readout">
-              SPD {playerBoat.speed.toFixed(2)} kts
-            </div>
-            <div className="heading-readout">
-              HDG {playerBoat.headingDeg.toFixed(0)}°
-            </div>
             {playerBoat.penalties > 0 && (
               <button
                 type="button"
@@ -258,6 +274,8 @@ export const LiveClient = () => {
               {race.leaderboard.slice(0, 6).map((boatId, index) => {
                 const boat = race.boats[boatId]
                 if (!boat) return null
+                const isHost =
+                  boatId === race.hostId || (role === 'host' && boatId === identity.boatId)
                 const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
                 const finished = boat.finished || internalLap >= race.lapsToFinish
                 const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
@@ -288,6 +306,7 @@ export const LiveClient = () => {
                     <span className="leaderboard-name">
                       {medal && <span className="leaderboard-medal">{medal} </span>}
                       {boat.name}
+                      {isHost && ' (RC)'}
                     </span>
                     <span className="leaderboard-meta">{statusText}</span>
                   </li>

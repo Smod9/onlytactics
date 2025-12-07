@@ -299,6 +299,69 @@ button {
   flex: 1;
 }
 
+.start-sequence-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.start-sequence-card {
+  pointer-events: auto;
+  background: rgba(8, 12, 24, 0.9);
+  border: 1px solid #2f3650;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.45);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  color: #e4edff;
+  max-width: 460px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.start-sequence-card h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.start-sequence-card p {
+  margin: 0;
+  color: #c4cbe0;
+}
+
+.speed-heading-overlay {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(5, 8, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.6rem;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.speed-heading-overlay .speed-readout,
+.speed-heading-overlay .heading-readout {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.95rem;
+}
+
+.speed-heading-overlay .speed-readout {
+  color: #4af6c2;
+}
+
+.speed-heading-overlay .heading-readout {
+  color: #ffcf70;
+}
+
 .on-screen-controls {
   position: fixed;
   bottom: 1rem;
@@ -475,6 +538,7 @@ button {
   background: #f5a524;
   color: #05070f;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .event-list {
@@ -564,14 +628,14 @@ button {
 .chat-panel {
   position: absolute;
   right: 1rem;
-  top: 1rem;
+  top: 5.5rem;
   width: 240px;
   max-height: 25vh;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   pointer-events: none;
-  z-index: 5;
+  z-index: 3;
 }
 
 .chat-panel .chat-header {
