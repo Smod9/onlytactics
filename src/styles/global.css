@@ -221,6 +221,27 @@ button {
   gap: 0.4rem;
 }
 
+@media (max-width: 1200px) {
+  .header-links {
+    display: none;
+  }
+  .app-version {
+    display: none;
+  }
+  .app-header {
+    align-items: center;
+    padding-bottom: 0;
+  }
+  .brand h1 {
+    display: none;
+  }
+  .progress-stepper {
+    top: 18px;
+    left: 20%;
+    transform: none;
+  }
+}
+
 .icon-link {
   width: 32px;
   height: 32px;
@@ -348,9 +369,6 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.6rem;
   pointer-events: none;
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
 }
 
 .speed-heading-overlay .speed-readout,
@@ -828,6 +846,14 @@ button {
   border-radius: 999px;
   z-index: 20;
   font-size: 0.65rem;
+}
+
+@media (max-width: 1200px) {
+  .progress-stepper {
+    left: 5%;
+    right: auto;
+    transform: none;
+  }
 }
 
 .progress-step {
