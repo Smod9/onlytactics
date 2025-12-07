@@ -26,7 +26,7 @@ export const TacticianPopout = () => {
         className="tactician-toggle"
         onClick={toggle}
       >
-        {open ? 'Close Controls' : '?'}
+        {open ? 'Hide Help Menu' : '?'}
       </button>
       {open && (
         <div className="tactician-card">
