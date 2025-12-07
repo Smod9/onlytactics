@@ -35,6 +35,12 @@ export const appEnv = {
   ),
   lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 3),
   speedMultiplier: toNumber(rawEnv.SPEED_MULTIPLIER ?? rawEnv.VITE_SPEED_MULTIPLIER, 1),
+  databaseUrl: rawEnv.DATABASE_URL ?? rawEnv.POSTGRES_URL ?? '',
+  databaseSsl: toBool(rawEnv.DATABASE_SSL, false),
+  databasePoolMin: toNumber(rawEnv.DATABASE_POOL_MIN, 0),
+  databasePoolMax: toNumber(rawEnv.DATABASE_POOL_MAX, 5),
+  databaseConnectTimeoutMs: toNumber(rawEnv.DATABASE_CONNECT_TIMEOUT_MS, 5000),
+  databaseIdleTimeoutMs: toNumber(rawEnv.DATABASE_IDLE_TIMEOUT_MS, 10000),
 } as const
 
 export type AppEnv = typeof appEnv
