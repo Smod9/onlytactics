@@ -3,6 +3,7 @@ import { chatService } from '@/chat/chatService'
 import { useChatLog } from '@/state/hooks'
 import type { GameNetwork } from '@/net/gameNetwork'
 import type { ChatSenderRole, RaceRole } from '@/types/race'
+import { identity } from '@/net/identity'
 
 type Props = {
   network?: GameNetwork
@@ -85,7 +86,9 @@ export const ChatPanel = ({ network }: Props) => {
         {chat.slice(-8).map((message) => (
           <div
             key={message.messageId}
-            className={`chat-message chat-${message.senderRole}`}
+            className={`chat-message chat-${message.senderRole} ${
+              message.senderId === identity.clientId ? 'chat-mine' : 'chat-other'
+            }`}
           >
             <span className="chat-author">{message.senderName}:</span>
             <span className="chat-text">{message.text}</span>
