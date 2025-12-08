@@ -246,6 +246,10 @@ export const LiveClient = () => {
           )}
           {playerBoat && (
             <>
+              <div className="speed-heading-overlay">
+                <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
+                <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
+              </div>
               {playerBoat.penalties > 0 && (
                 <div className="spin-overlay">
                   <button
@@ -259,10 +263,6 @@ export const LiveClient = () => {
                 </div>
               )}
               <div className="hud-stack">
-                <div className="speed-heading-overlay">
-                  <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
-                  <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
-                </div>
                 <div className="leaderboard-overlay">
                   <div className="leaderboard-panel">
                     <h3>Leaderboard</h3>

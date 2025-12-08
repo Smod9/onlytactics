@@ -174,8 +174,8 @@ export class RaceScene {
       this.timerText,
       this.countdownContainer,
     )
-    this.windText.position.set(20, 48)
-    this.timerText.position.set(20, 20)
+    this.windText.position.set(20, 100)
+    this.timerText.position.set(20, 64)
 
     this.drawWater()
   }
@@ -682,7 +682,7 @@ export class RaceScene {
       Math.abs(shift) < 0.5 ? 'ON' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
     this.windText.text = `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts`
 
-    const center = { x: 80, y: 80 }
+    const center = { x: 80, y: 150 }
     const length = 60
     const heading = degToRad(state.wind.directionDeg + 180)
     const tipX = center.x + length * Math.sin(heading)
