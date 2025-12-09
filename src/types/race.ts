@@ -37,6 +37,7 @@ export type BoatState = {
   headingDeg: number
   desiredHeadingDeg: number
   speed: number
+  wakeFactor?: number
   lap: number
   nextMarkIndex: number
   inMarkZone: boolean
