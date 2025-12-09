@@ -87,6 +87,7 @@ export const createBoatState = (
     pos: { x: spawnX, y: spawnY },
     prevPos: { x: spawnX, y: spawnY },
     speed: 0,
+    wakeFactor: 1,
     stallTimer: 0,
     tackTimer: 0,
     overEarly: false,

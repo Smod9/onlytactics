@@ -74,6 +74,9 @@ export class BoatStateSchema extends Schema {
   speed = 0
 
   @type('number')
+  wakeFactor = 1
+
+  @type('number')
   lap = 0
 
   @type('number')
