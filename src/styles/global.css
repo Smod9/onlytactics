@@ -373,6 +373,11 @@ button {
   top: 0.75rem;
   left: 0.4rem;
   z-index: 6;
+  align-items: center;
+}
+
+.speed-heading-overlay.wake-active {
+  box-shadow: 0 0 0 1px rgba(255, 207, 112, 0.3);
 }
 
 .speed-heading-overlay .speed-readout,
@@ -387,6 +392,12 @@ button {
 
 .speed-heading-overlay .heading-readout {
   color: #ffcf70;
+}
+
+.speed-heading-overlay .wake-indicator {
+  color: #ffcf70;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
 }
 
 .hud-stack {

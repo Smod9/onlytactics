@@ -3,11 +3,22 @@ import { appEnv } from '@/config/env'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
+import {
+  WAKE_CONE_HALF_ANGLE_DEG,
+  WAKE_HALF_WIDTH_END,
+  WAKE_HALF_WIDTH_START,
+  WAKE_LENGTH,
+  WAKE_MAX_SLOWDOWN,
+} from '@/logic/constants'
 import { raceStore } from '@/state/raceStore'
 import { courseLegs, courseMarkAnnotations, radialSets, gateRadials } from '@/config/course'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
+const normalizeDeg = (deg: number) => {
+  const wrapped = deg % 360
+  return wrapped < 0 ? wrapped + 360 : wrapped
+}
 
 type ScreenMapper = (value: Vec2) => { x: number; y: number }
 
@@ -236,10 +247,80 @@ export class RaceScene {
   private drawDebugAnnotations(state: RaceState, map: ScreenMapper) {
     this.overlayLayer.removeChildren()
     if (!appEnv.debugHud) return
+    this.drawWindShadows(state, map)
     this.drawMarkRadials(state, map)
     this.drawMarkLabels(state, map)
     this.drawNextMarkHighlight(state, map)
     this.drawCrossingMarkers(state, map)
+  }
+
+  private drawWindShadows(state: RaceState, map: ScreenMapper) {
+    const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+    const downRad = degToRad(downwindDeg)
+    const dir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
+    const cross = { x: -dir.y, y: dir.x }
+    const coneCos = Math.cos(degToRad(WAKE_CONE_HALF_ANGLE_DEG))
+
+    Object.values(state.boats).forEach((boat) => {
+      const factor = boat.wakeFactor ?? 1
+      const slowdown = Math.min(WAKE_MAX_SLOWDOWN, 1 - factor)
+      const fillAlpha = 0.08 + slowdown * 0.5
+      const strokeAlpha = 0.2 + slowdown * 0.6
+
+      const startCenter = boat.pos
+      const endCenter = {
+        x: boat.pos.x + dir.x * WAKE_LENGTH,
+        y: boat.pos.y + dir.y * WAKE_LENGTH,
+      }
+
+      const startLeft = {
+        x: startCenter.x + cross.x * WAKE_HALF_WIDTH_START,
+        y: startCenter.y + cross.y * WAKE_HALF_WIDTH_START,
+      }
+      const startRight = {
+        x: startCenter.x - cross.x * WAKE_HALF_WIDTH_START,
+        y: startCenter.y - cross.y * WAKE_HALF_WIDTH_START,
+      }
+      const endLeft = {
+        x: endCenter.x + cross.x * WAKE_HALF_WIDTH_END,
+        y: endCenter.y + cross.y * WAKE_HALF_WIDTH_END,
+      }
+      const endRight = {
+        x: endCenter.x - cross.x * WAKE_HALF_WIDTH_END,
+        y: endCenter.y - cross.y * WAKE_HALF_WIDTH_END,
+      }
+
+      // Only draw wakes downwind (respect cone) by checking a point slightly behind
+      const sampleDir = { x: dir.x, y: dir.y }
+      const align = sampleDir.x * dir.x + sampleDir.y * dir.y
+      if (align < coneCos) return
+
+      const g = new Graphics()
+      g.setStrokeStyle({ width: 1.5, color: 0xffcf70, alpha: strokeAlpha })
+      g.fill({ color: 0xffcf70, alpha: fillAlpha })
+
+      const pts = [startLeft, endLeft, endRight, startRight].map(map)
+      g.moveTo(pts[0].x, pts[0].y)
+      pts.slice(1).forEach((p) => g.lineTo(p.x, p.y))
+      g.closePath()
+      g.fill()
+      g.stroke()
+
+      // Outline the cone edges for clarity
+      const coneEdgeLeft = new Graphics()
+      coneEdgeLeft.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.25 })
+      coneEdgeLeft.moveTo(map(startCenter).x, map(startCenter).y)
+      coneEdgeLeft.lineTo(map(endLeft).x, map(endLeft).y)
+      coneEdgeLeft.stroke()
+
+      const coneEdgeRight = new Graphics()
+      coneEdgeRight.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.25 })
+      coneEdgeRight.moveTo(map(startCenter).x, map(startCenter).y)
+      coneEdgeRight.lineTo(map(endRight).x, map(endRight).y)
+      coneEdgeRight.stroke()
+
+      this.overlayLayer.addChild(g, coneEdgeLeft, coneEdgeRight)
+    })
   }
 
   private drawMarkRadials(state: RaceState, map: ScreenMapper) {

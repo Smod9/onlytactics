@@ -113,6 +113,10 @@ export const LiveClient = () => {
 
   useTacticianControls(network, role)
 
+  const playerWakeFactor = playerBoat?.wakeFactor ?? 1
+  const wakeActive = playerWakeFactor < 0.995
+  const wakeSlowPercent = Math.max(1, Math.round((1 - playerWakeFactor) * 100))
+
   const formatCountdownLabel = (seconds: number) => {
     if (seconds < 60) return `${seconds}s`
     const minutes = seconds / 60
@@ -246,9 +250,12 @@ export const LiveClient = () => {
           )}
           {playerBoat && (
             <>
-              <div className="speed-heading-overlay">
+              <div className={`speed-heading-overlay ${wakeActive ? 'wake-active' : ''}`}>
                 <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
                 <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
+                {wakeActive && (
+                  <div className="wake-indicator">Wake -{wakeSlowPercent}%</div>
+                )}
               </div>
               {playerBoat.penalties > 0 && (
                 <div className="spin-overlay">
