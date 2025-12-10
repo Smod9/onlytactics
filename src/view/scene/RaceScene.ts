@@ -3,6 +3,12 @@ import { appEnv } from '@/config/env'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
+import {
+  BOAT_BOW_OFFSET,
+  BOAT_BOW_RADIUS,
+  BOAT_STERN_OFFSET,
+  BOAT_STERN_RADIUS,
+} from '@/logic/constants'
 import { raceStore } from '@/state/raceStore'
 import { courseLegs, courseMarkAnnotations, radialSets, gateRadials } from '@/config/course'
 
@@ -16,6 +22,7 @@ class BoatView {
   hull = new Graphics()
   sail = new Graphics()
   projection = new Graphics()
+  collision = new Graphics()
   nameTag = new Text({
     text: '',
     style: {
@@ -27,11 +34,23 @@ class BoatView {
 
   constructor(private color: number) {
     this.drawBoat()
-    this.container.addChild(this.projection, this.hull, this.sail, this.nameTag)
+    // Draw hull/sail first, then overlay collision outlines for visibility
+    this.container.addChild(this.projection, this.hull, this.sail, this.collision, this.nameTag)
     this.nameTag.position.set(-20, 18)
   }
 
   private drawBoat() {
+    // Collision footprint (capsule: bow + stern circles to match rules)
+    this.collision.clear()
+    this.collision.setStrokeStyle({ width: 2, color: 0xffff00, alpha: 0.6 })
+    this.collision.fill({ color: 0xffcf70, alpha: 0.08 })
+    // Stern (larger)
+    this.collision.circle(0, Math.abs(BOAT_STERN_OFFSET), BOAT_STERN_RADIUS)
+    // Bow (smaller)
+    this.collision.circle(0, -Math.abs(BOAT_BOW_OFFSET), BOAT_BOW_RADIUS)
+    this.collision.fill()
+    this.collision.stroke()
+
     this.hull.clear()
     this.hull.fill({ color: this.color })
     const hullPoints = [

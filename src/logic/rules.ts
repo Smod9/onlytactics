@@ -1,5 +1,10 @@
 import type { BoatState, RaceState, RuleId } from '@/types/race'
-import { PORT_STARBOARD_DISTANCE } from './constants'
+import {
+  BOAT_BOW_OFFSET,
+  BOAT_BOW_RADIUS,
+  BOAT_STERN_OFFSET,
+  BOAT_STERN_RADIUS,
+} from './constants'
 import { createId } from '@/utils/ids'
 import type { RaceEvent } from '@/types/race'
 
@@ -19,10 +24,40 @@ const clampAngle180 = (deg: number) => {
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 
-const distance = (a: BoatState, b: BoatState) => {
-  const dx = a.pos.x - b.pos.x
-  const dy = a.pos.y - b.pos.y
-  return Math.hypot(dx, dy)
+type Circle = { x: number; y: number; r: number }
+
+const boatCircles = (boat: BoatState): Circle[] => {
+  const rad = degToRad(boat.headingDeg)
+  const dir = { x: Math.sin(rad), y: -Math.cos(rad) } // matches scene coords
+  const bow: Circle = {
+    x: boat.pos.x + dir.x * BOAT_BOW_OFFSET,
+    y: boat.pos.y + dir.y * BOAT_BOW_OFFSET,
+    r: BOAT_BOW_RADIUS,
+  }
+  const stern: Circle = {
+    x: boat.pos.x + dir.x * BOAT_STERN_OFFSET,
+    y: boat.pos.y + dir.y * BOAT_STERN_OFFSET,
+    r: BOAT_STERN_RADIUS,
+  }
+  return [bow, stern]
+}
+
+const circlesOverlap = (a: Circle, b: Circle) => {
+  const dx = a.x - b.x
+  const dy = a.y - b.y
+  const rr = a.r + b.r
+  return dx * dx + dy * dy <= rr * rr
+}
+
+const boatsTooClose = (a: BoatState, b: BoatState) => {
+  const ca = boatCircles(a)
+  const cb = boatCircles(b)
+  for (const c1 of ca) {
+    for (const c2 of cb) {
+      if (circlesOverlap(c1, c2)) return true
+    }
+  }
+  return false
 }
 
 type Tack = 'port' | 'starboard'
@@ -86,8 +121,7 @@ export class RulesEngine {
     a: BoatState,
     b: BoatState,
   ): RuleResolution[] {
-    const distanceApart = distance(a, b)
-    if (distanceApart > PORT_STARBOARD_DISTANCE) return []
+    if (!boatsTooClose(a, b)) return []
 
     const tackA = getTack(a, state.wind.directionDeg)
     const tackB = getTack(b, state.wind.directionDeg)
@@ -111,8 +145,7 @@ export class RulesEngine {
     a: BoatState,
     b: BoatState,
   ): RuleResolution[] {
-    const distanceApart = distance(a, b)
-    if (distanceApart > PORT_STARBOARD_DISTANCE) return []
+    if (!boatsTooClose(a, b)) return []
     const tackA = getTack(a, state.wind.directionDeg)
     const tackB = getTack(b, state.wind.directionDeg)
     if (tackA !== tackB) return []
