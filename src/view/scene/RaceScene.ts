@@ -36,6 +36,8 @@ class BoatView {
     this.drawBoat()
     // Draw hull/sail first, then overlay collision outlines for visibility
     this.container.addChild(this.projection, this.hull, this.sail, this.collision, this.nameTag)
+    // Collision footprint circles are a debug overlay; hide unless debug HUD is enabled.
+    this.collision.visible = appEnv.debugHud
     this.nameTag.position.set(-20, 18)
   }
 
