@@ -18,14 +18,13 @@ export const defaultBoatColors = [
 ]
 
 const defaultStartLine = {
-  pin: { x: -150, y: 110 },
-  committee: { x: 150, y: 115 },
+  pin: { x: -180, y: 120 },
+  committee: { x: 180, y: 125 },
 }
 
 const defaultLeewardGate = {
-  left: { x: -40, y: 63
-   },
-  right: { x: 40, y: 70 },
+  left: { x: -40, y: 73 },
+  right: { x: 40, y: 80 },
 }
 
 const structuredCopy = <T>(value: T): T => {
@@ -65,9 +64,11 @@ export const createBoatState = (
   const row = Math.floor(index / columnCount)
   const step = columnCount > 1 ? span / (columnCount - 1) : 0
   const baseX = left + column * step
-  const baseY = lineTop + 120 + row * 40
-  const jitterXRange = columnCount > 1 ? Math.min(step * 0.6, 120) : 120
-  const jitterYRange = 40
+  const baseY = lineTop + 110 + row * 40
+  // Reduce jitter to prevent boats from spawning on top of each other
+  // Jitter should be at most 30% of spacing, and never more than 20 units
+  const jitterXRange = columnCount > 1 ? Math.min(step * 0.3, 20) : 20
+  const jitterYRange = 15 // Reduced from 40 to prevent vertical overlaps
   const jitter = (range: number) => (Math.random() - 0.5) * range
   const spawnX = baseX + jitter(jitterXRange)
   const spawnY = baseY + jitter(jitterYRange)
