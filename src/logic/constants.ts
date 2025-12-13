@@ -21,6 +21,7 @@ export const BOAT_BOW_RADIUS = 4
 export const BOAT_STERN_RADIUS = 9
 export const BOAT_BOW_OFFSET = 12  // forward offset from boat center (scene units)
 export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
+export const BOAT_LENGTH = BOAT_BOW_OFFSET - BOAT_STERN_OFFSET // total boat length (scene units)
 
 // Wind shadow / wake parameters
 export const WAKE_MAX_SLOWDOWN = 0.25 // Max speed reduction (25%)
