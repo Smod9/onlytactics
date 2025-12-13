@@ -337,7 +337,9 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
         WAKE_HALF_WIDTH_START +
         (WAKE_HALF_WIDTH_END - WAKE_HALF_WIDTH_START) * alongNorm
       const lateral = Math.abs(cross)
+      // Gaussian falloff for lateral distance
       const lateralFactor = Math.exp(-(lateral * lateral) / (halfWidth * halfWidth))
+      // Linear falloff along the wake (stronger near the boat, weaker farther away)
       const alongFactor = 1 - alongNorm
       const contribution = WAKE_MAX_SLOWDOWN * alongFactor * lateralFactor
       if (contribution < WAKE_MIN_STRENGTH) continue

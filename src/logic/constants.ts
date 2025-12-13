@@ -23,10 +23,10 @@ export const BOAT_BOW_OFFSET = 12  // forward offset from boat center (scene uni
 export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
 
 // Wind shadow / wake parameters
-export const WAKE_MAX_SLOWDOWN = 0.3 // Max speed reduction (30%)
-export const WAKE_LENGTH = 200 // Downwind wake length (scene units)
+export const WAKE_MAX_SLOWDOWN = 0.25 // Max speed reduction (25%)
+export const WAKE_LENGTH = 60 // Downwind wake length (scene units)
 export const WAKE_HALF_WIDTH_START = 18 // Near-boat half width
-export const WAKE_HALF_WIDTH_END = 45 // Wake widens farther downwind
+export const WAKE_HALF_WIDTH_END = 35 // Wake widens farther downwind
 export const WAKE_CONE_HALF_ANGLE_DEG = 35 // Limit wake to downwind sector
 export const WAKE_MIN_STRENGTH = 0.01 // Ignore negligible contributions
 
