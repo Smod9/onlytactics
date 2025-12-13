@@ -1,3 +1,12 @@
+# [1.18.0](https://github.com/Smod9/onlytactics/compare/v1.17.0...v1.18.0) (2025-12-13)
+
+
+### Features
+
+* **capsule_collision:**  Hides circles unless debug enabled. They seem to work ([abfc798](https://github.com/Smod9/onlytactics/commit/abfc798b3e2c095dda448a9513edb961a0d06e0c))
+* **capsule_collision:** POC of drawn capsules optimized for boat size to improve accuracy of collisions ([b955c68](https://github.com/Smod9/onlytactics/commit/b955c68d75668da722f63eac8a5c41b871a6710a))
+* **wind shadow:** (PR [#36](https://github.com/Smod9/onlytactics/issues/36)) Initial implementation of Wind Shadow ([e836c55](https://github.com/Smod9/onlytactics/commit/e836c551ab43a932d2398f1b8b3c96ae138a8394))
+
 # [1.17.0](https://github.com/Smod9/onlytactics/compare/v1.16.0...v1.17.0) (2025-12-08)
 
 
