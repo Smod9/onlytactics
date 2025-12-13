@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/Smod9/onlytactics/compare/v1.18.0...v1.19.0) (2025-12-13)
+
+
+### Features
+
+* Improves starting line, extends the course and polishes the zone(s). ([62ea1f9](https://github.com/Smod9/onlytactics/commit/62ea1f9cceaf96b890747ec4774c8b135c5126b9))
+
 # [1.18.0](https://github.com/Smod9/onlytactics/compare/v1.17.0...v1.18.0) (2025-12-13)
 
 
