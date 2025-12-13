@@ -16,9 +16,15 @@ export const TACK_MIN_TIME_SECONDS = 1.0 //Minimum tack time in seconds
 export const TACK_SPEED_PENALTY = 0.7 //Speed Multiplier:lower = slower, 1.0 = no penalty
 export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be considered a tack and apply speed penalty
 
+// Collision footprint (capsule-like: small bow circle + larger stern circle)
+export const BOAT_BOW_RADIUS = 4
+export const BOAT_STERN_RADIUS = 9
+export const BOAT_BOW_OFFSET = 12  // forward offset from boat center (scene units)
+export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
+
 // Wind shadow / wake parameters
 export const WAKE_MAX_SLOWDOWN = 0.3 // Max speed reduction (30%)
-export const WAKE_LENGTH = 200 // Downwind wake length (meters in scene units)
+export const WAKE_LENGTH = 200 // Downwind wake length (scene units)
 export const WAKE_HALF_WIDTH_START = 18 // Near-boat half width
 export const WAKE_HALF_WIDTH_END = 45 // Wake widens farther downwind
 export const WAKE_CONE_HALF_ANGLE_DEG = 35 // Limit wake to downwind sector

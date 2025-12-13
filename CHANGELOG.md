@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/Smod9/onlytactics/compare/v1.16.0...v1.17.0) (2025-12-08)
+
+
+### Features
+
+* **chat cleanup:** Messages now show up just above the input ([b75c276](https://github.com/Smod9/onlytactics/commit/b75c276f4225265a807305e534e37d7172f246ec))
+
 # [1.16.0](https://github.com/Smod9/onlytactics/compare/v1.15.0...v1.16.0) (2025-12-07)
 
 
