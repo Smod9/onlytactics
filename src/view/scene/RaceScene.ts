@@ -6,6 +6,7 @@ import { angleDiff } from '@/logic/physics'
 import {
   BOAT_BOW_OFFSET,
   BOAT_BOW_RADIUS,
+  BOAT_LENGTH,
   BOAT_STERN_OFFSET,
   BOAT_STERN_RADIUS,
   WAKE_HALF_WIDTH_END,
@@ -289,9 +290,14 @@ export class RaceScene {
     this.waterLayer.fill()
   }
 
-  private mapToScreen(): ScreenMapper {
+  private getMapScale(): number {
     const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / this.mapScaleBase
+    return Math.min(width, height) / this.mapScaleBase
+  }
+
+  private mapToScreen(): ScreenMapper {
+    const scale = this.getMapScale()
+    const { width, height } = this.app.canvas
     return (value: Vec2) => ({
       x: width / 2 + value.x * scale,
       y: height / 2 + value.y * scale,
@@ -310,13 +316,19 @@ export class RaceScene {
 
   private drawMarks(state: RaceState, map: ScreenMapper) {
     this.courseLayer.setStrokeStyle({ width: 2, color: 0x5174b3, alpha: 0.6 })
-    state.marks.forEach((mark) => {
+    const scale = this.getMapScale()
+    // Gate marks (indices 3 and 4) are drawn separately in drawLeewardGate
+    const gateMarkIndices = new Set([3, 4])
+    state.marks.forEach((mark, index) => {
       const { x, y } = map(mark)
       this.courseLayer.fill({ color: 0xffff00, alpha: 0.8 })
       this.courseLayer.circle(x, y, 6)
       this.courseLayer.fill()
-      this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
-      this.drawZoneCircle({ x, y }, 60)
+      // Skip zone circles for gate marks (they're drawn in drawLeewardGate)
+      if (!gateMarkIndices.has(index)) {
+        this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
+        this.drawZoneCircle({ x, y }, 3 * BOAT_LENGTH, scale)
+      }
     })
   }
 
@@ -760,11 +772,12 @@ export class RaceScene {
     this.courseLayer.setStrokeStyle({ width: 2, color: 0xff6b6b, alpha: 0.8 })
     this.courseLayer.moveTo(left.x, left.y)
     this.courseLayer.lineTo(right.x, right.y)
+    const scale = this.getMapScale()
     ;[left, right].forEach((gateMark) => {
       this.courseLayer.fill({ color: 0xff6b6b, alpha: 0.9 })
       this.courseLayer.circle(gateMark.x, gateMark.y, 7)
       this.courseLayer.fill()
-      this.drawZoneCircle(gateMark, 48)
+      this.drawZoneCircle(gateMark, 3 * BOAT_LENGTH, scale)
     })
   }
 
@@ -817,7 +830,8 @@ export class RaceScene {
     this.courseLayer.stroke()
   }
 
-  private drawZoneCircle(center: { x: number; y: number }, radius: number) {
+  private drawZoneCircle(center: { x: number; y: number }, radiusWorld: number, scale: number) {
+    const radius = radiusWorld * scale
     const segments = 48
     const step = (Math.PI * 2) / segments
     let angle = 0

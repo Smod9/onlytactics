@@ -18,8 +18,8 @@ export const defaultBoatColors = [
 ]
 
 const defaultStartLine = {
-  pin: { x: -210, y: 120 },
-  committee: { x: 210, y: 110 },
+  pin: { x: -150, y: 110 },
+  committee: { x: 150, y: 115 },
 }
 
 const defaultLeewardGate = {
