@@ -59,6 +59,12 @@ import {
   TACK_MIN_ANGLE_DEG,
   TACK_MIN_TIME_SECONDS,
   TACK_SPEED_PENALTY,
+  WAKE_CONE_HALF_ANGLE_DEG,
+  WAKE_HALF_WIDTH_END,
+  WAKE_HALF_WIDTH_START,
+  WAKE_LENGTH,
+  WAKE_MAX_SLOWDOWN,
+  WAKE_MIN_STRENGTH,
   TURN_RATE_DEG,
 } from './constants'
 import { appEnv } from '@/config/env'
@@ -76,6 +82,11 @@ export const degToRad = (deg: number) => (deg * Math.PI) / 180
 
 /** Convert radians to degrees */
 export const radToDeg = (rad: number) => (rad * 180) / Math.PI
+
+const dirToUnit = (deg: number) => {
+  const rad = degToRad(deg)
+  return { x: Math.sin(rad), y: -Math.cos(rad) }
+}
 
 /**
  * Normalize angle to 0-360 range
@@ -280,6 +291,69 @@ const applyTackTimer = (boat: BoatState, dt: number) => {
 }
 
 // ============================================================================
+// WIND SHADOW / WAKE MODEL
+// ============================================================================
+
+const computeWakeFactors = (state: RaceState): Record<string, number> => {
+  const boats = Object.values(state.boats)
+  const factors: Record<string, number> = {}
+
+  const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+  const downwindVec = dirToUnit(downwindDeg)
+  const crossVec = { x: -downwindVec.y, y: downwindVec.x }
+  const maxRadius = WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2
+  const maxRadiusSq = maxRadius * maxRadius
+  const coneCos = Math.cos(degToRad(WAKE_CONE_HALF_ANGLE_DEG))
+
+  boats.forEach((boat) => {
+    factors[boat.id] = boat.wakeFactor ?? 1
+  })
+
+  for (let ti = 0; ti < boats.length; ti += 1) {
+    const target = boats[ti]
+    let slowdown = 0
+
+    for (let si = 0; si < boats.length; si += 1) {
+      if (si === ti) continue
+      const source = boats[si]
+      const dx = target.pos.x - source.pos.x
+      const dy = target.pos.y - source.pos.y
+      const distSq = dx * dx + dy * dy
+      if (distSq > maxRadiusSq) continue
+      if (distSq === 0) continue
+
+      const dist = Math.sqrt(distSq)
+      const relUnitX = dx / dist
+      const relUnitY = dy / dist
+      const align = relUnitX * downwindVec.x + relUnitY * downwindVec.y
+      if (align <= 0 || align < coneCos) continue
+
+      const along = dx * downwindVec.x + dy * downwindVec.y
+      if (along <= 0 || along > WAKE_LENGTH) continue
+
+      const cross = dx * crossVec.x + dy * crossVec.y
+      const alongNorm = along / WAKE_LENGTH
+      const halfWidth =
+        WAKE_HALF_WIDTH_START +
+        (WAKE_HALF_WIDTH_END - WAKE_HALF_WIDTH_START) * alongNorm
+      const lateral = Math.abs(cross)
+      // Gaussian falloff for lateral distance
+      const lateralFactor = Math.exp(-(lateral * lateral) / (halfWidth * halfWidth))
+      // Linear falloff along the wake (stronger near the boat, weaker farther away)
+      const alongFactor = 1 - alongNorm
+      const contribution = WAKE_MAX_SLOWDOWN * alongFactor * lateralFactor
+      if (contribution < WAKE_MIN_STRENGTH) continue
+      slowdown = Math.min(WAKE_MAX_SLOWDOWN, slowdown + contribution)
+    }
+
+    const wakeFactor = clamp(1 - slowdown, 1 - WAKE_MAX_SLOWDOWN, 1)
+    factors[target.id] = wakeFactor
+  }
+
+  return factors
+}
+
+// ============================================================================
 // MAIN PHYSICS STEP
 // ============================================================================
 
@@ -307,6 +381,8 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
   if (state.phase === 'prestart' && state.t >= 0) {
     state.phase = 'running'
   }
+
+  const wakeFactors = computeWakeFactors(state)
 
   // Update each boat
   Object.values(state.boats).forEach((boat) => {
@@ -378,6 +454,9 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     
     // Calculate TWA (despite variable name "awa")
     const awa = apparentWindAngle(boat.headingDeg, state.wind.directionDeg)
+    const wakeFactor = wakeFactors[boat.id] ?? 1
+    boat.wakeFactor = wakeFactor
+
     let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET) * appEnv.speedMultiplier
     
     // Apply stall penalty (from sailing into no-go zone)
@@ -401,6 +480,12 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     // Apply speed penalty while tack timer is active
     if (boat.tackTimer > 0) {
       targetSpeed *= TACK_SPEED_PENALTY
+    }
+
+    // Apply wind shadow / wake slowdown
+    targetSpeed *= wakeFactor
+    if (appEnv.debugHud && wakeFactor < 0.995) {
+      console.debug('[wake]', boat.name, wakeFactor.toFixed(3))
     }
     
     // ========================================================================
