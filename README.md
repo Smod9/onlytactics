@@ -74,6 +74,35 @@ Key bindings:
 
 There are no sheet/trim controls in v1—boat speed comes entirely from angle-to-wind and the polar model.
 
+## Wind Shadow / Wake System
+
+The simulator models wind shadow effects where boats sailing downwind create a wake that slows down boats behind them. This adds tactical depth to positioning and passing strategies.
+
+### How It Works
+
+- **Wake Zone**: Each boat creates a wake zone extending downwind (in the direction the wind is blowing). The wake is a trapezoid that:
+  - Starts narrow near the boat (`WAKE_HALF_WIDTH_START = 18` scene units)
+  - Widens as it extends downwind (`WAKE_HALF_WIDTH_END = 35` scene units)
+  - Extends for `WAKE_LENGTH = 60` scene units downwind
+
+- **Cone Angle**: The wake is limited to a downwind sector defined by `WAKE_CONE_HALF_ANGLE_DEG = 35°`. This means the wake only affects boats that are roughly downwind (within 35° of directly downwind).
+
+- **Slowdown Calculation**: When a boat is within another boat's wake zone, its speed is reduced based on:
+  - **Lateral distance**: Gaussian falloff based on distance from the wake centerline (stronger effect when directly behind, weaker when offset)
+  - **Distance along wake**: Linear falloff from the source boat (strongest effect near the boat, diminishing to zero at the end of the wake)
+  - **Maximum slowdown**: Up to `WAKE_MAX_SLOWDOWN = 25%` speed reduction when directly behind another boat
+
+- **Multiple Wakes**: If a boat is in multiple wake zones simultaneously, the slowdown effects are combined (capped at the maximum).
+
+### Visual Indicators
+
+With debug HUD enabled (`VITE_DEBUG_HUD=true`):
+- Wake zones are visualized as yellow/gold trapezoids extending downwind from each boat
+- Boats affected by wakes show a yellow outline and a "Wake -X%" label indicating the slowdown percentage
+- The player's speed/heading overlay shows a "Wake -X%" indicator when affected
+
+This system encourages tactical positioning—staying out of other boats' wakes when possible, and using your wake to slow down competitors when advantageous.
+
 ## Other scripts
 
 - `npm run build` – type-check and build for production

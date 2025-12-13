@@ -17,11 +17,11 @@ import { useTacticianControls } from './useTacticianControls'
 import { DebugPanel } from './DebugPanel'
 import { identity, setClientName } from '@/net/identity'
 import { startRosterWatcher } from '@/state/rosterStore'
-import { RosterPanel } from './RosterPanel'
 import { TacticianPopout } from './TacticianPopout'
 import { ProgressStepper } from './ProgressStepper'
 import type { RaceRole } from '@/types/race'
 import { OnScreenControls } from './OnScreenControls'
+import { useRoster } from '@/state/rosterStore'
 
 export const LiveClient = () => {
   const events = useRaceEvents()
@@ -103,7 +103,7 @@ export const LiveClient = () => {
       window.removeEventListener('focus', handleActivity)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [idleSuspended, needsName, network, appEnv.clientIdleTimeoutMs])
+  }, [idleSuspended, needsName, network])
 
   const role = useSyncExternalStore<RaceRole>(
     (listener) => network.onRoleChange(listener),
@@ -111,13 +111,41 @@ export const LiveClient = () => {
     () => 'spectator',
   )
 
-  const networkStatus = useSyncExternalStore<ReturnType<GameNetwork['getStatus']>>(
-    (listener) => network.onStatusChange(listener),
-    () => network.getStatus(),
-    () => 'idle',
-  )
-
   useTacticianControls(network, role)
+
+  const playerWakeFactor = playerBoat?.wakeFactor ?? 1
+  const wakeActive = playerWakeFactor < 0.995
+  const wakeSlowPercent = Math.max(1, Math.round((1 - playerWakeFactor) * 100))
+
+  const formatCountdownLabel = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`
+    const minutes = seconds / 60
+    return Number.isInteger(minutes) ? `${minutes}min` : `${minutes.toFixed(1)}min`
+  }
+
+  const roster = useRoster()
+  const rosterHostName =
+    roster.hostId && roster.entries.find((entry) => entry.clientId === roster.hostId)?.name
+
+  const countdownLabel = formatCountdownLabel(appEnv.countdownSeconds)
+  const showStartOverlay =
+    role === 'host' && race.phase === 'prestart' && !race.countdownArmed
+  const hostBoat = race.hostBoatId
+    ? race.boats[race.hostBoatId]
+    : race.hostId
+      ? race.boats[race.hostId]
+      : undefined
+  const hostName =
+    hostBoat?.name ??
+    rosterHostName ??
+    (role === 'host'
+      ? identity.clientName ?? 'You'
+      : race.hostId
+        ? `Host (${race.hostId.slice(0, 6)})`
+        : 'Host')
+  const hostNameDisplay = hostName ?? 'Host'
+  const showWaitingOverlay =
+    role !== 'host' && race.phase === 'prestart' && !race.countdownArmed
 
   const submitName = (event: FormEvent) => {
     event.preventDefault()
@@ -197,125 +225,129 @@ export const LiveClient = () => {
       )}
       <div className="live-main">
         <div className="stage-shell">
+          {showStartOverlay && (
+            <div className="start-sequence-overlay">
+              <div className="start-sequence-card">
+                <h2>🛥️ Yay! You are the Race Comittee!</h2>
+                <p> Click to start the race with a {countdownLabel} sequence.</p>
+                <button
+                  type="button"
+                  className="start-sequence"
+                  onClick={() => network.armCountdown(appEnv.countdownSeconds)}
+                >
+                  Start {countdownLabel} Sequence
+                </button>
+              </div>
+            </div>
+          )}
+          {showWaitingOverlay && (
+            <div className="start-sequence-overlay">
+              <div className="start-sequence-card">
+                <h2>Waiting for the start</h2>
+                <p>Waiting for Race Comittee ({hostNameDisplay}) to start the race.</p>
+              </div>
+            </div>
+          )}
+          {playerBoat && (
+            <>
+              <div className={`speed-heading-overlay ${wakeActive ? 'wake-active' : ''}`}>
+                <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
+                <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
+                {wakeActive && (
+                  <div className="wake-indicator">Wake -{wakeSlowPercent}%</div>
+                )}
+              </div>
+              {playerBoat.penalties > 0 && (
+                <div className="spin-overlay">
+                  <button
+                    type="button"
+                    className="spin-button"
+                    onClick={() => network.requestSpin()}
+                    title="Perform a 360° spin (also clears one penalty if you have any)"
+                  >
+                    Spin to clear your penalty (360)
+                  </button>
+                </div>
+              )}
+              <div className="hud-stack">
+                <div className="leaderboard-overlay">
+                  <div className="leaderboard-panel">
+                    <h3>Leaderboard</h3>
+                    {race.leaderboard.length ? (
+                      <ol>
+                        {race.leaderboard.slice(0, 6).map((boatId, index) => {
+                          const boat = race.boats[boatId]
+                          if (!boat) return null
+                          const isHost =
+                            (role === 'host' && boatId === identity.boatId) ||
+                            boatId === race.hostId ||
+                            boatId === race.hostBoatId
+                          const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
+                          const finished = boat.finished || internalLap >= race.lapsToFinish
+                          const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
+                          const onFinalLap = internalLap >= race.lapsToFinish - 1
+                          const displayLap = internalLap + 1
+                          const medal =
+                            finished && index === 0
+                              ? '🥇'
+                              : finished && index === 1
+                                ? '🥈'
+                                : finished && index === 2
+                                  ? '🥉'
+                                  : ''
+
+                          let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
+                          if (finished) {
+                            statusText = 'Finished'
+                          } else if (atLine && !onFinalLap) {
+                            statusText = 'Pre-start'
+                          } else if (atLine && onFinalLap) {
+                            statusText = 'Finish'
+                          }
+
+                          return (
+                            <li key={boatId}>
+                              <span className="leaderboard-position">{index + 1}.</span>
+                              <span className="leaderboard-name">
+                                {medal && <span className="leaderboard-medal">{medal} </span>}
+                                {boat.name}
+                                {isHost && ' (RC)'}
+                              </span>
+                              <span className="leaderboard-meta">{statusText}</span>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    ) : (
+                      <p>No leaderboard data yet.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="events-overlay">
+                  <div className="event-list">
+                    {events
+                      .slice()
+                      .reverse()
+                      .slice(0, 10)
+                      .map((event, index) => (
+                        <div key={event.eventId} className="event-item">
+                          <span className="event-kind">
+                            #{events.length - index} {event.kind}
+                            {event.ruleId ? ` (Rule ${event.ruleId})` : ''}
+                          </span>
+                          <span className="event-message">{event.message}</span>
+                        </div>
+                      ))}
+                    {!events.length && <p>No rule events yet.</p>}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
           <PixiStage />
           <OnScreenControls />
           <ChatPanel network={network} />
         </div>
-        <aside className="hud-panel">
-        <h2>Race Feed</h2>
-        <p>
-          Race{' '}
-          <strong>{appEnv.netTransport === 'colyseus' ? appEnv.colyseusRoomId : appEnv.raceId}</strong>{' '}
-          as <strong>{role}</strong>
-        </p>
-        {networkStatus === 'looking_for_host' && (
-          <p className="countdown-status">Looking for host&hellip;</p>
-        )}
-        {networkStatus === 'connecting' && (
-          <p className="countdown-status">Connecting&hellip;</p>
-        )}
-        {networkStatus === 'joining' && (
-          <p className="countdown-status">Joining race&hellip;</p>
-        )}
-        {networkStatus === 'ready' && race.phase === 'prestart' && !race.countdownArmed && (
-          <p className="countdown-status">
-            Waiting for host to start the sequence&hellip;
-          </p>
-        )}
-        {role === 'host' && race.phase === 'prestart' && !race.countdownArmed && (
-          <button
-            type="button"
-            className="start-sequence"
-            onClick={() => network.armCountdown(appEnv.countdownSeconds)}
-          >
-            Start {appEnv.countdownSeconds}s Sequence
-          </button>
-        )}
-        {playerBoat && (
-          <div className="player-actions">
-            <div className="speed-readout">
-              SPD {playerBoat.speed.toFixed(2)} kts
-            </div>
-            <div className="heading-readout">
-              HDG {playerBoat.headingDeg.toFixed(0)}°
-            </div>
-            {playerBoat.penalties > 0 && (
-              <button
-                type="button"
-                className="spin-button"
-                onClick={() => network.requestSpin()}
-                title="Perform a 360° spin (also clears one penalty if you have any)"
-              >
-                360° Spin (S)
-              </button>
-            )}
-          </div>
-        )}
-        <div className="leaderboard-panel">
-          <h3>Leaderboard</h3>
-          {race.leaderboard.length ? (
-            <ol>
-              {race.leaderboard.slice(0, 6).map((boatId, index) => {
-                const boat = race.boats[boatId]
-                if (!boat) return null
-                const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
-                const finished = boat.finished || internalLap >= race.lapsToFinish
-                const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
-                const onFinalLap = internalLap >= race.lapsToFinish - 1
-                // Display lap as 1-indexed (internal lap 0 = "Lap 1", internal lap 1 = "Lap 2", etc.)
-                const displayLap = internalLap + 1
-                const medal =
-                  finished && index === 0
-                    ? '🥇'
-                    : finished && index === 1
-                      ? '🥈'
-                      : finished && index === 2
-                        ? '🥉'
-                        : ''
-                
-                let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
-                if (finished) {
-                  statusText = 'Finished'
-                } else if (atLine && !onFinalLap) {
-                  statusText = 'Pre-start'
-                } else if (atLine && onFinalLap) {
-                  statusText = 'Finish'
-                }
-                
-                return (
-                  <li key={boatId}>
-                    <span className="leaderboard-position">{index + 1}.</span>
-                    <span className="leaderboard-name">
-                      {medal && <span className="leaderboard-medal">{medal} </span>}
-                      {boat.name}
-                    </span>
-                    <span className="leaderboard-meta">{statusText}</span>
-                  </li>
-                )
-              })}
-            </ol>
-          ) : (
-            <p>No leaderboard data yet.</p>
-          )}
-        </div>
-        <div className="event-list">
-          {events
-            .slice()
-            .reverse()
-            .slice(0, 10)
-            .map((event, index) => (
-              <div key={event.eventId} className="event-item">
-                <span className="event-kind">
-                  #{events.length - index} {event.kind}
-                  {event.ruleId ? ` (Rule ${event.ruleId})` : ''}
-                </span>
-                <span className="event-message">{event.message}</span>
-              </div>
-            ))}
-          {!events.length && <p>No rule events yet.</p>}
-        </div>
-        {race.phase === 'prestart' && !race.countdownArmed && <RosterPanel role={role} />}
-      </aside>
       </div>
       <button
         type="button"

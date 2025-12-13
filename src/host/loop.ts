@@ -244,7 +244,7 @@ export class HostLoop {
     
     // Handle FINISH line specially
     if (currentLeg.kind === 'finish' && currentLeg.finishLineIndices) {
-      const finishEvents = this.advanceFinishLeg(boat, state, currentLeg, lapTarget)
+      const finishEvents = this.advanceFinishLeg(boat, state, currentLeg)
       events.push(...finishEvents)
       return events
     }
@@ -274,7 +274,7 @@ export class HostLoop {
     }
     
     // Track rounding using radials
-    const { completed, debugEvent } = this.trackRadialCrossings(boat, state, progress, targetMark, currentLeg)
+    const { completed, debugEvent } = this.trackRadialCrossings(boat, progress, targetMark, currentLeg)
     if (debugEvent) {
       events.push(debugEvent)
     }
@@ -401,7 +401,6 @@ export class HostLoop {
     boat: BoatState,
     state: RaceState,
     leg: (typeof courseLegs)[number],
-    _lapTarget: number,
   ): RaceEvent[] {
     const events: RaceEvent[] = []
     const marks = state.marks
@@ -571,14 +570,6 @@ export class HostLoop {
           boatX: boat.pos.x.toFixed(1),
           midpointX: gateMidpoint.x.toFixed(1),
         })
-        
-        events.push(this.buildLapDebugEvent(boat, state, {
-          leg,
-          stage: 1,
-          crossed: true,
-          distance: boat.distanceToNextMark ?? 0,
-          stagesTotal: 3, // gate line + 2 radials
-        }))
       }
       return events
     }
@@ -611,13 +602,7 @@ export class HostLoop {
         progress.activeMarkIndex = markIdx
         progress.stage = 2 // Next stage will track exit radial
 
-        events.push(this.buildLapDebugEvent(boat, state, {
-          leg,
-          stage: 2,
-          crossed: true,
-          distance: boat.distanceToNextMark ?? 0,
-          stagesTotal: 3, // gate line + south + exit
-        }))
+        // lap debug event removed
       }
       return events
     }
@@ -668,16 +653,6 @@ export class HostLoop {
 
     if (crossed) {
       progress.stage += 1
-      const totalStages = 3 // gate line + south commit + exit
-      
-      events.push(this.buildLapDebugEvent(boat, state, {
-        leg,
-        stage: progress.stage,
-        crossed: true,
-        distance: boat.distanceToNextMark ?? 0,
-        stagesTotal: totalStages,
-      }))
-
       // Check if all radials done
       if (radialStage + 1 >= radials.length) {
         progress.stage = 0
@@ -830,7 +805,7 @@ export class HostLoop {
     // Check if we wrapped around to a leg that uses the same mark we just completed
     // This happens when going from seq 3 (windward-return) back to seq 1 (windward-entry)
     // Since we're already AT the windward mark, skip seq 1 and go to seq 2 (gate)
-    let nextLeg = courseLegs[progress.legIndex % legCount]
+    const nextLeg = courseLegs[progress.legIndex % legCount]
     const nextMarkIndices = new Set(nextLeg.markIndices)
     const sameMarkAsBefore = [...completedMarkIndices].some(idx => nextMarkIndices.has(idx))
     
@@ -889,7 +864,6 @@ export class HostLoop {
 
   private trackRadialCrossings(
     boat: BoatState,
-    state: RaceState,
     progress: RoundingProgress,
     mark: { x: number; y: number },
     leg: (typeof courseLegs)[number],
@@ -945,16 +919,8 @@ export class HostLoop {
     const crossed = inSector && crossedPerp
 
     let finished = false
-    let debugEvent: RaceEvent | undefined
     if (crossed) {
       progress.stage += 1
-      debugEvent = this.buildLapDebugEvent(boat, state, {
-        leg,
-        stage: progress.stage,
-        crossed,
-        distance: boat.distanceToNextMark ?? 0,
-        stagesTotal: totalStages,
-      })
       if (progress.stage >= totalStages) {
         finished = true
       }
@@ -987,30 +953,7 @@ export class HostLoop {
 
     return {
       completed: finished,
-      debugEvent,
-    }
-  }
-
-  private buildLapDebugEvent(
-    boat: BoatState,
-    state: RaceState,
-    info: {
-      leg: (typeof courseLegs)[number]
-      stage: number
-      crossed: boolean
-      distance: number
-      stagesTotal: number
-    },
-  ): RaceEvent {
-    const message = `[lap-debug] ${boat.name} leg=${info.leg.sequence} stage=${info.stage}/${info.stagesTotal} crossed=${info.crossed} dir=${info.leg.rounding} dist=${info.distance.toFixed(1)}m lap=${boat.lap}`
-    lapDebug(message)
-    return {
-      eventId: createId('lap-debug'),
-      kind: 'rule_hint',
-      ruleId: 'other',
-      t: state.t,
-      boats: [boat.id],
-      message,
+      debugEvent: undefined,
     }
   }
 

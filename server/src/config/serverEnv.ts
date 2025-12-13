@@ -23,7 +23,7 @@ export const appEnv = {
     rawEnv.PENALTY_COOLDOWN_SECONDS ?? rawEnv.VITE_PENALTY_COOLDOWN_SECONDS,
     15,
   ),
-  debugHud: toBool(rawEnv.DEBUG_HUD ?? rawEnv.VITE_DEBUG_HUD, true),
+  debugHud: toBool(rawEnv.DEBUG_HUD ?? rawEnv.VITE_DEBUG_HUD, false),
   debugNetLogs: toBool('true', true),
   fixedWind: toBool(rawEnv.FIXED_WIND ?? rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.BASELINE_WIND_DEG ?? rawEnv.VITE_BASELINE_WIND_DEG, 360),

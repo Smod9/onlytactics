@@ -3,11 +3,25 @@ import { appEnv } from '@/config/env'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
+import {
+  BOAT_BOW_OFFSET,
+  BOAT_BOW_RADIUS,
+  BOAT_STERN_OFFSET,
+  BOAT_STERN_RADIUS,
+  WAKE_HALF_WIDTH_END,
+  WAKE_HALF_WIDTH_START,
+  WAKE_LENGTH,
+  WAKE_MAX_SLOWDOWN,
+} from '@/logic/constants'
 import { raceStore } from '@/state/raceStore'
 import { courseLegs, courseMarkAnnotations, radialSets, gateRadials } from '@/config/course'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
+const normalizeDeg = (deg: number) => {
+  const wrapped = deg % 360
+  return wrapped < 0 ? wrapped + 360 : wrapped
+}
 
 type ScreenMapper = (value: Vec2) => { x: number; y: number }
 
@@ -16,6 +30,17 @@ class BoatView {
   hull = new Graphics()
   sail = new Graphics()
   projection = new Graphics()
+  collision = new Graphics()
+  wakeIndicator = new Graphics()
+  wakeLabel = new Text({
+    text: '',
+    style: {
+      fill: '#ffcf70',
+      fontSize: 10,
+      align: 'center',
+      fontFamily: 'IBM Plex Mono, monospace',
+    },
+  })
   nameTag = new Text({
     text: '',
     style: {
@@ -27,11 +52,37 @@ class BoatView {
 
   constructor(private color: number) {
     this.drawBoat()
-    this.container.addChild(this.projection, this.hull, this.sail, this.nameTag)
+    // Draw hull/sail first, then overlay collision outlines for visibility
+    this.container.addChild(
+      this.projection,
+      this.hull,
+      this.sail,
+      this.collision,
+      this.wakeIndicator,
+      this.wakeLabel,
+      this.nameTag,
+    )
+    // Collision footprint circles are a debug overlay; hide unless debug HUD is enabled.
+    this.collision.visible = appEnv.debugHud
+    this.wakeIndicator.visible = false
+    this.wakeLabel.visible = false
     this.nameTag.position.set(-20, 18)
+    this.wakeLabel.position.set(0, -35)
+    this.wakeLabel.anchor.set(0.5)
   }
 
   private drawBoat() {
+    // Collision footprint (capsule: bow + stern circles to match rules)
+    this.collision.clear()
+    this.collision.setStrokeStyle({ width: 2, color: 0xffff00, alpha: 0.6 })
+    this.collision.fill({ color: 0xffcf70, alpha: 0.08 })
+    // Stern (larger)
+    this.collision.circle(0, Math.abs(BOAT_STERN_OFFSET), BOAT_STERN_RADIUS)
+    // Bow (smaller)
+    this.collision.circle(0, -Math.abs(BOAT_BOW_OFFSET), BOAT_BOW_RADIUS)
+    this.collision.fill()
+    this.collision.stroke()
+
     this.hull.clear()
     this.hull.fill({ color: this.color })
     const hullPoints = [
@@ -102,6 +153,42 @@ class BoatView {
       this.nameTag.style.fill = '#ffffff'
     }
     this.drawProjection(boat, scale, isPlayer)
+    this.updateWakeIndicator(boat)
+  }
+
+  private updateWakeIndicator(boat: BoatState) {
+    const wakeFactor = boat.wakeFactor ?? 1
+    const isAffected = wakeFactor < 0.995
+    const showIndicator = appEnv.debugHud && isAffected
+
+    this.wakeIndicator.visible = showIndicator
+    this.wakeLabel.visible = showIndicator
+
+    if (showIndicator) {
+      const slowdown = 1 - wakeFactor
+      const slowdownPercent = Math.round(slowdown * 100)
+      const intensity = Math.min(1, slowdown / WAKE_MAX_SLOWDOWN)
+
+      // Draw a colored outline around the boat to show it's in a wake
+      this.wakeIndicator.clear()
+      const outlineWidth = 3
+      const alpha = 0.3 + intensity * 0.5
+      this.wakeIndicator.setStrokeStyle({
+        width: outlineWidth,
+        color: 0xffcf70,
+        alpha,
+      })
+
+      // Draw outline around the hull shape
+      const hullPoints = [0, -20, 10, 10, 0, 16, -10, 10]
+      this.wakeIndicator.poly(hullPoints)
+      this.wakeIndicator.stroke()
+
+      // Update label text
+      this.wakeLabel.text = `Wake -${slowdownPercent}%`
+      this.wakeLabel.style.fill = '#ffcf70'
+      this.wakeLabel.alpha = 0.8 + intensity * 0.2
+    }
   }
 
   private drawProjection(boat: BoatState, scale: number, isPlayer: boolean) {
@@ -126,7 +213,7 @@ export class RaceScene {
   private windArrowFill = new Graphics()
   private windText = new Text({
     text: '',
-    style: { fill: '#ffffff', fontSize: 12 },
+    style: { fill: '#ffffff', fontSize: 16, fontWeight: '600' },
   })
   private timerText = new Text({
     text: '',
@@ -174,9 +261,8 @@ export class RaceScene {
       this.timerText,
       this.countdownContainer,
     )
-    this.windText.position.set(80, 20)
-    this.timerText.position.set(20, 20)
-    this.windText.position.set(20, 48)
+    this.windText.position.set(20, 100)
+    this.timerText.position.set(20, 64)
 
     this.drawWater()
   }
@@ -237,10 +323,108 @@ export class RaceScene {
   private drawDebugAnnotations(state: RaceState, map: ScreenMapper) {
     this.overlayLayer.removeChildren()
     if (!appEnv.debugHud) return
+    this.drawWindShadows(state, map)
     this.drawMarkRadials(state, map)
     this.drawMarkLabels(state, map)
     this.drawNextMarkHighlight(state, map)
     this.drawCrossingMarkers(state, map)
+  }
+
+  private drawWindShadows(state: RaceState, map: ScreenMapper) {
+    const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+    const downRad = degToRad(downwindDeg)
+    const dir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
+    const cross = { x: -dir.y, y: dir.x }
+
+    // Check which boats are actually affecting others (for intensity visualization)
+    const boatsAffectingOthers = new Set<string>()
+    Object.values(state.boats).forEach((target) => {
+      const targetFactor = target.wakeFactor ?? 1
+      if (targetFactor < 0.995) {
+        // This boat is being affected, find which boats are affecting it
+        Object.values(state.boats).forEach((source) => {
+          if (source.id === target.id) return
+          const dx = target.pos.x - source.pos.x
+          const dy = target.pos.y - source.pos.y
+          const distSq = dx * dx + dy * dy
+          if (distSq === 0 || distSq > (WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2) ** 2) return
+          
+          const dist = Math.sqrt(distSq)
+          const relUnitX = dx / dist
+          const relUnitY = dy / dist
+          const align = relUnitX * dir.x + relUnitY * dir.y
+          if (align > 0) {
+            boatsAffectingOthers.add(source.id)
+          }
+        })
+      }
+    })
+
+    // In debug mode, show wake zones for all boats (not just those affecting others)
+    // This lets you see where the wake effect would be, even when empty
+    Object.values(state.boats).forEach((boat) => {
+      const isAffectingOthers = boatsAffectingOthers.has(boat.id)
+      
+      // Always show in debug mode, or show when actually affecting others
+      if (!appEnv.debugHud && !isAffectingOthers) return
+
+      const startCenter = boat.pos
+      const endCenter = {
+        x: boat.pos.x + dir.x * WAKE_LENGTH,
+        y: boat.pos.y + dir.y * WAKE_LENGTH,
+      }
+
+      const startLeft = {
+        x: startCenter.x + cross.x * WAKE_HALF_WIDTH_START,
+        y: startCenter.y + cross.y * WAKE_HALF_WIDTH_START,
+      }
+      const startRight = {
+        x: startCenter.x - cross.x * WAKE_HALF_WIDTH_START,
+        y: startCenter.y - cross.y * WAKE_HALF_WIDTH_START,
+      }
+      const endLeft = {
+        x: endCenter.x + cross.x * WAKE_HALF_WIDTH_END,
+        y: endCenter.y + cross.y * WAKE_HALF_WIDTH_END,
+      }
+      const endRight = {
+        x: endCenter.x - cross.x * WAKE_HALF_WIDTH_END,
+        y: endCenter.y - cross.y * WAKE_HALF_WIDTH_END,
+      }
+
+      // Make visualization more visible when actually affecting others
+      const fillAlpha = isAffectingOthers ? 0.15 : 0.05
+      const strokeAlpha = isAffectingOthers ? 0.4 : 0.15
+
+      const g = new Graphics()
+      g.setStrokeStyle({ width: 1.5, color: 0xffcf70, alpha: strokeAlpha })
+      g.fill({ color: 0xffcf70, alpha: fillAlpha })
+
+      const pts = [startLeft, endLeft, endRight, startRight].map(map)
+      g.moveTo(pts[0].x, pts[0].y)
+      pts.slice(1).forEach((p) => g.lineTo(p.x, p.y))
+      g.closePath()
+      g.fill()
+      g.stroke()
+
+      // Outline the cone edges for clarity (only when affecting others)
+      if (isAffectingOthers) {
+        const coneEdgeLeft = new Graphics()
+        coneEdgeLeft.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.3 })
+        coneEdgeLeft.moveTo(map(startCenter).x, map(startCenter).y)
+        coneEdgeLeft.lineTo(map(endLeft).x, map(endLeft).y)
+        coneEdgeLeft.stroke()
+
+        const coneEdgeRight = new Graphics()
+        coneEdgeRight.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.3 })
+        coneEdgeRight.moveTo(map(startCenter).x, map(startCenter).y)
+        coneEdgeRight.lineTo(map(endRight).x, map(endRight).y)
+        coneEdgeRight.stroke()
+
+        this.overlayLayer.addChild(g, coneEdgeLeft, coneEdgeRight)
+      } else {
+        this.overlayLayer.addChild(g)
+      }
+    })
   }
 
   private drawMarkRadials(state: RaceState, map: ScreenMapper) {
@@ -683,7 +867,7 @@ export class RaceScene {
       Math.abs(shift) < 0.5 ? 'ON' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
     this.windText.text = `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts`
 
-    const center = { x: 80, y: 120 }
+    const center = { x: 80, y: 150 }
     const length = 60
     const heading = degToRad(state.wind.directionDeg + 180)
     const tipX = center.x + length * Math.sin(heading)

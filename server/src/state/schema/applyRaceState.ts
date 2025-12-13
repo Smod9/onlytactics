@@ -18,6 +18,7 @@ const upsertBoat = (target: BoatStateSchema, source: BoatState) => {
   target.desiredHeadingDeg = source.desiredHeadingDeg
   assignVec(target.pos, source.pos)
   target.speed = source.speed
+  target.wakeFactor = source.wakeFactor ?? 1
   target.lap = source.lap ?? 0
   target.nextMarkIndex = source.nextMarkIndex ?? 0
   target.inMarkZone = source.inMarkZone ?? false
@@ -49,6 +50,7 @@ export const applyRaceStateToSchema = (target: RaceStateSchema, source: RaceStat
   target.countdownArmed = source.countdownArmed
   target.clockStartMs = source.clockStartMs ?? -1
   target.hostId = source.hostId ?? ''
+  target.hostBoatId = source.hostBoatId ?? ''
   target.lapsToFinish = source.lapsToFinish
   target.aiEnabled = source.aiEnabled
 

@@ -74,6 +74,9 @@ export class BoatStateSchema extends Schema {
   speed = 0
 
   @type('number')
+  wakeFactor = 1
+
+  @type('number')
   lap = 0
 
   @type('number')
@@ -155,6 +158,9 @@ export class RaceStateSchema extends Schema {
 
   @type('string')
   hostId = ''
+
+  @type('string')
+  hostBoatId = ''
 
   @type('number')
   lapsToFinish = 3
