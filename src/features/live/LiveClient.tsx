@@ -254,7 +254,7 @@ export const LiveClient = () => {
                 <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
                 <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
                 {wakeActive && (
-                  <div className="wake-indicator">Wake -{wakeSlowPercent}%</div>
+                  <div className="wake-indicator">WS -{wakeSlowPercent}%</div>
                 )}
               </div>
               {playerBoat.penalties > 0 && (
