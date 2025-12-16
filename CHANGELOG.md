@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/Smod9/onlytactics/compare/v1.19.0...v1.19.1) (2025-12-16)
+
+
+### Bug Fixes
+
+* Improves style of wind shadow indicator ([89206bd](https://github.com/Smod9/onlytactics/commit/89206bd9caf2705803847c7898cd27027a3fb57d))
+
 # [1.19.0](https://github.com/Smod9/onlytactics/compare/v1.18.0...v1.19.0) (2025-12-13)
 
 
