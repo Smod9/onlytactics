@@ -23,8 +23,9 @@ const defaultStartLine = {
 }
 
 const defaultLeewardGate = {
-  left: { x: -40, y: 73 },
-  right: { x: 40, y: 80 },
+  // M2.1 / M2.2 (leeward gate marks) - widened for better gate separation/visibility.
+  left: { x: -70, y: 73 },
+  right: { x: 70, y: 80 },
 }
 
 const structuredCopy = <T>(value: T): T => {

@@ -13,6 +13,20 @@ const toBool = (value: string | undefined, fallback = false) => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes'
 }
 
+const stripInlineComment = (value: string) => value.replace(/\s+#.*$/, '').trim()
+
+const normalizeWsUrl = (value: string) => {
+  const trimmed = stripInlineComment(value.trim())
+  // Common mistake: "ws:localhost:2567" (missing "//")
+  if (trimmed.startsWith('ws:') && !trimmed.startsWith('ws://')) {
+    return `ws://${trimmed.slice('ws:'.length).replace(/^\/+/, '')}`
+  }
+  if (trimmed.startsWith('wss:') && !trimmed.startsWith('wss://')) {
+    return `wss://${trimmed.slice('wss:'.length).replace(/^\/+/, '')}`
+  }
+  return trimmed
+}
+
 const defaultColyseusEndpoint =
   rawEnv.MODE === 'development' || rawEnv.NODE_ENV === 'development'
     ? 'ws://localhost:2567'
@@ -23,7 +37,7 @@ export const appEnv = {
   clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'host') as ClientRole,
   clientName: rawEnv.VITE_CLIENT_NAME ?? 'Debug Host',
   netTransport: (rawEnv.VITE_NET_TRANSPORT ?? 'colyseus') as 'mqtt' | 'colyseus',
-  colyseusEndpoint: rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint,
+  colyseusEndpoint: normalizeWsUrl(rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint),
   colyseusRoomId: rawEnv.VITE_COLYSEUS_ROOM_ID ?? 'onlytactics-dev',
   speedMultiplier: toNumber(rawEnv.VITE_SPEED_MULTIPLIER, 1),
   tickRateHz: toNumber(rawEnv.VITE_TICK_RATE, 10),

@@ -63,6 +63,7 @@ export class RaceRoom extends Room<RaceRoomState> {
   private chatRateMap = new Map<string, number[]>()
   // Track active spins: maps boatId to array of timeout IDs for the spin sequence
   private activeSpins = new Map<string, NodeJS.Timeout[]>()
+  private lastCountdownLogAtMs = 0
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
@@ -74,6 +75,21 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.loop = new HostLoop(this.raceStore, undefined, undefined, {
       onEvents: (events) => this.broadcastEvents(events),
       onTick: (state) => {
+        // Debug: confirm countdown is ticking server-side.
+        // Logs at most once per second while countdown is armed.
+        if (state.phase === 'prestart' && state.countdownArmed) {
+          const now = Date.now()
+          if (now - this.lastCountdownLogAtMs > 1000) {
+            this.lastCountdownLogAtMs = now
+            console.info('[RaceRoom]', 'countdown_tick', {
+              t: Number.isFinite(state.t) ? state.t.toFixed(2) : state.t,
+              phase: state.phase,
+              countdownArmed: state.countdownArmed,
+              clockStartMs: state.clockStartMs ?? null,
+            })
+          }
+        }
+
         if (state.hostId !== this.hostClientId) {
           roomDebug('loop host sync', {
             loopHostId: state.hostId,
