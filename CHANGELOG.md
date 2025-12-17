@@ -1,3 +1,12 @@
+# [1.20.0](https://github.com/Smod9/onlytactics/compare/v1.19.1...v1.20.0) (2025-12-17)
+
+
+### Features
+
+* Implement camera mode toggle and enhance race scene rendering ([59635df](https://github.com/Smod9/onlytactics/commit/59635df2735d368f6d192af6b6effb88a5a64822))
+* Polish on zoom and other features ([349bca4](https://github.com/Smod9/onlytactics/commit/349bca48585e3c802d5fde1e9d77102789382c35))
+* zoom working, polish to touch controls associated with that ([a5c13e3](https://github.com/Smod9/onlytactics/commit/a5c13e3856f8b798e9623a891390c462956f4d66))
+
 ## [1.19.1](https://github.com/Smod9/onlytactics/compare/v1.19.0...v1.19.1) (2025-12-16)
 
 
