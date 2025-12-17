@@ -23,6 +23,7 @@ import type { RaceRole } from '@/types/race'
 import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
 import type { CameraMode } from '@/view/scene/RaceScene'
+import { ZoomIcon } from '@/view/icons'
 
 const isInteractiveElement = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
@@ -286,16 +287,6 @@ export const LiveClient = () => {
                   <div className="wake-indicator">WS -{wakeSlowPercent}%</div>
                 )}
               </div>
-              <div className="camera-toggle-overlay">
-                <button
-                  type="button"
-                  className="camera-toggle"
-                  onClick={() => setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))}
-                  title="Toggle camera mode (Z)"
-                >
-                  {cameraMode === 'follow' ? 'Birdseye (Z)' : 'Follow (Z)'}
-                </button>
-              </div>
               {playerBoat.penalties > 0 && (
                 <div className="spin-overlay">
                   <button
@@ -309,57 +300,74 @@ export const LiveClient = () => {
                 </div>
               )}
               <div className="hud-stack">
-                <div className="leaderboard-overlay">
-                  <div className="leaderboard-panel">
-                    <h3>Leaderboard</h3>
-                    {race.leaderboard.length ? (
-                      <ol>
-                        {race.leaderboard.slice(0, 6).map((boatId, index) => {
-                          const boat = race.boats[boatId]
-                          if (!boat) return null
-                          const isHost =
-                            (role === 'host' && boatId === identity.boatId) ||
-                            boatId === race.hostId ||
-                            boatId === race.hostBoatId
-                          const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
-                          const finished = boat.finished || internalLap >= race.lapsToFinish
-                          const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
-                          const onFinalLap = internalLap >= race.lapsToFinish - 1
-                          const displayLap = internalLap + 1
-                          const medal =
-                            finished && index === 0
-                              ? '🥇'
-                              : finished && index === 1
-                                ? '🥈'
-                                : finished && index === 2
-                                  ? '🥉'
-                                  : ''
+                <div className="hud-top-row">
+                  <div className="hud-camera-toggle">
+                    <button
+                      type="button"
+                      className="camera-toggle"
+                      onClick={() => setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))}
+                      title="Toggle camera mode (Z)"
+                    >
+                      <span className="camera-toggle-icon" aria-hidden="true">
+                        <ZoomIcon />
+                      </span>
+                      <span className="camera-toggle-text">
+                        {cameraMode === 'follow' ? 'Birdseye (Z)' : 'Follow (Z)'}
+                      </span>
+                    </button>
+                  </div>
+                  <div className="leaderboard-overlay">
+                    <div className="leaderboard-panel">
+                      <h3>Leaderboard</h3>
+                      {race.leaderboard.length ? (
+                        <ol>
+                          {race.leaderboard.slice(0, 6).map((boatId, index) => {
+                            const boat = race.boats[boatId]
+                            if (!boat) return null
+                            const isHost =
+                              (role === 'host' && boatId === identity.boatId) ||
+                              boatId === race.hostId ||
+                              boatId === race.hostBoatId
+                            const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
+                            const finished = boat.finished || internalLap >= race.lapsToFinish
+                            const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
+                            const onFinalLap = internalLap >= race.lapsToFinish - 1
+                            const displayLap = internalLap + 1
+                            const medal =
+                              finished && index === 0
+                                ? '🥇'
+                                : finished && index === 1
+                                  ? '🥈'
+                                  : finished && index === 2
+                                    ? '🥉'
+                                    : ''
 
-                          let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
-                          if (finished) {
-                            statusText = 'Finished'
-                          } else if (atLine && !onFinalLap) {
-                            statusText = 'Pre-start'
-                          } else if (atLine && onFinalLap) {
-                            statusText = 'Finish'
-                          }
+                            let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
+                            if (finished) {
+                              statusText = 'Finished'
+                            } else if (atLine && !onFinalLap) {
+                              statusText = 'Pre-start'
+                            } else if (atLine && onFinalLap) {
+                              statusText = 'Finish'
+                            }
 
-                          return (
-                            <li key={boatId}>
-                              <span className="leaderboard-position">{index + 1}.</span>
-                              <span className="leaderboard-name">
-                                {medal && <span className="leaderboard-medal">{medal} </span>}
-                                {boat.name}
-                                {isHost && ' (RC)'}
-                              </span>
-                              <span className="leaderboard-meta">{statusText}</span>
-                            </li>
-                          )
-                        })}
-                      </ol>
-                    ) : (
-                      <p>No leaderboard data yet.</p>
-                    )}
+                            return (
+                              <li key={boatId}>
+                                <span className="leaderboard-position">{index + 1}.</span>
+                                <span className="leaderboard-name">
+                                  {medal && <span className="leaderboard-medal">{medal} </span>}
+                                  {boat.name}
+                                  {isHost && ' (RC)'}
+                                </span>
+                                <span className="leaderboard-meta">{statusText}</span>
+                              </li>
+                            )
+                          })}
+                        </ol>
+                      ) : (
+                        <p>No leaderboard data yet.</p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="events-overlay">
@@ -384,7 +392,10 @@ export const LiveClient = () => {
             </>
           )}
           <PixiStage cameraMode={cameraMode} />
-          <OnScreenControls />
+          <OnScreenControls
+            cameraMode={cameraMode}
+            onToggleCamera={() => setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))}
+          />
           <ChatPanel network={network} />
         </div>
       </div>
@@ -404,4 +415,5 @@ export const LiveClient = () => {
     </div>
   )
 }
+
 
