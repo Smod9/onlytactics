@@ -553,6 +553,13 @@ export class RaceRoom extends Room<RaceRoomState> {
       ...this.describeHost(this.hostSessionId),
     })
     this.mutateState((draft) => {
+      // Refresh course geometry on reset so edits in shared `createInitialRaceState`
+      // (marks/gate/start line) take effect without recreating the room.
+      const fresh = createInitialRaceState(draft.meta.raceId, appEnv.countdownSeconds)
+      draft.marks = fresh.marks
+      draft.startLine = fresh.startLine
+      draft.leewardGate = fresh.leewardGate
+
       draft.phase = 'prestart'
       draft.countdownArmed = false
       draft.clockStartMs = null

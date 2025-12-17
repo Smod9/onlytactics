@@ -24,6 +24,11 @@ const normalizeDeg = (deg: number) => {
   return wrapped < 0 ? wrapped + 360 : wrapped
 }
 
+// Mark-zone radius in world units.
+// Note: our boat sprite is drawn larger than the physics/collision `BOAT_LENGTH`,
+// so using a higher multiplier matches what “2 boat lengths” looks like on screen.
+const MARK_ZONE_RADIUS = 6 * BOAT_LENGTH
+
 export type CameraMode = 'follow' | 'birdseye'
 
 class BoatView {
@@ -395,7 +400,7 @@ export class RaceScene {
       // Skip zone circles for gate marks and start line marks
       if (!gateMarkIndices.has(index) && !startLineMarkIndices.has(index)) {
         this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
-        this.drawZoneCircle({ x, y }, 3 * BOAT_LENGTH)
+        this.drawZoneCircle({ x, y }, MARK_ZONE_RADIUS)
       }
     })
   }
@@ -869,7 +874,7 @@ export class RaceScene {
       this.courseLayer.fill({ color: 0xff6b6b, alpha: 0.9 })
       this.courseLayer.circle(gateMark.x, gateMark.y, 7)
       this.courseLayer.fill()
-      this.drawZoneCircle(gateMark, 3 * BOAT_LENGTH)
+      this.drawZoneCircle(gateMark, MARK_ZONE_RADIUS)
     })
   }
 

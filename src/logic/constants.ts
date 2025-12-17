@@ -6,7 +6,7 @@ export const DECELERATION_RATE = 0.4 //How fast a boat decelerates in meters per
 export const PORT_STARBOARD_DISTANCE = 19 //How far apart the ports and starboards are in meters
 export const NO_GO_ANGLE_DEG = 35 //How far a boat can go before it stalls (we block this angle)
 // Maximum allowed downwind angle (TWA). Set to 180 to allow sailing as deep downwind as desired.
-export const MAX_DOWNWIND_ANGLE_DEG = 180
+export const MAX_DOWNWIND_ANGLE_DEG = 177
 export const HEADING_STEP_DEG = 5 //How much a boat can turn in one step
 export const HARD_TURN_STEP_DEG = 30 //How much a boat can turn in one step when holding Shift
 export const STALL_DURATION_S = 3 //How long a boat stalls in seconds
