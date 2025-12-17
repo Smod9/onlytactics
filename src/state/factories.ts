@@ -24,8 +24,8 @@ const defaultStartLine = {
 
 const defaultLeewardGate = {
   // M2.1 / M2.2 (leeward gate marks) - widened for better gate separation/visibility.
-  left: { x: -70, y: 73 },
-  right: { x: 70, y: 80 },
+  left: { x: -95, y: 73 },
+  right: { x: 95, y: 80 },
 }
 
 const structuredCopy = <T>(value: T): T => {
@@ -110,8 +110,9 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
   // Double the upwind distance by moving the windward mark farther from the start line.
   // Start line is around y≈122; previously windward at y=-220 (~340 units upwind).
   // New windward at y=-560 (~680 units upwind).
+  // Then +30% farther upwind: y=-728.
   const defaultMarks: Vec2[] = [
-    { x: 0, y: -560 }, // windward mark (doubled upwind distance)
+    { x: 0, y: -728 }, // windward mark (doubled upwind distance + 30%)
     defaultStartLine.committee,
     defaultStartLine.pin,
     defaultLeewardGate.left,
