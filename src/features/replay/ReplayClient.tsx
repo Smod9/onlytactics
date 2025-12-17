@@ -120,7 +120,7 @@ export const ReplayClient = () => {
         </div>
       </aside>
       <section className="replay-stage">
-        <PixiStage />
+        <PixiStage cameraMode="birdseye" />
         <div className="replay-controls">
           <div className="playback-controls" style={{ display: 'none' }}>
             <button

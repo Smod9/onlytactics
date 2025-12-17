@@ -106,8 +106,11 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     createBoatState(config.name, idx, config.id, config.aiProfileId),
   )
   const baselineWind = appEnv.baselineWindDeg
+  // Double the upwind distance by moving the windward mark farther from the start line.
+  // Start line is around y≈122; previously windward at y=-220 (~340 units upwind).
+  // New windward at y=-560 (~680 units upwind).
   const defaultMarks: Vec2[] = [
-    { x: 0, y: -220 }, // windward mark
+    { x: 0, y: -560 }, // windward mark (doubled upwind distance)
     defaultStartLine.committee,
     defaultStartLine.pin,
     defaultLeewardGate.left,

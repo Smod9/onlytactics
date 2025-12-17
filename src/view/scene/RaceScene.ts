@@ -26,6 +26,8 @@ const normalizeDeg = (deg: number) => {
 
 type ScreenMapper = (value: Vec2) => { x: number; y: number }
 
+export type CameraMode = 'follow' | 'birdseye'
+
 class BoatView {
   container = new Container()
   hull = new Graphics()
@@ -192,10 +194,13 @@ class BoatView {
     }
   }
 
-  private drawProjection(boat: BoatState, scale: number, isPlayer: boolean) {
+  private drawProjection(boat: BoatState, _scale: number, isPlayer: boolean) {
     this.projection.clear()
     const baseLength = Math.max(40, boat.speed * 6)
-    const length = (isPlayer ? baseLength * 4 : baseLength) / Math.max(scale, 0.0001)
+    // Draw in world units so the projection scales with the camera/boat size.
+    // Previously this divided by `scale` to keep a constant pixel length, but that
+    // makes it look shorter relative to the boat when zoomed in.
+    const length = isPlayer ? baseLength * 4 : baseLength
     this.projection
       .setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.3 })
       .moveTo(0, -10)
@@ -238,12 +243,21 @@ export class RaceScene {
   })
 
   private readonly mapScaleBase = 560
-  private readonly boatScaleBase = 850
+  private readonly followZoomFactor = 2
+  private cameraMode: CameraMode = 'follow'
 
   private boats = new Map<string, BoatView>()
 
-  constructor(private app: Application) {
+  constructor(
+    private app: Application,
+    options?: {
+      cameraMode?: CameraMode
+    },
+  ) {
     this.app.stage.addChild(this.waterLayer, this.courseLayer, this.overlayLayer, this.boatLayer, this.hudLayer)
+    if (options?.cameraMode) {
+      this.cameraMode = options.cameraMode
+    }
 
     this.countdownLabel.anchor.set(0.5)
     this.countdownTime.anchor.set(0.5)
@@ -270,6 +284,10 @@ export class RaceScene {
 
   static currentWindDeg = 0
 
+  setCameraMode(mode: CameraMode) {
+    this.cameraMode = mode
+  }
+
   update(state: RaceState) {
     RaceScene.currentWindDeg = state.wind.directionDeg
     this.drawCourse(state)
@@ -294,28 +312,81 @@ export class RaceScene {
     return Math.min(width, height) / this.mapScaleBase
   }
 
-  private mapToScreen(): ScreenMapper {
-    const scale = this.getMapScale()
+  private getCourseBounds(state: RaceState) {
+    const points: Vec2[] = []
+    if (state.marks?.length) points.push(...state.marks)
+    points.push(state.startLine.pin, state.startLine.committee)
+    points.push(state.leewardGate.left, state.leewardGate.right)
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const p of points) {
+      if (!p) continue
+      if (p.x < minX) minX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.x > maxX) maxX = p.x
+      if (p.y > maxY) maxY = p.y
+    }
+
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+      return { minX: -1, minY: -1, maxX: 1, maxY: 1 }
+    }
+
+    return { minX, minY, maxX, maxY }
+  }
+
+  private getCameraTransform(state: RaceState) {
     const { width, height } = this.app.canvas
+    const baseScale = this.getMapScale()
+    const bounds = this.getCourseBounds(state)
+    const courseCenter = {
+      x: (bounds.minX + bounds.maxX) / 2,
+      y: (bounds.minY + bounds.maxY) / 2,
+    }
+
+    if (this.cameraMode === 'birdseye') {
+      const paddingPx = 96
+      const availableW = Math.max(1, width - paddingPx * 2)
+      const availableH = Math.max(1, height - paddingPx * 2)
+      const worldW = Math.max(1, bounds.maxX - bounds.minX)
+      const worldH = Math.max(1, bounds.maxY - bounds.minY)
+      const fitScale = Math.min(availableW / worldW, availableH / worldH)
+      const scale = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : baseScale
+      return { scale, centerWorld: courseCenter }
+    }
+
+    // follow
+    const playerBoat = state.boats[identity.boatId]
+    const centerWorld = playerBoat?.pos ?? courseCenter
+    const scale = baseScale * this.followZoomFactor
+    return { scale, centerWorld }
+  }
+
+  private mapToScreen(state: RaceState): ScreenMapper {
+    const { width, height } = this.app.canvas
+    const { scale, centerWorld } = this.getCameraTransform(state)
     return (value: Vec2) => ({
-      x: width / 2 + value.x * scale,
-      y: height / 2 + value.y * scale,
+      x: width / 2 + (value.x - centerWorld.x) * scale,
+      y: height / 2 + (value.y - centerWorld.y) * scale,
     })
   }
 
   private drawCourse(state: RaceState) {
-    const map = this.mapToScreen()
+    const map = this.mapToScreen(state)
+    const { scale: cameraScale } = this.getCameraTransform(state)
+    const zoomFactor = cameraScale / this.getMapScale()
     this.courseLayer.clear()
-    this.drawStartLine(state, map)
-    this.drawMarks(state, map)
-    this.drawLeewardGate(state, map)
+    this.drawStartLine(state, map, zoomFactor)
+    this.drawMarks(state, map, zoomFactor, cameraScale)
+    this.drawLeewardGate(state, map, zoomFactor, cameraScale)
     this.drawDebugCrossingGuides(state, map)
-    this.drawDebugAnnotations(state, map)
+    this.drawDebugAnnotations(state, map, zoomFactor)
   }
 
-  private drawMarks(state: RaceState, map: ScreenMapper) {
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0x5174b3, alpha: 0.6 })
-    const scale = this.getMapScale()
+  private drawMarks(state: RaceState, map: ScreenMapper, zoomFactor: number, cameraScale: number) {
+    this.courseLayer.setStrokeStyle({ width: 2 * zoomFactor, color: 0x5174b3, alpha: 0.6 })
     // Gate marks (indices 3 and 4) are drawn separately in drawLeewardGate
     // Pin (index 2) and committee (index 1) don't get zone circles
     const gateMarkIndices = new Set([3, 4])
@@ -323,21 +394,21 @@ export class RaceScene {
     state.marks.forEach((mark, index) => {
       const { x, y } = map(mark)
       this.courseLayer.fill({ color: 0xffff00, alpha: 0.8 })
-      this.courseLayer.circle(x, y, 6)
+      this.courseLayer.circle(x, y, 6 * zoomFactor)
       this.courseLayer.fill()
       // Skip zone circles for gate marks and start line marks
       if (!gateMarkIndices.has(index) && !startLineMarkIndices.has(index)) {
-        this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
-        this.drawZoneCircle({ x, y }, 3 * BOAT_LENGTH, scale)
+        this.courseLayer.setStrokeStyle({ width: 1 * zoomFactor, color: 0xffffff, alpha: 0.4 })
+        this.drawZoneCircle({ x, y }, 3 * BOAT_LENGTH, cameraScale)
       }
     })
   }
 
-  private drawDebugAnnotations(state: RaceState, map: ScreenMapper) {
+  private drawDebugAnnotations(state: RaceState, map: ScreenMapper, zoomFactor: number) {
     this.overlayLayer.removeChildren()
     if (!appEnv.debugHud) return
     this.drawWindShadows(state, map)
-    this.drawMarkRadials(state, map)
+    this.drawMarkRadials(state, map, zoomFactor)
     this.drawMarkLabels(state, map)
     this.drawNextMarkHighlight(state, map)
     this.drawCrossingMarkers(state, map)
@@ -440,8 +511,8 @@ export class RaceScene {
     })
   }
 
-  private drawMarkRadials(state: RaceState, map: ScreenMapper) {
-    const radialLength = 70
+  private drawMarkRadials(state: RaceState, map: ScreenMapper, zoomFactor: number) {
+    const radialLength = 70 * zoomFactor
     
     // Track which marks are part of gates so we draw them differently
     const gateMarkIndices = new Set<number>()
@@ -454,7 +525,7 @@ export class RaceScene {
     // Draw gate lines and radials for gate marks
     courseLegs.forEach((leg) => {
       if (leg.kind === 'gate' && leg.gateMarkIndices) {
-        this.drawGateRadials(state, map, leg.gateMarkIndices, radialLength)
+        this.drawGateRadials(state, map, leg.gateMarkIndices, radialLength, zoomFactor)
       }
     })
     
@@ -475,7 +546,7 @@ export class RaceScene {
         const endX = x + dx * radialLength
         const endY = y + dy * radialLength
         const line = new Graphics()
-        line.setStrokeStyle({ width: 2, color, alpha: 0.6 })
+        line.setStrokeStyle({ width: 2 * zoomFactor, color, alpha: 0.6 })
         line.moveTo(x, y)
         line.lineTo(endX, endY)
         line.stroke()
@@ -483,6 +554,7 @@ export class RaceScene {
           text: `${idx + 1}`,
           style: { fill: color, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
         })
+        tag.scale.set(zoomFactor)
         tag.anchor.set(0.5)
         tag.position.set(endX, endY)
         this.overlayLayer.addChild(line, tag)
@@ -495,6 +567,7 @@ export class RaceScene {
     map: ScreenMapper,
     gateMarkIndices: [number, number],
     radialLength: number,
+    zoomFactor: number,
   ) {
     const [leftIdx, rightIdx] = gateMarkIndices
     const leftMark = state.marks[leftIdx]
@@ -506,7 +579,7 @@ export class RaceScene {
     
     // Draw the gate line (stage 1) - dashed yellow line between the two marks
     const gateLine = new Graphics()
-    gateLine.setStrokeStyle({ width: 3, color: 0xffe066, alpha: 0.8 })
+    gateLine.setStrokeStyle({ width: 3 * zoomFactor, color: 0xffe066, alpha: 0.8 })
     
     // Draw dashed line
     const segments = 8
@@ -525,8 +598,9 @@ export class RaceScene {
       text: '1',
       style: { fill: 0xffe066, fontSize: 13, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 'bold' },
     })
+    gateLabel.scale.set(zoomFactor)
     gateLabel.anchor.set(0.5)
-    gateLabel.position.set(midX, midY - 12)
+    gateLabel.position.set(midX, midY - 12 * zoomFactor)
     this.overlayLayer.addChild(gateLine, gateLabel)
     
     // Draw radials for left gate mark (stages 2, 3)
@@ -537,7 +611,7 @@ export class RaceScene {
       const endX = leftScreen.x + dx * radialLength
       const endY = leftScreen.y + dy * radialLength
       const line = new Graphics()
-      line.setStrokeStyle({ width: 2, color: 0x00ffc3, alpha: 0.6 }) // Green for starboard
+      line.setStrokeStyle({ width: 2 * zoomFactor, color: 0x00ffc3, alpha: 0.6 }) // Green for starboard
       line.moveTo(leftScreen.x, leftScreen.y)
       line.lineTo(endX, endY)
       line.stroke()
@@ -545,6 +619,7 @@ export class RaceScene {
         text: `${idx + 2}`, // +2 because stage 1 is the gate line
         style: { fill: 0x00ffc3, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
       })
+      tag.scale.set(zoomFactor)
       tag.anchor.set(0.5)
       tag.position.set(endX, endY)
       this.overlayLayer.addChild(line, tag)
@@ -558,7 +633,7 @@ export class RaceScene {
       const endX = rightScreen.x + dx * radialLength
       const endY = rightScreen.y + dy * radialLength
       const line = new Graphics()
-      line.setStrokeStyle({ width: 2, color: 0xff6b6b, alpha: 0.6 }) // Red for port
+      line.setStrokeStyle({ width: 2 * zoomFactor, color: 0xff6b6b, alpha: 0.6 }) // Red for port
       line.moveTo(rightScreen.x, rightScreen.y)
       line.lineTo(endX, endY)
       line.stroke()
@@ -566,6 +641,7 @@ export class RaceScene {
         text: `${idx + 2}`, // +2 because stage 1 is the gate line
         style: { fill: 0xff6b6b, fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' },
       })
+      tag.scale.set(zoomFactor)
       tag.anchor.set(0.5)
       tag.position.set(endX, endY)
       this.overlayLayer.addChild(line, tag)
@@ -692,14 +768,14 @@ export class RaceScene {
     })
   }
 
-  private drawStartLine(state: RaceState, map: ScreenMapper) {
+  private drawStartLine(state: RaceState, map: ScreenMapper, zoomFactor: number) {
     const pin = map(state.startLine.pin)
     const committee = map(state.startLine.committee)
     const dashed = state.t < 0
 
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0xffffff, alpha: dashed ? 0.4 : 0.9 })
+    this.courseLayer.setStrokeStyle({ width: 2 * zoomFactor, color: 0xffffff, alpha: dashed ? 0.4 : 0.9 })
     if (dashed) {
-      this.drawDashedLine(pin, committee, 12, 8)
+      this.drawDashedLine(pin, committee, 12 * zoomFactor, 8 * zoomFactor)
     } else {
       this.courseLayer.moveTo(pin.x, pin.y)
       this.courseLayer.lineTo(committee.x, committee.y)
@@ -708,21 +784,22 @@ export class RaceScene {
 
     // Pin mark
     this.courseLayer.fill({ color: 0xffd166, alpha: 0.9 })
-    this.courseLayer.circle(pin.x, pin.y, 8)
+    this.courseLayer.circle(pin.x, pin.y, 8 * zoomFactor)
     this.courseLayer.fill()
 
     // Committee boat shape - more boat-like with bow, hull, and stern
     const angle = Math.atan2(pin.y - committee.y, pin.x - committee.x) + Math.PI
     const cos = Math.cos(angle)
     const sin = Math.sin(angle)
+    const s = zoomFactor
     // Boat shape: pointed bow, wider stern
     const hull = [
-      { x: 0, y: -16 },      // Bow point
-      { x: 8, y: -8 },       // Bow starboard
-      { x: 20, y: 14 },      // Stern starboard
-      { x: 0, y: 18 },       // Stern center
-      { x: -20, y: 14 },     // Stern port
-      { x: -8, y: -8 },      // Bow port
+      { x: 0 * s, y: -16 * s },      // Bow point
+      { x: 8 * s, y: -8 * s },       // Bow starboard
+      { x: 20 * s, y: 14 * s },      // Stern starboard
+      { x: 0 * s, y: 18 * s },       // Stern center
+      { x: -20 * s, y: 14 * s },     // Stern port
+      { x: -8 * s, y: -8 * s },      // Bow port
     ].map(({ x, y }) => ({
       x: committee.x + x * cos - y * sin,
       y: committee.y + x * sin + y * cos,
@@ -739,9 +816,9 @@ export class RaceScene {
     ])
     this.courseLayer.fill()
     // Add a mast
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.8 })
-    this.courseLayer.moveTo(committee.x, committee.y - 8)
-    this.courseLayer.lineTo(committee.x, committee.y + 8)
+    this.courseLayer.setStrokeStyle({ width: 2 * zoomFactor, color: 0xffffff, alpha: 0.8 })
+    this.courseLayer.moveTo(committee.x, committee.y - 8 * zoomFactor)
+    this.courseLayer.lineTo(committee.x, committee.y + 8 * zoomFactor)
     this.courseLayer.stroke()
   }
 
@@ -776,18 +853,22 @@ export class RaceScene {
     this.courseLayer.stroke()
   }
 
-  private drawLeewardGate(state: RaceState, map: ScreenMapper) {
+  private drawLeewardGate(
+    state: RaceState,
+    map: ScreenMapper,
+    zoomFactor: number,
+    cameraScale: number,
+  ) {
     const left = map(state.leewardGate.left)
     const right = map(state.leewardGate.right)
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0xff6b6b, alpha: 0.8 })
+    this.courseLayer.setStrokeStyle({ width: 2 * zoomFactor, color: 0xff6b6b, alpha: 0.8 })
     this.courseLayer.moveTo(left.x, left.y)
     this.courseLayer.lineTo(right.x, right.y)
-    const scale = this.getMapScale()
     ;[left, right].forEach((gateMark) => {
       this.courseLayer.fill({ color: 0xff6b6b, alpha: 0.9 })
-      this.courseLayer.circle(gateMark.x, gateMark.y, 7)
+      this.courseLayer.circle(gateMark.x, gateMark.y, 7 * zoomFactor)
       this.courseLayer.fill()
-      this.drawZoneCircle(gateMark, 3 * BOAT_LENGTH, scale)
+      this.drawZoneCircle(gateMark, 3 * BOAT_LENGTH, cameraScale)
     })
   }
 
@@ -842,6 +923,8 @@ export class RaceScene {
 
   private drawZoneCircle(center: { x: number; y: number }, radiusWorld: number, scale: number) {
     const radius = radiusWorld * scale
+    const baseScale = this.getMapScale()
+    const zoomFactor = baseScale > 0 ? scale / baseScale : 1
     const segments = 48
     const step = (Math.PI * 2) / segments
     let angle = 0
@@ -852,7 +935,7 @@ export class RaceScene {
       const sy = center.y + Math.sin(startAngle) * radius
       const ex = center.x + Math.cos(endAngle) * radius
       const ey = center.y + Math.sin(endAngle) * radius
-      this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.2 })
+      this.courseLayer.setStrokeStyle({ width: 1 * zoomFactor, color: 0xffffff, alpha: 0.2 })
       this.courseLayer.moveTo(sx, sy)
       this.courseLayer.lineTo(ex, ey)
       angle += step
@@ -861,9 +944,8 @@ export class RaceScene {
   }
 
   private drawBoats(state: RaceState) {
-    const map = this.mapToScreen()
-    const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / this.boatScaleBase
+    const map = this.mapToScreen(state)
+    const { scale } = this.getCameraTransform(state)
     const seen = new Set<string>()
     Object.values(state.boats).forEach((boat) => {
       seen.add(boat.id)
