@@ -7,6 +7,7 @@ export const PORT_STARBOARD_DISTANCE = 19 //How far apart the ports and starboar
 export const NO_GO_ANGLE_DEG = 35 //How far a boat can go before it stalls (we block this angle)
 export const MAX_DOWNWIND_ANGLE_DEG = 140 //How far a boat can go downwind before it stalls
 export const HEADING_STEP_DEG = 5 //How much a boat can turn in one step
+export const HARD_TURN_STEP_DEG = 30 //How much a boat can turn in one step when holding Shift
 export const STALL_DURATION_S = 3 //How long a boat stalls in seconds
 export const STALL_SPEED_FACTOR = 0.35 //How much a boat slows down when it stalls
 export const DEFAULT_SHEET = 0.75 //How much sheet a boat has when it starts

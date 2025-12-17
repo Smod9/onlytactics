@@ -22,6 +22,18 @@ import { ProgressStepper } from './ProgressStepper'
 import type { RaceRole } from '@/types/race'
 import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
+import type { CameraMode } from '@/view/scene/RaceScene'
+
+const isInteractiveElement = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    target.isContentEditable ||
+    target.getAttribute('role') === 'textbox'
+  )
+}
 
 export const LiveClient = () => {
   const events = useRaceEvents()
@@ -31,6 +43,7 @@ export const LiveClient = () => {
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [needsName, setNeedsName] = useState(!identity.clientName)
   const [idleSuspended, setIdleSuspended] = useState(false)
+  const [cameraMode, setCameraMode] = useState<CameraMode>('follow')
   const headerCtaEl =
     typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
@@ -112,6 +125,22 @@ export const LiveClient = () => {
   )
 
   useTacticianControls(network, role)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleKey = (event: KeyboardEvent) => {
+      if (isInteractiveElement(event.target)) return
+      if ((event.code ?? event.key) !== 'KeyZ') return
+      if (event.repeat) {
+        event.preventDefault()
+        return
+      }
+      setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))
+      event.preventDefault()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
 
   const playerWakeFactor = playerBoat?.wakeFactor ?? 1
   const wakeActive = playerWakeFactor < 0.995
@@ -257,6 +286,16 @@ export const LiveClient = () => {
                   <div className="wake-indicator">WS -{wakeSlowPercent}%</div>
                 )}
               </div>
+              <div className="camera-toggle-overlay">
+                <button
+                  type="button"
+                  className="camera-toggle"
+                  onClick={() => setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))}
+                  title="Toggle camera mode (Z)"
+                >
+                  {cameraMode === 'follow' ? 'Birdseye (Z)' : 'Follow (Z)'}
+                </button>
+              </div>
               {playerBoat.penalties > 0 && (
                 <div className="spin-overlay">
                   <button
@@ -344,7 +383,7 @@ export const LiveClient = () => {
               </div>
             </>
           )}
-          <PixiStage />
+          <PixiStage cameraMode={cameraMode} />
           <OnScreenControls />
           <ChatPanel network={network} />
         </div>

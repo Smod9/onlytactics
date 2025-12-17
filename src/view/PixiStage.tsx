@@ -1,9 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { Application } from 'pixi.js'
 import { useRaceState } from '@/state/hooks'
-import { RaceScene } from './scene/RaceScene'
+import { RaceScene, type CameraMode } from './scene/RaceScene'
 
-export const PixiStage = () => {
+type Props = {
+  cameraMode: CameraMode
+}
+
+export const PixiStage = ({ cameraMode }: Props) => {
   const mountRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
   const sceneRef = useRef<RaceScene | null>(null)
@@ -36,7 +40,7 @@ export const PixiStage = () => {
       if (mountRef.current && !mountRef.current.contains(app.canvas)) {
         mountRef.current.appendChild(app.canvas)
       }
-      sceneRef.current = new RaceScene(app)
+      sceneRef.current = new RaceScene(app, { cameraMode })
       sceneRef.current.update(raceStateRef.current)
     }
 
@@ -55,6 +59,10 @@ export const PixiStage = () => {
   useEffect(() => {
     sceneRef.current?.update(raceState)
   }, [raceState])
+
+  useEffect(() => {
+    sceneRef.current?.setCameraMode(cameraMode)
+  }, [cameraMode])
 
   return <div className="pixi-stage" ref={mountRef} />
 }

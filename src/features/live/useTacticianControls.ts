@@ -13,6 +13,7 @@ import {
   quantizeHeading,
 } from '@/logic/physics'
 import {
+  HARD_TURN_STEP_DEG,
   HEADING_STEP_DEG,
   MAX_DOWNWIND_ANGLE_DEG,
   TACK_LOCK_ENABLED,
@@ -155,7 +156,8 @@ export const useTacticianControls = (
         case 'ArrowUp': {
           exitVmgMode()
           event.preventDefault()
-          const desiredAbs = Math.max(absAwa - HEADING_STEP_DEG, 0)
+          const step = event.shiftKey ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const desiredAbs = Math.max(absAwa - step, 0)
           const heading = headingFromAwa(
             state.wind.directionDeg,
             tackSign * desiredAbs,
@@ -166,7 +168,8 @@ export const useTacticianControls = (
         case 'ArrowDown': {
           exitVmgMode()
           event.preventDefault()
-          const desiredAbs = Math.min(absAwa + HEADING_STEP_DEG, MAX_DOWNWIND_ANGLE_DEG)
+          const step = event.shiftKey ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
           const heading = headingFromAwa(
             state.wind.directionDeg,
             tackSign * desiredAbs,
