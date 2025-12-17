@@ -289,6 +289,7 @@ export class RaceScene {
 
   update(state: RaceState) {
     RaceScene.currentWindDeg = state.wind.directionDeg
+    this.applyCameraTransform(state)
     this.drawCourse(state)
     this.drawBoats(state)
     this.drawHud(state)
@@ -371,7 +372,6 @@ export class RaceScene {
   }
 
   private drawCourse(state: RaceState) {
-    this.applyCameraTransform(state)
     this.courseLayer.clear()
     this.drawStartLine(state)
     this.drawMarks(state)
@@ -943,7 +943,6 @@ export class RaceScene {
   }
 
   private drawBoats(state: RaceState) {
-    this.applyCameraTransform(state)
     const seen = new Set<string>()
     Object.values(state.boats).forEach((boat) => {
       seen.add(boat.id)

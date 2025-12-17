@@ -3,6 +3,7 @@ import { raceStore } from '@/state/raceStore'
 import type { ChatMessage, PlayerInput, RaceEvent, RaceState } from '@/types/race'
 import { identity, setBoatId } from '@/net/identity'
 import { appEnv } from '@/config/env'
+import { cloneRaceState } from '@/state/factories'
 
 type ColyseusStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -113,7 +114,8 @@ export class ColyseusBridge {
     const pushState = () => {
       const next = room.state?.race?.toJSON?.()
       if (!next) return
-      raceStore.setState(next)
+      // Defensive: ensure a new object reference per patch so React subscribers update reliably.
+      raceStore.setState(cloneRaceState(next))
     }
 
     pushState()

@@ -376,15 +376,10 @@ button {
   align-items: center;
 }
 
-.camera-toggle-overlay {
-  position: absolute;
-  top: 3.55rem;
-  left: 0.4rem;
-  z-index: 6;
-  pointer-events: auto;
-}
-
 .camera-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.35rem 0.7rem;
   border-radius: 0.55rem;
   border: 1px solid rgba(83, 224, 255, 0.35);
@@ -395,6 +390,18 @@ button {
   letter-spacing: 0.02em;
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.camera-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  opacity: 0.9;
+}
+
+.camera-toggle-text {
+  display: inline-block;
 }
 
 .camera-toggle:hover {
@@ -441,6 +448,18 @@ button {
   pointer-events: none;
   z-index: 4;
   max-height: 70vh;
+}
+
+.hud-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.hud-camera-toggle {
+  pointer-events: auto;
 }
 
 .spin-overlay {
@@ -511,7 +530,7 @@ button {
 
 .on-screen-cluster.left {
   left: 0.75rem;
-  bottom: 3rem;
+  bottom: 0.5rem;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.3rem;
@@ -519,12 +538,17 @@ button {
 
 .on-screen-cluster.left.extras {
   left: 0.75rem;
-  bottom: 7rem;
+  bottom: 9rem;
+}
+
+.on-screen-cluster.right.extras {
+  right: 0.75rem;
+  bottom: 12rem;
 }
 
 .on-screen-cluster.right {
   right: 0.75rem;
-  bottom: 3rem;
+  bottom: 0.5rem;
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.3rem;
@@ -551,6 +575,11 @@ button {
 }
 .on-screen-button:active {
   transform: translateY(1px);
+}
+
+.on-screen-button.active {
+  border-color: rgba(83, 224, 255, 0.65);
+  box-shadow: 0 0 0 1px rgba(83, 224, 255, 0.25);
 }
 
 .on-screen-label {
@@ -1230,7 +1259,7 @@ kbd {
 .debug-toggle {
   position: fixed;
   bottom: 1rem;
-  right: 1rem;
+  right: 14rem;
   padding: 0.4rem 0.8rem;
   border-radius: 0.4rem;
   border: 1px solid #3a4663;
@@ -1650,7 +1679,16 @@ kbd {
 
   .on-screen-cluster {
     bottom: 3.5rem;
-    width: calc(50% - 1.4rem);
+    width: auto;
+    max-width: calc(50% - 1.4rem);
+  }
+
+  .on-screen-button {
+    min-width: 110px;
+  }
+
+  .on-screen-button.wide {
+    min-width: 150px;
   }
 
   .on-screen-cluster.left {
@@ -1659,6 +1697,11 @@ kbd {
 
   .on-screen-cluster.right {
     right: 0.4rem;
+  }
+
+  .on-screen-cluster.right.extras {
+    right: 0.4rem;
+    bottom: 12rem;
   }
 
   .on-screen-cluster.left.extras {

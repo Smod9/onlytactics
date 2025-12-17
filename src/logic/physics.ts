@@ -158,10 +158,15 @@ const polarTable = [
   { awa: 75, ratio: 0.9 },   // Reaching
   { awa: 90, ratio: 0.95 },  // Beam reach
   { awa: 110, ratio: 1.05 }, // Broad reach - getting fast
-  { awa: 135, ratio: 1.15 }, // Deep broad reach - fastest!
-  { awa: 150, ratio: 1.05 }, // Deep downwind
-  { awa: 170, ratio: 0.95 }, // Almost dead downwind
-  { awa: 180, ratio: 0.9 },  // Dead downwind - slowest downwind point
+  // Downwind shaping:
+  // - We want best downwind VMG to be near ~140° (broad reach), not 160-180°.
+  // - And we want dead-downwind (180°) to be ~30% slower than the VMG-optimal point.
+  { awa: 135, ratio: 1.10 }, // Broad reach (fast)
+  { awa: 140, ratio: 1.15 }, // Target VMG-optimal region
+  { awa: 150, ratio: 1.00 }, // Getting deeper: slower enough that VMG doesn't keep increasing
+  { awa: 160, ratio: 0.90 }, // Deep downwind
+  { awa: 170, ratio: 0.85 }, // Very deep downwind
+  { awa: 180, ratio: 0.80 }, // Dead downwind (~30% slower than 1.15 peak)
 ]
 
 /**
@@ -216,8 +221,8 @@ const smoothSpeed = (current: number, target: number, dt: number) => {
 /**
  * Enforce sailing constraints on desired heading
  * 
- * Boats cannot sail directly into the wind (no-go zone) or too far downwind.
- * This function clamps the desired heading to valid sailing angles.
+ * Boats cannot sail directly into the wind (no-go zone).
+ * Downwind is allowed up to MAX_DOWNWIND_ANGLE_DEG (typically 180 = dead downwind).
  * 
  * @returns The clamped heading that was actually set
  */
@@ -238,7 +243,8 @@ const clampDesiredHeading = (
     return clamped
   }
 
-  // Too far downwind (by the lee) - prevent sailing past dead downwind
+  // Too far downwind (by the lee) - prevent sailing past MAX_DOWNWIND_ANGLE_DEG.
+  // If MAX_DOWNWIND_ANGLE_DEG is 180, this should effectively never clamp.
   if (absDiff > MAX_DOWNWIND_ANGLE_DEG) {
     const sign = diff >= 0 ? 1 : -1
     const clamped = headingFromAwa(windDirDeg, sign * MAX_DOWNWIND_ANGLE_DEG)
