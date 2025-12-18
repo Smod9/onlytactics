@@ -9,7 +9,7 @@ import {
 import { createPortal } from 'react-dom'
 import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
-import { useRaceEvents, useRaceState } from '@/state/hooks'
+import { useInputTelemetry, useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
@@ -40,6 +40,7 @@ const isInteractiveElement = (target: EventTarget | null) => {
 export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
+  const telemetry = useInputTelemetry()
   const [network] = useState(() => new GameNetwork())
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
@@ -50,6 +51,7 @@ export const LiveClient = () => {
     typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
   const playerBoat = useMemo(() => race.boats[identity.boatId], [race.boats])
+  const myLatency = telemetry[identity.boatId]
 
   useEffect(() => {
     void startRosterWatcher()
@@ -492,13 +494,11 @@ export const LiveClient = () => {
           <ChatPanel network={network} />
         </div>
       </div>
-      <button
-        type="button"
-        className="debug-toggle"
-        onClick={() => setShowDebug((value) => !value)}
-      >
-        {showDebug ? 'Hide Debug' : 'Show Debug'}
-      </button>
+      {myLatency && (
+        <div className="rtt-overlay" aria-label="Input RTT">
+          RTT {myLatency.latencyMs.toFixed(0)}ms
+        </div>
+      )}
       <TacticianPopout />
       {showDebug && (
         <div className="debug-dock">
