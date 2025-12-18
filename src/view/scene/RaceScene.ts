@@ -286,8 +286,14 @@ export class RaceScene {
       this.timerText,
       this.countdownContainer,
     )
-    this.windText.position.set(20, 100)
-    this.timerText.position.set(20, 64)
+    // Phase/time line removed to reduce clutter; move wind readout up.
+    this.windText.position.set(20, 74)
+    // Wind info now lives in the HTML HUD cluster; keep only the arrow in-canvas.
+    this.windText.visible = false
+    // Wind arrow is now rendered in the HTML HUD cluster for easier layout.
+    this.windArrow.visible = false
+    this.windArrowFill.visible = false
+    this.timerText.visible = false
 
     this.drawWater()
   }
@@ -1060,16 +1066,17 @@ export class RaceScene {
   }
 
   private drawHud(state: RaceState) {
-    this.timerText.text = `${state.phase.toUpperCase()} | T = ${state.t.toFixed(0)}s`
+    // Phase/time text intentionally hidden (see constructor).
+    this.timerText.text = ''
     const shift = state.wind.directionDeg - state.baselineWindDeg
     const shiftText =
       Math.abs(shift) < 0.5 ? 'ON' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
-    this.windText.text = `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts`
-    if (appEnv.debugHud) {
-      this.windText.text += ` | cam=${this.cameraMode} x${this.worldLayer.scale.x.toFixed(2)}`
-    }
+    // Keep string generation only in debug mode (windText is hidden in normal HUD).
+    this.windText.text = appEnv.debugHud
+      ? `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts | cam=${this.cameraMode} x${this.worldLayer.scale.x.toFixed(2)}`
+      : ''
 
-    const center = { x: 80, y: 150 }
+    const center = { x: 80, y: 120 }
     const length = 60
     const heading = degToRad(state.wind.directionDeg + 180)
     const tipX = center.x + length * Math.sin(heading)
@@ -1078,23 +1085,25 @@ export class RaceScene {
     const arrowShift = state.wind.directionDeg - state.baselineWindDeg
     const shiftColor = arrowShift > 1 ? 0xff8f70 : arrowShift < -1 ? 0x70d6ff : 0xffffff
 
-    this.windArrow.clear()
-    this.windArrow.setStrokeStyle({ width: 3, color: shiftColor })
-    this.windArrow.moveTo(center.x, center.y)
-    this.windArrow.lineTo(tipX, tipY)
-    this.windArrow.stroke()
+    if (this.windArrow.visible) {
+      this.windArrow.clear()
+      this.windArrow.setStrokeStyle({ width: 3, color: shiftColor })
+      this.windArrow.moveTo(center.x, center.y)
+      this.windArrow.lineTo(tipX, tipY)
+      this.windArrow.stroke()
 
-    this.windArrowFill.clear()
-    this.windArrowFill.fill({ color: shiftColor })
-    this.windArrowFill.poly([
-      tipX,
-      tipY,
-      tipX + 8,
-      tipY - 12,
-      tipX - 8,
-      tipY - 12,
-    ])
-    this.windArrowFill.fill()
+      this.windArrowFill.clear()
+      this.windArrowFill.fill({ color: shiftColor })
+      this.windArrowFill.poly([
+        tipX,
+        tipY,
+        tipX + 8,
+        tipY - 12,
+        tipX - 8,
+        tipY - 12,
+      ])
+      this.windArrowFill.fill()
+    }
 
     this.drawCountdown(state)
   }
