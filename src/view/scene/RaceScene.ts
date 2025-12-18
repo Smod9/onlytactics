@@ -215,6 +215,7 @@ export class RaceScene {
   private waterLayer = new Graphics()
   private worldLayer = new Container()
   private courseLayer = new Graphics()
+  private contextLayer = new Graphics()
   private overlayLayer = new Container()
   private boatLayer = new Container()
   private hudLayer = new Container()
@@ -257,7 +258,12 @@ export class RaceScene {
       cameraMode?: CameraMode
     },
   ) {
-    this.worldLayer.addChild(this.courseLayer, this.overlayLayer, this.boatLayer)
+    // Render order (bottom -> top):
+    // - courseLayer: static course visuals
+    // - contextLayer: follow-mode guidance line(s)
+    // - overlayLayer: debug overlays
+    // - boatLayer: boats + name tags, etc.
+    this.worldLayer.addChild(this.courseLayer, this.contextLayer, this.overlayLayer, this.boatLayer)
     this.app.stage.addChild(this.waterLayer, this.worldLayer, this.hudLayer)
     if (options?.cameraMode) {
       this.cameraMode = options.cameraMode
@@ -296,6 +302,7 @@ export class RaceScene {
     RaceScene.currentWindDeg = state.wind.directionDeg
     this.applyCameraTransform(state)
     this.drawCourse(state)
+    this.drawFollowContext(state)
     this.drawBoats(state)
     this.drawHud(state)
   }
@@ -383,6 +390,90 @@ export class RaceScene {
     this.drawLeewardGate(state)
     this.drawDebugCrossingGuides(state)
     this.drawDebugAnnotations(state)
+  }
+
+  private drawFollowContext(state: RaceState) {
+    this.contextLayer.clear()
+    if (this.cameraMode !== 'follow') return
+
+    const boat = state.boats[identity.boatId]
+    if (!boat || boat.finished) return
+
+    const to = this.getFollowContextTarget(state, boat)
+    if (!to) return
+
+    // Keep the line readable at any zoom by drawing with pixel-consistent dot size/spacing.
+    const scale = this.worldLayer.scale.x || 1
+    const pxToWorld = 1 / Math.max(0.0001, scale)
+    const dotRadiusWorld = 1.35 * pxToWorld
+    const dotSpacingWorld = 11 * pxToWorld
+    const startOffsetWorld = 14 * pxToWorld
+    const endOffsetWorld = 10 * pxToWorld
+
+    // Use a distinct accent color so this doesn't read like zone outlines.
+    this.contextLayer.fill({ color: 0x70d6ff, alpha: 0.42 })
+    this.drawDottedLine(
+      this.contextLayer,
+      boat.pos,
+      to,
+      dotRadiusWorld,
+      dotSpacingWorld,
+      startOffsetWorld,
+      endOffsetWorld,
+    )
+    this.contextLayer.fill()
+  }
+
+  private getFollowContextTarget(state: RaceState, boat: BoatState): Vec2 | null {
+    const marks = state.marks
+    if (!marks.length) return null
+
+    const nextIndex = Math.max(0, boat.nextMarkIndex ?? 0) % marks.length
+
+    // By convention in this project:
+    // - marks[0] is the windward mark
+    // - marks[1]/marks[2] are start line committee/pin
+    // - marks[3]/marks[4] are leeward gate marks
+    if (nextIndex === 1 || nextIndex === 2) {
+      return {
+        x: (state.startLine.pin.x + state.startLine.committee.x) / 2,
+        y: (state.startLine.pin.y + state.startLine.committee.y) / 2,
+      }
+    }
+    if (nextIndex === 3 || nextIndex === 4) {
+      return {
+        x: (state.leewardGate.left.x + state.leewardGate.right.x) / 2,
+        y: (state.leewardGate.left.y + state.leewardGate.right.y) / 2,
+      }
+    }
+
+    return marks[nextIndex] ?? null
+  }
+
+  private drawDottedLine(
+    g: Graphics,
+    from: Vec2,
+    to: Vec2,
+    dotRadius: number,
+    spacing: number,
+    startOffset = 0,
+    endOffset = 0,
+  ) {
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const dist = Math.hypot(dx, dy)
+    if (!Number.isFinite(dist) || dist <= 0.0001) return
+
+    const ux = dx / dist
+    const uy = dy / dist
+    const step = Math.max(0.0001, spacing)
+
+    const start = Math.max(0, startOffset)
+    const end = Math.max(start, dist - Math.max(0, endOffset))
+
+    for (let s = start; s <= end; s += step) {
+      g.circle(from.x + ux * s, from.y + uy * s, dotRadius)
+    }
   }
 
   private drawMarks(state: RaceState) {
