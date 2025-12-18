@@ -92,6 +92,10 @@ export const useTacticianControls = (
         return
       }
 
+      // Prevent Safari/iPadOS from treating Arrow keys (especially Shift+Arrow) as text selection.
+      // We already ignore interactive targets above; if we get here we intend to "own" these keys.
+      event.preventDefault()
+
       const state = raceRef.current
       const boat = state.boats[identity.boatId]
       if (!boat) return
@@ -142,7 +146,6 @@ export const useTacticianControls = (
             pendingRef.current.set(seq, performance.now())
             networkRef.current?.updateVmgMode(true, seq)
           }
-          event.preventDefault()
           break
         }
         case 'Enter': {
@@ -157,8 +160,8 @@ export const useTacticianControls = (
         }
         case 'ArrowUp': {
           exitVmgMode()
-          event.preventDefault()
-          const step = event.shiftKey ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const hardModifier = event.shiftKey || event.altKey
+          const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.max(absAwa - step, 0)
           const heading = headingFromAwa(
             state.wind.directionDeg,
@@ -169,8 +172,8 @@ export const useTacticianControls = (
         }
         case 'ArrowDown': {
           exitVmgMode()
-          event.preventDefault()
-          const step = event.shiftKey ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const hardModifier = event.shiftKey || event.altKey
+          const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
           const heading = headingFromAwa(
             state.wind.directionDeg,
@@ -181,21 +184,18 @@ export const useTacticianControls = (
         }
         case 'KeyS': {
           exitVmgMode()
-          event.preventDefault()
           const seq = (seqRef.current += 1)
           pendingRef.current.set(seq, performance.now())
           networkRef.current?.requestSpin(seq)
           break
         }
         case 'KeyP': {
-          event.preventDefault()
           networkRef.current?.clearOnePenalty()
           break
         }
         case 'KeyJ': {
           if (!appEnv.debugHud) break
           // Debug: Jump to next mark
-          event.preventDefault()
           networkRef.current?.debugJumpBoatToNextMark(identity.boatId)
           break
         }
@@ -203,8 +203,8 @@ export const useTacticianControls = (
       }
     }
 
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
+    window.addEventListener('keydown', handleKey, { capture: true })
+    return () => window.removeEventListener('keydown', handleKey, { capture: true })
   }, [network, role])
 
   useEffect(() => {

@@ -97,6 +97,14 @@ body {
   min-height: 100%;
 }
 
+/* Prevent iOS "rubber-band" scroll on the game UI (route: /app). */
+html.game-root,
+body.game-root {
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overflow: hidden;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -664,6 +672,8 @@ button {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   font-weight: 600;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .on-screen-cluster {
@@ -716,18 +726,45 @@ button {
   font-size: 0.78rem;
   font-weight: 600;
   min-width: 120px;
+  transition:
+    transform 0.06s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease,
+    filter 0.12s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .on-screen-button.wide {
   min-width: 170px;
 }
 .on-screen-button:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.985);
+  filter: brightness(1.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(83, 224, 255, 0.08);
+}
+
+.on-screen-button.pressed {
+  transform: translateY(1px) scale(0.985);
+  filter: brightness(1.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(83, 224, 255, 0.08);
+}
+
+.on-screen-button:focus-visible,
+.on-screen-toggle:focus-visible {
+  outline: 2px solid rgba(83, 224, 255, 0.55);
+  outline-offset: 2px;
 }
 
 .on-screen-button.active {
   border-color: rgba(83, 224, 255, 0.65);
-  box-shadow: 0 0 0 1px rgba(83, 224, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(83, 224, 255, 0.25), 0 0 18px rgba(83, 224, 255, 0.18);
+  background: rgba(15, 28, 44, 0.92);
 }
 
 .on-screen-label {
@@ -933,7 +970,36 @@ button {
 
 @media (orientation: landscape) and (max-width: 1100px) {
   .chat-panel {
-    top: 16rem;
+    /* On short landscape screens, anchor chat above the touch-control clusters. */
+    top: auto;
+    bottom: calc(0.75rem + var(--touch-controls-chat-shift, 0rem));
+    transform: none;
+    height: 16vh;
+    max-height: 16vh;
+  }
+
+  .chat-panel .chat-log {
+    padding: 0.35rem;
+  }
+
+  .chat-panel .chat-message {
+    padding: 0.18rem 0.28rem;
+    font-size: 0.74rem;
+    line-height: 1.2;
+  }
+
+  .chat-panel .chat-input {
+    padding: 0.2rem;
+  }
+
+  .chat-panel .chat-input input {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .chat-panel .chat-input button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
   }
 }
 
