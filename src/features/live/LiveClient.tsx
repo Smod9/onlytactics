@@ -281,8 +281,7 @@ export const LiveClient = () => {
           )}
           {playerBoat && (
             <>
-              <div className="top-left-hud">
-                <div className={`speed-heading-overlay ${wakeActive ? 'wake-active' : ''}`}>
+              <div className={`speed-heading-overlay ${wakeActive ? 'wake-active' : ''}`}>
                   {(() => {
                     const twaSigned = apparentWindAngleSigned(playerBoat.headingDeg, race.wind.directionDeg)
                     const isStarboardTack = twaSigned >= 0
@@ -292,14 +291,21 @@ export const LiveClient = () => {
                     const boatWindValue = playerBoat.vmgMode ? 'VMG' : `${absTwa.toFixed(0)}°`
 
                     // Wind panel: mirror the same shift labeling used in the Pixi HUD.
-                    const shift = race.wind.directionDeg - race.baselineWindDeg
-                    const shiftText =
-                      Math.abs(shift) < 0.5 ? 'ON' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
+                    const rawShift = ((race.wind.directionDeg - race.baselineWindDeg + 180) % 360 + 360) % 360 - 180
+                    const shiftIsOn = Math.abs(rawShift) < 0.5
+                    const shiftDir = rawShift >= 0 ? 'R' : 'L'
+                    const shiftMag = Math.abs(rawShift).toFixed(1)
+                    // Wind shift colors (match prior scheme): orange for R, blue for L, white for ON.
+                    const shiftColor = shiftIsOn ? '#ffffff' : rawShift >= 0 ? '#ff8f70' : '#70d6ff'
+                    const exaggeratedWindDir =
+                      ((race.baselineWindDeg + rawShift * 1.2) % 360 + 360) % 360
+                    const downwindDeg = ((exaggeratedWindDir + 180) % 360 + 360) % 360
 
                     return (
                       <>
                         <div className="hud-section">
-                          <div className="hud-section-header">Boat</div>
+                        <div className="hud-section-side-label">Boat</div>
+                        <div className="hud-section-body">
                           <div className="hud-grid hud-grid-boat">
                             <div className="hud-metric hud-metric-speed">
                               <span className="hud-label">SPD</span>
@@ -321,23 +327,51 @@ export const LiveClient = () => {
                             </div>
                           </div>
                         </div>
+                        </div>
 
                         <div className="hud-section">
-                          <div className="hud-section-header">Wind</div>
-                          <div className="hud-grid hud-grid-wind">
-                            <div className="hud-metric hud-metric-winddir">
-                              <span className="hud-label">DIR</span>
-                              <span className="hud-value">{race.wind.directionDeg.toFixed(0)}°</span>
+                        <div className="hud-section-side-label">Wind</div>
+                        <div className="hud-section-body">
+                          <div className="wind-section-grid">
+                            <div className="wind-section-numbers">
+                              <div className="hud-metric hud-metric-winddir">
+                                <span className="hud-label">DIR</span>
+                                <span className="hud-value">{race.wind.directionDeg.toFixed(0)}°</span>
+                              </div>
+                              <div className="hud-metric hud-metric-windspd">
+                                <span className="hud-label">SPD</span>
+                                <span className="hud-value">{race.wind.speed.toFixed(1)} kts</span>
+                              </div>
+                              <div className="hud-metric hud-metric-windshift">
+                                <span className="hud-label">ANG</span>
+                                <span className="hud-value">
+                                  {shiftIsOn ? (
+                                    'ON'
+                                  ) : (
+                                    <span className="wind-shift-value" style={{ color: shiftColor }}>
+                                      {shiftMag}° {shiftDir}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
                             </div>
-                            <div className="hud-metric hud-metric-windspd">
-                              <span className="hud-label">SPD</span>
-                              <span className="hud-value">{race.wind.speed.toFixed(1)} kts</span>
-                            </div>
-                            <div className="hud-metric hud-metric-windshift hud-metric--span2">
-                              <span className="hud-label">SHIFT</span>
-                              <span className="hud-value">{shiftText}</span>
+
+                            <div className="wind-section-arrow" aria-label="Wind direction (downwind arrow)">
+                              <svg
+                                width="64"
+                                height="64"
+                                viewBox="0 0 80 80"
+                                className="wind-arrow-svg"
+                                style={{ transform: `rotate(${downwindDeg}deg)` }}
+                                role="img"
+                                aria-hidden="true"
+                              >
+                                <line x1="40" y1="56" x2="40" y2="18" stroke={shiftColor} strokeWidth="3" />
+                                <polygon points="40,12 48,26 32,26" fill={shiftColor} />
+                              </svg>
                             </div>
                           </div>
+                        </div>
                         </div>
                       </>
                     )
@@ -345,29 +379,6 @@ export const LiveClient = () => {
                   {wakeActive && (
                     <div className="wake-indicator">WS -{wakeSlowPercent}%</div>
                   )}
-                </div>
-
-                {(() => {
-                  const shift = race.wind.directionDeg - race.baselineWindDeg
-                  const shiftColor = shift > 1 ? '#ff8f70' : shift < -1 ? '#70d6ff' : '#ffffff'
-                  const downwindDeg = ((race.wind.directionDeg + 180) % 360 + 360) % 360
-                  return (
-                    <div className="wind-arrow-overlay" aria-label="Wind direction (downwind arrow)">
-                      <svg
-                        width="74"
-                        height="74"
-                        viewBox="0 0 80 80"
-                        className="wind-arrow-svg"
-                        style={{ transform: `rotate(${downwindDeg}deg)` }}
-                        role="img"
-                        aria-hidden="true"
-                      >
-                        <line x1="40" y1="54" x2="40" y2="18" stroke={shiftColor} strokeWidth="3" />
-                        <polygon points="40,12 48,26 32,26" fill={shiftColor} />
-                      </svg>
-                    </div>
-                  )
-                })()}
               </div>
               {playerBoat.penalties > 0 && (
                 <div className="spin-overlay">
