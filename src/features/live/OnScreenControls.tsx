@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { CameraMode } from '@/view/scene/RaceScene'
 import { ZoomIcon } from '@/view/icons'
 
@@ -74,18 +74,18 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     window.localStorage.setItem(STORAGE_KEY, open ? '1' : '0')
   }, [open])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Provide a "safe area" hint for other overlays (e.g. chat) when touch controls are open.
     if (typeof document === 'undefined') return
     const media =
       typeof window === 'undefined'
         ? null
-        : window.matchMedia('(orientation: landscape) and (max-width: 1100px)')
+        : window.matchMedia('(orientation: landscape) and (max-width: 1200px)')
 
     const apply = () => {
       // On small landscape screens (iPad mini), chat is better anchored from the bottom,
       // and needs a larger offset to clear the control clusters.
-      const shift = open ? (media?.matches ? '15rem' : '9rem') : '0rem'
+      const shift = open ? (media?.matches ? '13rem' : '9rem') : '0rem'
       document.documentElement.style.setProperty('--touch-controls-chat-shift', shift)
     }
 

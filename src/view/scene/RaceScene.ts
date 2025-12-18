@@ -1128,11 +1128,14 @@ export class RaceScene {
     const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`
     const finalWarning = secondsRounded <= 10
 
-    const overlayWidth = Math.min(stageWidth - 32, 640)
+    const overlayWidthRaw = Math.min(stageWidth - 32, 640)
+    // Make the countdown overlay ~25% less wide while keeping it centered.
+    // Clamp so we never exceed the available width on very small screens.
+    const overlayWidth = Math.round(Math.min(overlayWidthRaw, Math.max(220, overlayWidthRaw * 0.75)))
     const overlayHeight = Math.min(stageHeight * 0.25, 140)
     const overlayX = (stageWidth - overlayWidth) / 2
     const overlayY = Math.max(16, stageHeight * 0.08)
-    const barPadding = 24
+    const barPadding = 18
     const barWidth = Math.max(60, overlayWidth - barPadding * 2)
     const barHeight = 18
     const barX = overlayX + barPadding
