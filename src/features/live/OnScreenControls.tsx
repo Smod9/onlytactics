@@ -130,7 +130,7 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       classes: `wide${hardTurnHeld ? ' active' : ''}`,
       title: 'Hold to make ↑/↓ do 20° turns (Shift/Alt modifier)',
       label: '20° Turn',
-      subLabel: 'Hold (Shift/Alt)',
+      subLabel: 'SHIFT (Hold + ↑/↓)',
       onPointerDown: (event) => {
         if (event.pointerType === 'touch') event.preventDefault()
         setHardTurnHeld(true)
