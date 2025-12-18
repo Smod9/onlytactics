@@ -70,6 +70,15 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     window.localStorage.setItem(STORAGE_KEY, open ? '1' : '0')
   }, [open])
 
+  useEffect(() => {
+    // Provide a "safe area" hint for other overlays (e.g. chat) when touch controls are open.
+    if (typeof document === 'undefined') return
+    document.documentElement.style.setProperty('--touch-controls-chat-shift', open ? '9rem' : '0rem')
+    return () => {
+      document.documentElement.style.setProperty('--touch-controls-chat-shift', '0rem')
+    }
+  }, [open])
+
   const handleKeyButton = (button: ControlButton) => {
     const wantsHardTurn = hardTurnHeld && (button.code === 'ArrowUp' || button.code === 'ArrowDown')
     dispatchKey(button.code, button.key, wantsHardTurn ? { shiftKey: true } : undefined)
