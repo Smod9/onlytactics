@@ -1,3 +1,17 @@
+# [1.22.0](https://github.com/Smod9/onlytactics/compare/v1.21.0...v1.22.0) (2025-12-18)
+
+
+### Bug Fixes
+
+* Update wind shift display to use '0' instead of 'ON' ([56f5e8c](https://github.com/Smod9/onlytactics/commit/56f5e8c8a125884a3c6e9ebcde3359afdeba6c17))
+
+
+### Features
+
+* Enhance HUD layout and touch control interactions ([079c892](https://github.com/Smod9/onlytactics/commit/079c89277c39a540881be664bc938621d74214ef))
+* New instrument gauge, less zoomy zoom and a nice line to the next mark while zoomed ([71def48](https://github.com/Smod9/onlytactics/commit/71def489bd62f998b3828b130cc51e1d4cbc4e51))
+* Update VMG mode functionality and UI elements ([aaad295](https://github.com/Smod9/onlytactics/commit/aaad295024d47ac2cfbf807136a3d0b2ca30fcb3))
+
 # [1.21.0](https://github.com/Smod9/onlytactics/compare/v1.20.0...v1.21.0) (2025-12-18)
 
 
