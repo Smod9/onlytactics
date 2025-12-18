@@ -45,7 +45,7 @@ export const TacticianPopout = () => {
               <kbd>↓</kbd> Bear away 10°
             </li>
             <li>
-              <kbd>Shift</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd> Hard turn 20°
+              <kbd>Shift</kbd>/<kbd>Alt</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd> Hard turn 20°
             </li>
             <li>
               <kbd>Z</kbd> Toggle camera (Follow / Birdseye)

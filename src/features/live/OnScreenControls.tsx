@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { CameraMode } from '@/view/scene/RaceScene'
 import { ZoomIcon } from '@/view/icons'
 
@@ -6,6 +6,7 @@ const STORAGE_KEY = 'sgame:onScreenControlsOpen'
 
 type KeyModifiers = {
   shiftKey?: boolean
+  altKey?: boolean
 }
 
 const dispatchKey = (code: string, keyOverride?: string, modifiers?: KeyModifiers) => {
@@ -15,6 +16,7 @@ const dispatchKey = (code: string, keyOverride?: string, modifiers?: KeyModifier
     key: keyOverride ?? code,
     bubbles: true,
     shiftKey: Boolean(modifiers?.shiftKey),
+    altKey: Boolean(modifiers?.altKey),
   })
   window.dispatchEvent(event)
 }
@@ -41,7 +43,7 @@ type TouchButton = {
   subLabel?: ReactNode
   classes?: string
   title?: string
-  onClick?: () => void
+  onClick?: (modifiers?: KeyModifiers) => void
   onPointerDown?: (event: React.PointerEvent<HTMLButtonElement>) => void
   onPointerUp?: () => void
   onPointerCancel?: () => void
@@ -64,6 +66,8 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     return prefersTouchControls()
   })
   const [hardTurnHeld, setHardTurnHeld] = useState(false)
+  const [pressedId, setPressedId] = useState<string | null>(null)
+  const lastTouchPressRef = useRef<{ id: string; at: number } | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -73,26 +77,62 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
   useEffect(() => {
     // Provide a "safe area" hint for other overlays (e.g. chat) when touch controls are open.
     if (typeof document === 'undefined') return
-    document.documentElement.style.setProperty('--touch-controls-chat-shift', open ? '9rem' : '0rem')
+    const media =
+      typeof window === 'undefined'
+        ? null
+        : window.matchMedia('(orientation: landscape) and (max-width: 1100px)')
+
+    const apply = () => {
+      // On small landscape screens (iPad mini), chat is better anchored from the bottom,
+      // and needs a larger offset to clear the control clusters.
+      const shift = open ? (media?.matches ? '15rem' : '9rem') : '0rem'
+      document.documentElement.style.setProperty('--touch-controls-chat-shift', shift)
+    }
+
+    apply()
+    media?.addEventListener?.('change', apply)
     return () => {
       document.documentElement.style.setProperty('--touch-controls-chat-shift', '0rem')
+      media?.removeEventListener?.('change', apply)
     }
   }, [open])
 
-  const handleKeyButton = (button: ControlButton) => {
-    const wantsHardTurn = hardTurnHeld && (button.code === 'ArrowUp' || button.code === 'ArrowDown')
-    dispatchKey(button.code, button.key, wantsHardTurn ? { shiftKey: true } : undefined)
+  const handleKeyButtonWithModifiers = (button: ControlButton, modifiers?: KeyModifiers) => {
+    const isArrow = button.code === 'ArrowUp' || button.code === 'ArrowDown'
+    const wantsHardTurn = isArrow && (hardTurnHeld || Boolean(modifiers?.shiftKey) || Boolean(modifiers?.altKey))
+    dispatchKey(
+      button.code,
+      button.key,
+      wantsHardTurn ? { shiftKey: Boolean(modifiers?.shiftKey) || hardTurnHeld, altKey: Boolean(modifiers?.altKey) } : modifiers,
+    )
+  }
+
+  const markPressed = (id: string) => setPressedId(id)
+  const clearPressed = (id: string) => {
+    setPressedId((current) => (current === id ? null : current))
+  }
+
+  const noteTouchPress = (id: string, timeStamp: number) => {
+    lastTouchPressRef.current = { id, at: timeStamp }
+  }
+
+  const shouldIgnoreClick = (id: string, timeStamp: number) => {
+    const last = lastTouchPressRef.current
+    if (!last) return false
+    if (last.id !== id) return false
+    // If we already handled this button via touch pointer events, ignore the synthetic click.
+    return timeStamp - last.at < 800
   }
 
   const portCluster: TouchButton[] = [
     {
       id: 'hardTurn',
       classes: `wide${hardTurnHeld ? ' active' : ''}`,
-      title: 'Hold to make ↑/↓ do 20° turns (Shift modifier)',
+      title: 'Hold to make ↑/↓ do 20° turns (Shift/Alt modifier)',
       label: '20° Turn',
-      subLabel: 'Hold (Shift)',
+      subLabel: 'Hold (Shift/Alt)',
       onPointerDown: (event) => {
-        event.preventDefault()
+        if (event.pointerType === 'touch') event.preventDefault()
         setHardTurnHeld(true)
         try {
           event.currentTarget.setPointerCapture(event.pointerId)
@@ -110,8 +150,11 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       label: 'Enter VMG',
       subLabel: 'Space',
       classes: 'wide',
-      onClick: () =>
-        handleKeyButton({ label: 'Enter VMG', subLabel: 'Space', code: 'Space', key: ' ', classes: 'wide' }),
+      onClick: (modifiers) =>
+        handleKeyButtonWithModifiers(
+          { label: 'Enter VMG', subLabel: 'Space', code: 'Space', key: ' ', classes: 'wide' },
+          modifiers,
+        ),
     },
   ]
 
@@ -121,14 +164,22 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       label: 'Clear Penalty',
       subLabel: 'P',
       classes: 'wide',
-      onClick: () => handleKeyButton({ label: 'Clear Penalty', subLabel: 'P', code: 'KeyP', key: 'p', classes: 'wide' }),
+      onClick: (modifiers) =>
+        handleKeyButtonWithModifiers(
+          { label: 'Clear Penalty', subLabel: 'P', code: 'KeyP', key: 'p', classes: 'wide' },
+          modifiers,
+        ),
     },
     {
       id: 'spin',
       label: 'Spin',
       subLabel: 'S',
       classes: 'wide',
-      onClick: () => handleKeyButton({ label: 'Spin', subLabel: 'S', code: 'KeyS', key: 's', classes: 'wide' }),
+      onClick: (modifiers) =>
+        handleKeyButtonWithModifiers(
+          { label: 'Spin', subLabel: 'S', code: 'KeyS', key: 's', classes: 'wide' },
+          modifiers,
+        ),
     },
   ]
 
@@ -137,7 +188,7 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       id: 'camera',
       classes: 'wide',
       title: 'Toggle camera mode (Z)',
-      onClick: onToggleCamera,
+      onClick: () => onToggleCamera(),
       label: (
         <>
           <span className="camera-toggle-icon" aria-hidden="true">
@@ -156,21 +207,67 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       label: 'Tack/Gybe',
       subLabel: 'Enter',
       classes: 'wide',
-      onClick: () => handleKeyButton({ label: 'Tack/Gybe', subLabel: 'Enter', code: 'Enter', key: 'Enter', classes: 'wide' }),
+      onClick: (modifiers) =>
+        handleKeyButtonWithModifiers(
+          { label: 'Tack/Gybe', subLabel: 'Enter', code: 'Enter', key: 'Enter', classes: 'wide' },
+          modifiers,
+        ),
     },
     {
       id: 'headUp',
       label: 'Head Up',
       subLabel: '↑',
-      onClick: () => handleKeyButton({ label: 'Head Up', subLabel: '↑', code: 'ArrowUp', key: 'ArrowUp' }),
+      onClick: (modifiers) =>
+        handleKeyButtonWithModifiers(
+          { label: 'Head Up', subLabel: '↑', code: 'ArrowUp', key: 'ArrowUp' },
+          modifiers,
+        ),
     },
     {
       id: 'bearAway',
       label: 'Bear Away',
       subLabel: '↓',
-      onClick: () => handleKeyButton({ label: 'Bear Away', subLabel: '↓', code: 'ArrowDown', key: 'ArrowDown' }),
+      onClick: (modifiers) =>
+        handleKeyButtonWithModifiers(
+          { label: 'Bear Away', subLabel: '↓', code: 'ArrowDown', key: 'ArrowDown' },
+          modifiers,
+        ),
     },
   ]
+
+  const handlePointerDown = (button: TouchButton, event: React.PointerEvent<HTMLButtonElement>) => {
+    markPressed(button.id)
+    if (event.pointerType === 'touch') {
+      event.preventDefault()
+      noteTouchPress(button.id, event.timeStamp)
+      // iOS Safari can suppress/delay click when preventDefault is involved; treat touch as "press" now.
+      button.onClick?.({ shiftKey: event.shiftKey, altKey: event.altKey })
+    }
+    button.onPointerDown?.(event)
+  }
+
+  const handlePointerUp = (button: TouchButton) => {
+    clearPressed(button.id)
+    button.onPointerUp?.()
+  }
+
+  const handlePointerCancel = (button: TouchButton) => {
+    clearPressed(button.id)
+    button.onPointerCancel?.()
+  }
+
+  const handlePointerLeave = (button: TouchButton) => {
+    clearPressed(button.id)
+    button.onPointerLeave?.()
+  }
+
+  const handleClick = (button: TouchButton, modifiers: KeyModifiers, timeStamp: number) => {
+    if (shouldIgnoreClick(button.id, timeStamp)) return
+    // If the platform doesn't reliably fire :active, provide a short "pressed" flash.
+    markPressed(button.id)
+    window.setTimeout(() => clearPressed(button.id), 120)
+    button.onClick?.(modifiers)
+  }
 
   const renderCluster = (buttons: TouchButton[], side: 'left' | 'right', extra?: boolean) => (
     <div className={`on-screen-cluster ${side}${extra ? ' extras' : ''}`}>
@@ -178,12 +275,16 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
         <button
           key={button.id}
           type="button"
-          className={`on-screen-button${button.classes ? ` ${button.classes}` : ''}`}
-          onClick={button.onClick}
-          onPointerDown={button.onPointerDown}
-          onPointerUp={button.onPointerUp}
-          onPointerCancel={button.onPointerCancel}
-          onPointerLeave={button.onPointerLeave}
+          className={`on-screen-button${button.classes ? ` ${button.classes}` : ''}${
+            pressedId === button.id ? ' pressed' : ''
+          }`}
+          onClick={(event) =>
+            handleClick(button, { shiftKey: event.shiftKey, altKey: event.altKey }, event.timeStamp)
+          }
+          onPointerDown={(event) => handlePointerDown(button, event)}
+          onPointerUp={() => handlePointerUp(button)}
+          onPointerCancel={() => handlePointerCancel(button)}
+          onPointerLeave={() => handlePointerLeave(button)}
           onContextMenu={button.onContextMenu}
           title={button.title}
         >
