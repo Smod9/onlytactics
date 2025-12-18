@@ -9,6 +9,17 @@ type Props = {
   network?: GameNetwork
 }
 
+const isInteractiveElement = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    target.isContentEditable ||
+    target.getAttribute('role') === 'textbox'
+  )
+}
+
 const roleToSender = (role: RaceRole): ChatSenderRole => {
   if (role === 'host') return 'host'
   if (role === 'player') return 'player'
@@ -42,6 +53,11 @@ export const ChatPanel = ({ network }: Props) => {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      // Don't steal typing when the user is in another input (e.g. name entry).
+      // We still allow the hotkey when focus is not on an interactive element.
+      if (isInteractiveElement(event.target) && document.activeElement !== inputRef.current) {
+        return
+      }
       if (event.key === 'm' || event.key === 'M' || event.key === 'c' || event.key === 'C') {
         const isFocused = document.activeElement === inputRef.current
         if (!isFocused) {
