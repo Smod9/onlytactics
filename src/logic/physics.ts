@@ -165,8 +165,8 @@ const polarTable = [
   { awa: 140, ratio: 1.15 }, // Target VMG-optimal region
   { awa: 150, ratio: 1.00 }, // Getting deeper: slower enough that VMG doesn't keep increasing
   { awa: 160, ratio: 0.90 }, // Deep downwind
-  { awa: 170, ratio: 0.85 }, // Very deep downwind
-  { awa: 180, ratio: 0.80 }, // Dead downwind (~30% slower than 1.15 peak)
+  { awa: 170, ratio: 0.75 }, // Very deep downwind
+  { awa: 180, ratio: 0.50 }, // Dead downwind (~30% slower than 1.15 peak)
 ]
 
 /**
