@@ -8,7 +8,7 @@ export const NO_GO_ANGLE_DEG = 25 //How far a boat can go before it stalls (we b
 // Maximum allowed downwind angle (TWA). Set to 180 to allow sailing as deep downwind as desired.
 export const MAX_DOWNWIND_ANGLE_DEG = 177
 export const HEADING_STEP_DEG = 5 //How much a boat can turn in one step
-export const HARD_TURN_STEP_DEG = 30 //How much a boat can turn in one step when holding Shift
+export const HARD_TURN_STEP_DEG = 20 //How much a boat can turn in one step when holding Shift
 export const STALL_DURATION_S = 3 //How long a boat stalls in seconds
 export const STALL_SPEED_FACTOR = 0.35 //How much a boat slows down when it stalls
 export const DEFAULT_SHEET = 0.75 //How much sheet a boat has when it starts

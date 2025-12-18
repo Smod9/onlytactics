@@ -30,6 +30,7 @@ type RoundingProgress = {
 type HostLoopOptions = {
   onEvents?: (events: RaceEvent[]) => void
   onTick?: (state: RaceState, events: RaceEvent[]) => void
+  onTimeout?: () => void
 }
 
 export class HostLoop {
@@ -136,7 +137,9 @@ export class HostLoop {
     if (next.clockStartMs) {
       next.t = (Date.now() - next.clockStartMs) / 1000
     }
-    this.checkRaceTimeout(next)
+    if (this.checkRaceTimeout(next)) {
+      return
+    }
     const lapEvents = this.updateLapProgress(next)
 
     this.applySpinLocks(next)
@@ -1058,7 +1061,14 @@ export class HostLoop {
     const elapsedMs = Date.now() - this.raceStartWallClockMs
     const timeoutMs = appEnv.raceTimeoutMinutes * 60_000
     if (elapsedMs < timeoutMs) return
+    if (this.options.onTimeout) {
+      // Match the manual "Restart Race" behavior: reset the race rather than freezing in a finished state.
+      // Schedule after the current tick returns to avoid racing with store.setState(next).
+      setTimeout(() => this.options.onTimeout?.(), 0)
+      return true
+    }
 
+    // Fallback behavior (if no host controller is wiring onTimeout): finish + stop the loop.
     state.phase = 'finished'
     const event: RaceEvent = {
       eventId: createId('event'),
@@ -1071,6 +1081,7 @@ export class HostLoop {
       clearInterval(this.timer)
       this.timer = undefined
     }
+    return true
   }
 
   private startSpinSequence(boatId: string) {

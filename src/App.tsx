@@ -96,7 +96,7 @@ export function App() {
             </a>
             <a
               className="icon-link"
-              href="https://discord.gg/EJd3yQKP"
+              href="https://discord.gg/eEstr6ZH"
               target="_blank"
               rel="noreferrer"
               title="Join our Discord community"
@@ -122,7 +122,7 @@ export function App() {
           <div className="username-card">
             <h2>Change Your Name?</h2>
             <p>
-              <strong>Warning:</strong> Changing your name will require a page refresh. 
+              <strong>Warning:</strong> Changing your name will require a page refresh.
               You may lose your current position in the race.
             </p>
             <div className="username-form-actions">

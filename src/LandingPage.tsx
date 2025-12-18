@@ -37,7 +37,7 @@ export const LandingPage = () => {
               <span className="sr-only">GitHub</span>
             </a>
             <a
-              href="https://discord.gg/EJd3yQKP"
+              href="https://discord.gg/eEstr6ZH"
               target="_blank"
               rel="noreferrer"
               aria-label="Discord"
@@ -80,7 +80,7 @@ export const LandingPage = () => {
             </a>
             <a
               className="secondary"
-              href="https://discord.gg/EJd3yQKP"
+              href="https://discord.gg/eEstr6ZH"
               target="_blank"
               rel="noreferrer"
             >
