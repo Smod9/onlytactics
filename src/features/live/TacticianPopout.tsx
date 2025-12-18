@@ -45,7 +45,16 @@ export const TacticianPopout = () => {
               <kbd>↓</kbd> Bear away 10°
             </li>
             <li>
+              <kbd>Shift</kbd> + <kbd>↑</kbd>/<kbd>↓</kbd> Hard turn 20°
+            </li>
+            <li>
+              <kbd>Z</kbd> Toggle camera (Follow / Birdseye)
+            </li>
+            <li>
               <kbd>S</kbd> 360° spin to clear one penalty
+            </li>
+            <li>
+              <kbd>P</kbd> Clear one penalty (no spin)
             </li>
           </ul>
         </div>
