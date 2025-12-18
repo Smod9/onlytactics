@@ -1,3 +1,10 @@
+## [1.22.1](https://github.com/Smod9/onlytactics/compare/v1.22.0...v1.22.1) (2025-12-18)
+
+
+### Bug Fixes
+
+* Moves rtt to screen, hides debug panel and updates help menu ([5018aa7](https://github.com/Smod9/onlytactics/commit/5018aa7fbedb9e2be174e90d502c912d8ee5628f))
+
 # [1.22.0](https://github.com/Smod9/onlytactics/compare/v1.21.0...v1.22.0) (2025-12-18)
 
 
