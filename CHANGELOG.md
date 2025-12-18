@@ -1,3 +1,10 @@
+## [1.23.2](https://github.com/Smod9/onlytactics/compare/v1.23.1...v1.23.2) (2025-12-18)
+
+
+### Bug Fixes
+
+* Improve keyboard event handling in ChatPanel to prevent interference with user input ([4265dc6](https://github.com/Smod9/onlytactics/commit/4265dc6013c702f26d08fd967ccea8d455c355ca))
+
 ## [1.23.1](https://github.com/Smod9/onlytactics/compare/v1.23.0...v1.23.1) (2025-12-18)
 
 
