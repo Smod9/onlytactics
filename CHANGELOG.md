@@ -1,3 +1,10 @@
+## [1.23.1](https://github.com/Smod9/onlytactics/compare/v1.23.0...v1.23.1) (2025-12-18)
+
+
+### Bug Fixes
+
+* Mobile/iPad polish and resolves windshadow chip (PR [#47](https://github.com/Smod9/onlytactics/issues/47)) ([9816fb8](https://github.com/Smod9/onlytactics/commit/9816fb8b4a0786e9f0d578b72044dd5797f36b8f))
+
 # [1.23.0](https://github.com/Smod9/onlytactics/compare/v1.22.1...v1.23.0) (2025-12-18)
 
 
