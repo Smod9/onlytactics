@@ -1,3 +1,11 @@
+# [1.21.0](https://github.com/Smod9/onlytactics/compare/v1.20.0...v1.21.0) (2025-12-18)
+
+
+### Features
+
+* Add follow camera zoom factor configuration ([14876f5](https://github.com/Smod9/onlytactics/commit/14876f593bffee13cc3c55b9ac54ccb187b7760b))
+* Add follow-mode guidance line to RaceScene ([afe4bce](https://github.com/Smod9/onlytactics/commit/afe4bcee8a8c6dcc551e027992e88d7aac739cd2))
+
 # [1.20.0](https://github.com/Smod9/onlytactics/compare/v1.19.1...v1.20.0) (2025-12-17)
 
 
