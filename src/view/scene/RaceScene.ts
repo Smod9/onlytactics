@@ -246,7 +246,7 @@ export class RaceScene {
   })
 
   private readonly mapScaleBase = 560
-  private readonly followZoomFactor = 2
+  private readonly followZoomFactor = appEnv.followZoomFactor
   private cameraMode: CameraMode = 'follow'
 
   private boats = new Map<string, BoatView>()
