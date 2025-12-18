@@ -362,9 +362,12 @@ button {
 }
 
 .speed-heading-overlay {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  grid-auto-rows: minmax(0, auto);
+  column-gap: 0.85rem;
+  row-gap: 0.2rem;
+  padding: 0.45rem 0.7rem;
   background: rgba(5, 8, 18, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.6rem;
@@ -373,7 +376,7 @@ button {
   top: 0.75rem;
   left: 0.4rem;
   z-index: 6;
-  align-items: center;
+  align-items: start;
 }
 
 .camera-toggle {
@@ -417,24 +420,61 @@ button {
   box-shadow: 0 0 0 1px rgba(255, 207, 112, 0.3);
 }
 
-.speed-heading-overlay .speed-readout,
-.speed-heading-overlay .heading-readout {
+.speed-heading-overlay .hud-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
   font-family: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  white-space: nowrap;
 }
 
-.speed-heading-overlay .speed-readout {
+.speed-heading-overlay .hud-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.speed-heading-overlay .hud-value {
+  font-weight: 650;
+}
+
+.speed-heading-overlay .hud-metric-speed .hud-value {
   color: #4af6c2;
 }
 
-.speed-heading-overlay .heading-readout {
+.speed-heading-overlay .hud-metric-heading .hud-value {
   color: #ffcf70;
+}
+
+.speed-heading-overlay .hud-metric-wind .hud-value {
+  color: #9fb7ff;
+}
+
+.speed-heading-overlay .hud-metric-tack .hud-value {
+  color: #d8f8ff;
+}
+
+.speed-heading-overlay .hud-metric-tack .hud-value.tack-stbd {
+  color: #4af6c2;
+}
+
+.speed-heading-overlay .hud-metric-tack .hud-value.tack-port {
+  color: #ff6b6b;
 }
 
 .speed-heading-overlay .wake-indicator {
   color: #ff8570;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
+  position: absolute;
+  right: 0.5rem;
+  bottom: -0.95rem;
+  background: rgba(5, 8, 18, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.45rem;
 }
 
 .hud-stack {
