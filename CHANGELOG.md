@@ -1,3 +1,16 @@
+# [1.23.0](https://github.com/Smod9/onlytactics/compare/v1.22.1...v1.23.0) (2025-12-18)
+
+
+### Bug Fixes
+
+* Improve keyboard event handling in LiveClient and useTacticianControls ([7d9c257](https://github.com/Smod9/onlytactics/commit/7d9c25784743b13fb72b3759d21a917913f7715a))
+* ipad controls ([b2e39ce](https://github.com/Smod9/onlytactics/commit/b2e39ce9699e46f9db510cb5185d11e4639a5d08))
+
+
+### Features
+
+* Enhance touch control interactions and prevent text selection in Safari ([184a285](https://github.com/Smod9/onlytactics/commit/184a2859cbd31fdea5ec7e4d8e4a21fbf74805cb))
+
 ## [1.22.1](https://github.com/Smod9/onlytactics/compare/v1.22.0...v1.22.1) (2025-12-18)
 
 
