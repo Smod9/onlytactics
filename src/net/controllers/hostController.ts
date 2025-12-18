@@ -59,6 +59,7 @@ export class HostController extends BaseController {
     this.loop = new HostLoop(this.store, undefined, undefined, {
       onEvents: (events) => this.publishEvents(events),
       onTick: (state, events) => replayRecorder.recordFrame(state, events),
+      onTimeout: () => this.resetRace(),
     })
     this.aiManager = new AiManager(
       this.store,

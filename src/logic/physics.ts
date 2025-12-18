@@ -152,6 +152,7 @@ const apparentWindAngle = (boatHeadingDeg: number, windDirDeg: number) =>
  */
 const polarTable = [
   { awa: 0, ratio: 0 },      // Dead into wind - no speed
+  { awa: 20, ratio: 0.20 },      // Luffing hard
   { awa: 30, ratio: 0.45 },  // Close-hauled lower limit
   { awa: 45, ratio: 0.65 },  // Typical close-hauled angle
   { awa: 60, ratio: 0.8 },   // Close reach
