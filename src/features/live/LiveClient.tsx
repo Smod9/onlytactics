@@ -281,42 +281,93 @@ export const LiveClient = () => {
           )}
           {playerBoat && (
             <>
-              <div className={`speed-heading-overlay ${wakeActive ? 'wake-active' : ''}`}>
+              <div className="top-left-hud">
+                <div className={`speed-heading-overlay ${wakeActive ? 'wake-active' : ''}`}>
+                  {(() => {
+                    const twaSigned = apparentWindAngleSigned(playerBoat.headingDeg, race.wind.directionDeg)
+                    const isStarboardTack = twaSigned >= 0
+                    const absTwa = Math.abs(twaSigned)
+
+                    // Boat panel: keep AWA label, but show VMG mode status instead of degrees.
+                    const boatWindValue = playerBoat.vmgMode ? 'VMG' : `${absTwa.toFixed(0)}°`
+
+                    // Wind panel: mirror the same shift labeling used in the Pixi HUD.
+                    const shift = race.wind.directionDeg - race.baselineWindDeg
+                    const shiftText =
+                      Math.abs(shift) < 0.5 ? 'ON' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
+
+                    return (
+                      <>
+                        <div className="hud-section">
+                          <div className="hud-section-header">Boat</div>
+                          <div className="hud-grid hud-grid-boat">
+                            <div className="hud-metric hud-metric-speed">
+                              <span className="hud-label">SPD</span>
+                              <span className="hud-value">{playerBoat.speed.toFixed(2)} kts</span>
+                            </div>
+                            <div className="hud-metric hud-metric-heading">
+                              <span className="hud-label">HDG</span>
+                              <span className="hud-value">{playerBoat.headingDeg.toFixed(0)}°</span>
+                            </div>
+                            <div className="hud-metric hud-metric-wind">
+                              <span className="hud-label">AWA</span>
+                              <span className="hud-value">{boatWindValue}</span>
+                            </div>
+                            <div className="hud-metric hud-metric-tack">
+                              <span className="hud-label">TACK</span>
+                              <span className={`hud-value ${isStarboardTack ? 'tack-stbd' : 'tack-port'}`}>
+                                {isStarboardTack ? 'STBD' : 'PORT'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="hud-section">
+                          <div className="hud-section-header">Wind</div>
+                          <div className="hud-grid hud-grid-wind">
+                            <div className="hud-metric hud-metric-winddir">
+                              <span className="hud-label">DIR</span>
+                              <span className="hud-value">{race.wind.directionDeg.toFixed(0)}°</span>
+                            </div>
+                            <div className="hud-metric hud-metric-windspd">
+                              <span className="hud-label">SPD</span>
+                              <span className="hud-value">{race.wind.speed.toFixed(1)} kts</span>
+                            </div>
+                            <div className="hud-metric hud-metric-windshift hud-metric--span2">
+                              <span className="hud-label">SHIFT</span>
+                              <span className="hud-value">{shiftText}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )
+                  })()}
+                  {wakeActive && (
+                    <div className="wake-indicator">WS -{wakeSlowPercent}%</div>
+                  )}
+                </div>
+
                 {(() => {
-                  const twaSigned = apparentWindAngleSigned(playerBoat.headingDeg, race.wind.directionDeg)
-                  const isStarboardTack = twaSigned >= 0
-                  const absTwa = Math.abs(twaSigned)
-
-                  // Keep the cell labeled AWA, but when VMG mode is active, show a simple mode indicator.
-                  const windLabel = 'AWA'
-                  const windValue = playerBoat.vmgMode ? 'VMG' : `${absTwa.toFixed(0)}°`
-
+                  const shift = race.wind.directionDeg - race.baselineWindDeg
+                  const shiftColor = shift > 1 ? '#ff8f70' : shift < -1 ? '#70d6ff' : '#ffffff'
+                  const downwindDeg = ((race.wind.directionDeg + 180) % 360 + 360) % 360
                   return (
-                    <>
-                      <div className="hud-metric hud-metric-speed">
-                        <span className="hud-label">SPD</span>
-                        <span className="hud-value">{playerBoat.speed.toFixed(2)} kts</span>
-                      </div>
-                      <div className="hud-metric hud-metric-heading">
-                        <span className="hud-label">HDG</span>
-                        <span className="hud-value">{playerBoat.headingDeg.toFixed(0)}°</span>
-                      </div>
-                      <div className="hud-metric hud-metric-wind">
-                        <span className="hud-label">{windLabel}</span>
-                        <span className="hud-value">{windValue}</span>
-                      </div>
-                      <div className="hud-metric hud-metric-tack">
-                        <span className="hud-label">TACK</span>
-                        <span className={`hud-value ${isStarboardTack ? 'tack-stbd' : 'tack-port'}`}>
-                          {isStarboardTack ? 'STBD' : 'PORT'}
-                        </span>
-                      </div>
-                    </>
+                    <div className="wind-arrow-overlay" aria-label="Wind direction (downwind arrow)">
+                      <svg
+                        width="74"
+                        height="74"
+                        viewBox="0 0 80 80"
+                        className="wind-arrow-svg"
+                        style={{ transform: `rotate(${downwindDeg}deg)` }}
+                        role="img"
+                        aria-hidden="true"
+                      >
+                        <line x1="40" y1="54" x2="40" y2="18" stroke={shiftColor} strokeWidth="3" />
+                        <polygon points="40,12 48,26 32,26" fill={shiftColor} />
+                      </svg>
+                    </div>
                   )
                 })()}
-                {wakeActive && (
-                  <div className="wake-indicator">WS -{wakeSlowPercent}%</div>
-                )}
               </div>
               {playerBoat.penalties > 0 && (
                 <div className="spin-overlay">

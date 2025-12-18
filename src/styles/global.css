@@ -361,22 +361,68 @@ button {
   color: #9fb7ff;
 }
 
-.speed-heading-overlay {
-  display: grid;
-  grid-template-columns: repeat(2, max-content);
-  grid-auto-rows: minmax(0, auto);
-  column-gap: 0.85rem;
-  row-gap: 0.2rem;
-  padding: 0.45rem 0.7rem;
-  background: rgba(5, 8, 18, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.6rem;
-  pointer-events: none;
+.top-left-hud {
   position: absolute;
   top: 0.75rem;
   left: 0.4rem;
   z-index: 6;
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  pointer-events: none;
+}
+
+.speed-heading-overlay {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(5, 8, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.6rem;
+  pointer-events: none;
+  position: relative;
+  align-items: flex-start;
+}
+
+.wind-arrow-overlay {
+  width: 4.8rem;
+  height: 4.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.6rem;
+}
+
+.wind-arrow-svg {
+  transform-origin: 50% 50%;
+}
+
+.speed-heading-overlay .hud-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.speed-heading-overlay .hud-section-header {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.speed-heading-overlay .hud-grid {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: 0.85rem;
+  row-gap: 0.2rem;
+}
+
+.speed-heading-overlay .hud-metric--span2 {
+  grid-column: 1 / -1;
 }
 
 .camera-toggle {
