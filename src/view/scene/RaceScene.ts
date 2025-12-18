@@ -1070,7 +1070,7 @@ export class RaceScene {
     this.timerText.text = ''
     const shift = state.wind.directionDeg - state.baselineWindDeg
     const shiftText =
-      Math.abs(shift) < 0.5 ? 'ON' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
+      Math.abs(shift) < 0.5 ? '0' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
     // Keep string generation only in debug mode (windText is hidden in normal HUD).
     this.windText.text = appEnv.debugHud
       ? `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts | cam=${this.cameraMode} x${this.worldLayer.scale.x.toFixed(2)}`

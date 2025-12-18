@@ -295,7 +295,7 @@ export const LiveClient = () => {
                     const shiftIsOn = Math.abs(rawShift) < 0.5
                     const shiftDir = rawShift >= 0 ? 'R' : 'L'
                     const shiftMag = Math.abs(rawShift).toFixed(1)
-                    // Wind shift colors (match prior scheme): orange for R, blue for L, white for ON.
+                    // Wind shift colors (match prior scheme): orange for R, blue for L, white for 0.
                     const shiftColor = shiftIsOn ? '#ffffff' : rawShift >= 0 ? '#ff8f70' : '#70d6ff'
                     const exaggeratedWindDir =
                       ((race.baselineWindDeg + rawShift * 1.2) % 360 + 360) % 360
@@ -346,7 +346,7 @@ export const LiveClient = () => {
                                 <span className="hud-label">ANG</span>
                                 <span className="hud-value">
                                   {shiftIsOn ? (
-                                    'ON'
+                                    '0°'
                                   ) : (
                                     <span className="wind-shift-value" style={{ color: shiftColor }}>
                                       {shiftMag}° {shiftDir}
