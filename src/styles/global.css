@@ -369,6 +369,17 @@ button {
   color: #9fb7ff;
 }
 
+.speed-heading-row {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.4rem;
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
 .speed-heading-overlay {
   display: flex;
   flex-direction: column;
@@ -378,10 +389,6 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.6rem;
   pointer-events: none;
-  position: absolute;
-  top: 0.75rem;
-  left: 0.4rem;
-  z-index: 6;
   align-items: flex-start;
 }
 
@@ -580,17 +587,26 @@ button {
   color: #ff6b6b;
 }
 
-.speed-heading-overlay .wake-indicator {
+.wake-overlay {
+  padding: 0.55rem 0.7rem;
+  background: rgba(5, 8, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.6rem;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px rgba(255, 207, 112, 0.3);
+}
+
+.wake-indicator {
   color: #ff8570;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
-  position: absolute;
-  right: 0.5rem;
-  bottom: -0.95rem;
-  background: rgba(5, 8, 18, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 0.1rem 0.4rem;
-  border-radius: 0.45rem;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .hud-stack {
