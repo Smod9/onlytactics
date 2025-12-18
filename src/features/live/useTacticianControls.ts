@@ -75,7 +75,9 @@ export const useTacticianControls = (
         return
       }
 
-      const key = event.code ?? event.key
+      // Some browsers (notably iOS Safari / synthetic keyboard events) may provide an empty string
+      // for event.code. Use || instead of ?? so we fall back to event.key in that case.
+      const key = event.code || event.key
       const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP']
       if (appEnv.debugHud) allowed.push('KeyJ')
       if (!allowed.includes(key)) {

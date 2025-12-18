@@ -134,7 +134,8 @@ export const LiveClient = () => {
     if (typeof window === 'undefined') return
     const handleKey = (event: KeyboardEvent) => {
       if (isInteractiveElement(event.target)) return
-      if ((event.code ?? event.key) !== 'KeyZ') return
+      const code = event.code || event.key
+      if (code !== 'KeyZ' && event.key !== 'z' && event.key !== 'Z') return
       if (event.repeat) {
         event.preventDefault()
         return
@@ -494,9 +495,9 @@ export const LiveClient = () => {
           <ChatPanel network={network} />
         </div>
       </div>
-      {myLatency && (
+      {role !== 'spectator' && (
         <div className="rtt-overlay" aria-label="Input RTT">
-          RTT {myLatency.latencyMs.toFixed(0)}ms
+          {myLatency ? `RTT ${myLatency.latencyMs.toFixed(0)}ms` : 'RTT —'}
         </div>
       )}
       <TacticianPopout />
