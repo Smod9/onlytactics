@@ -33,7 +33,7 @@ export const TacticianPopout = () => {
           <h4>Tactician Controls</h4>
           <ul>
             <li>
-              <kbd>Space</kbd> Sail by telltales (auto VMG heading)
+              <kbd>Space</kbd> Enter VMG mode (auto VMG heading)
             </li>
             <li>
               <kbd>Enter</kbd> Tack / gybe (locks helm until turn completes)

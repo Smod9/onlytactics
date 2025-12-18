@@ -24,6 +24,7 @@ import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
 import type { CameraMode } from '@/view/scene/RaceScene'
 import { ZoomIcon } from '@/view/icons'
+import { apparentWindAngleSigned } from '@/logic/physics'
 
 const isInteractiveElement = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
@@ -281,8 +282,38 @@ export const LiveClient = () => {
           {playerBoat && (
             <>
               <div className={`speed-heading-overlay ${wakeActive ? 'wake-active' : ''}`}>
-                <div className="speed-readout">SPD {playerBoat.speed.toFixed(2)} kts</div>
-                <div className="heading-readout">HDG {playerBoat.headingDeg.toFixed(0)}°</div>
+                {(() => {
+                  const twaSigned = apparentWindAngleSigned(playerBoat.headingDeg, race.wind.directionDeg)
+                  const isStarboardTack = twaSigned >= 0
+                  const absTwa = Math.abs(twaSigned)
+
+                  // Keep the cell labeled AWA, but when VMG mode is active, show a simple mode indicator.
+                  const windLabel = 'AWA'
+                  const windValue = playerBoat.vmgMode ? 'VMG' : `${absTwa.toFixed(0)}°`
+
+                  return (
+                    <>
+                      <div className="hud-metric hud-metric-speed">
+                        <span className="hud-label">SPD</span>
+                        <span className="hud-value">{playerBoat.speed.toFixed(2)} kts</span>
+                      </div>
+                      <div className="hud-metric hud-metric-heading">
+                        <span className="hud-label">HDG</span>
+                        <span className="hud-value">{playerBoat.headingDeg.toFixed(0)}°</span>
+                      </div>
+                      <div className="hud-metric hud-metric-wind">
+                        <span className="hud-label">{windLabel}</span>
+                        <span className="hud-value">{windValue}</span>
+                      </div>
+                      <div className="hud-metric hud-metric-tack">
+                        <span className="hud-label">TACK</span>
+                        <span className={`hud-value ${isStarboardTack ? 'tack-stbd' : 'tack-port'}`}>
+                          {isStarboardTack ? 'STBD' : 'PORT'}
+                        </span>
+                      </div>
+                    </>
+                  )
+                })()}
                 {wakeActive && (
                   <div className="wake-indicator">WS -{wakeSlowPercent}%</div>
                 )}

@@ -98,11 +98,11 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     },
     {
       id: 'trim',
-      label: 'Trim (auto VMG)',
+      label: 'Enter VMG',
       subLabel: 'Space',
       classes: 'wide',
       onClick: () =>
-        handleKeyButton({ label: 'Trim (auto VMG)', subLabel: 'Space', code: 'Space', key: ' ', classes: 'wide' }),
+        handleKeyButton({ label: 'Enter VMG', subLabel: 'Space', code: 'Space', key: ' ', classes: 'wide' }),
     },
   ]
 

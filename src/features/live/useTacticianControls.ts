@@ -135,11 +135,13 @@ export const useTacticianControls = (
 
       switch (key) {
         case 'Space': {
-          // Toggle VMG mode
-          vmgModeRef.current = !vmgModeRef.current
-          const seq = (seqRef.current += 1)
-          pendingRef.current.set(seq, performance.now())
-          networkRef.current?.updateVmgMode(vmgModeRef.current, seq)
+          // Enter VMG mode (idempotent). Exiting VMG is handled by manual steering inputs.
+          if (!vmgModeRef.current) {
+            vmgModeRef.current = true
+            const seq = (seqRef.current += 1)
+            pendingRef.current.set(seq, performance.now())
+            networkRef.current?.updateVmgMode(true, seq)
+          }
           event.preventDefault()
           break
         }
