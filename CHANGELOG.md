@@ -1,3 +1,10 @@
+## [1.23.3](https://github.com/Smod9/onlytactics/compare/v1.23.2...v1.23.3) (2025-12-19)
+
+
+### Bug Fixes
+
+* Increases race timeout to 25mins ([83fb233](https://github.com/Smod9/onlytactics/commit/83fb2334e6d3d455f3844ee44a2d37c236ff6f88))
+
 ## [1.23.2](https://github.com/Smod9/onlytactics/compare/v1.23.1...v1.23.2) (2025-12-18)
 
 
