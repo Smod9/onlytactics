@@ -382,6 +382,50 @@ export class RaceScene {
     return { scale, centerWorld }
   }
 
+  /**
+   * Pick the closest boat at a canvas pixel coordinate.
+   * Returns the boatId if within a reasonable radius, otherwise null.
+   */
+  pickBoatAtCanvasPoint(xPx: number, yPx: number, state: RaceState): string | null {
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const { width, height } = this.app.canvas
+    // Inverse of applyCameraTransform:
+    const worldX = centerWorld.x + (xPx - width / 2) / scale
+    const worldY = centerWorld.y + (yPx - height / 2) / scale
+
+    let bestId: string | null = null
+    let bestDist2 = Infinity
+
+    Object.values(state.boats).forEach((boat) => {
+      const dx = boat.pos.x - worldX
+      const dy = boat.pos.y - worldY
+      const d2 = dx * dx + dy * dy
+      if (d2 < bestDist2) {
+        bestDist2 = d2
+        bestId = boat.id
+      }
+    })
+
+    if (!bestId || !Number.isFinite(bestDist2)) return null
+    // Threshold in world units. Boat hull is roughly ~40px tall in local coords; use BOAT_LENGTH as baseline.
+    const pickRadius = Math.max(BOAT_LENGTH * 2.2, 28)
+    return bestDist2 <= pickRadius * pickRadius ? bestId : null
+  }
+
+  /**
+   * Convert a boat's world position to canvas pixel coordinates (in canvas internal pixel space).
+   */
+  getBoatCanvasPoint(boatId: string, state: RaceState): { x: number; y: number } | null {
+    const boat = state.boats[boatId]
+    if (!boat) return null
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const { width, height } = this.app.canvas
+    return {
+      x: width / 2 + (boat.pos.x - centerWorld.x) * scale,
+      y: height / 2 + (boat.pos.y - centerWorld.y) * scale,
+    }
+  }
+
   private applyCameraTransform(state: RaceState) {
     const { width, height } = this.app.canvas
     const { scale, centerWorld } = this.getCameraTransform(state)

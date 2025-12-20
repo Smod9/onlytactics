@@ -111,6 +111,11 @@ export class ColyseusBridge {
     this.room.send('chat', { text })
   }
 
+  sendProtestCommand(command: { kind: 'file' | 'revoke' | 'judge_clear'; targetBoatId: string }) {
+    if (!this.room) return
+    this.room.send('protest_command', command)
+  }
+
   private attachHandlers(room: Room<RaceRoomSchema>) {
     const pushState = () => {
       const next = room.state?.race?.toJSON?.()

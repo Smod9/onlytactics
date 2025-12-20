@@ -225,10 +225,24 @@ export class RaceRoom extends Room<RaceRoomState> {
 
   onJoin(client: Client, options?: Record<string, unknown>) {
     const clientId = this.resolveClientIdentity(client, options)
+    const joinRole = this.resolveJoinRole(options)
+
+    // De-dupe: if the same clientId is already connected, evict the previous session.
+    const existingSessionId = this.findExistingSessionId(clientId, client.sessionId)
+    const existingWasHost = Boolean(existingSessionId && existingSessionId === this.hostSessionId)
+    if (existingSessionId) {
+      console.info('[RaceRoom] evicting duplicate session for clientId', {
+        clientId,
+        previousSessionId: existingSessionId,
+        nextSessionId: client.sessionId,
+        nextRole: joinRole,
+      })
+      this.evictSession(existingSessionId)
+    }
+
     this.clientIdentityMap.set(client.sessionId, clientId)
     const displayName = this.resolvePlayerName(client, options)
     this.clientNameMap.set(client.sessionId, displayName)
-    const joinRole = this.resolveJoinRole(options)
     this.clientRoleMap.set(client.sessionId, joinRole)
     this.state.playerCount += 1
     console.info('[RaceRoom] client joined', {
@@ -242,12 +256,18 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
     if (joinRole === 'player') {
       this.assignBoatToClient(client, options)
-      if (!this.hostSessionId) {
+      if (existingWasHost) {
+        this.setHost(client.sessionId)
+      } else if (!this.hostSessionId) {
         this.setHost(client.sessionId)
       }
     } else {
       // Judges and spectators do not control a boat.
       client.send('boat_assignment', { boatId: null })
+      // If the previous session was host and the replacement is not a player, drop host selection.
+      if (existingWasHost) {
+        this.setHost(undefined)
+      }
     }
   }
 
@@ -691,6 +711,39 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (raw === 'spectator') return 'spectator'
     // default: join as a controlling player
     return 'player'
+  }
+
+  private findExistingSessionId(clientId: string, currentSessionId: string) {
+    for (const [sessionId, knownClientId] of this.clientIdentityMap.entries()) {
+      if (sessionId === currentSessionId) continue
+      if (knownClientId === clientId) return sessionId
+    }
+    return undefined
+  }
+
+  private evictSession(sessionId: string) {
+    // Ask the old client to leave.
+    const oldClient = this.clients.find((c) => c.sessionId === sessionId)
+    try {
+      oldClient?.leave(4001, 'replaced')
+    } catch (err) {
+      console.warn('[RaceRoom] failed to leave() old client', { sessionId, err })
+    }
+
+    // Remove any boat controlled by the old session, and clear bookkeeping maps.
+    const boatId = this.clientBoatMap.get(sessionId)
+    this.clientBoatMap.delete(sessionId)
+    this.clientIdentityMap.delete(sessionId)
+    this.clientNameMap.delete(sessionId)
+    this.clientRoleMap.delete(sessionId)
+
+    if (!boatId) return
+    this.mutateState((draft) => {
+      if (draft.boats[boatId]) {
+        delete draft.boats[boatId]
+        draft.leaderboard = draft.leaderboard.filter((id) => id !== boatId)
+      }
+    })
   }
 
   private mutateState(mutator: (draft: RaceState) => void) {

@@ -18,6 +18,10 @@ const netLog = (...args: unknown[]) => {
 
 type HostAnnouncement = { clientId: string; updatedAt: number }
 
+type NonHostRole = Exclude<RaceRole, 'host'>
+
+const ROLE_PREFERENCE_KEY = 'sgame:rolePreference'
+
 export class GameNetwork {
   private controller?: Controller
 
@@ -52,7 +56,33 @@ export class GameNetwork {
 
   constructor() {
     // Allow simple role selection via URL, e.g. `/app?role=judge` or `/app?role=spectator`.
-    this.desiredRoleOverride = this.readRoleOverrideFromUrl()
+    // If no URL override, fall back to a persisted preference.
+    this.desiredRoleOverride = this.readRoleOverrideFromUrl() ?? this.readRoleOverrideFromStorage()
+  }
+
+  /**
+   * Switch between player/spectator/judge. This reconnects (Colyseus) so the server
+   * can apply the join options (boat assignment or no-boat).
+   */
+  async switchRole(next: NonHostRole) {
+    // MQTT transport doesn't support judge semantics; treat judge as spectator.
+    const normalized: NonHostRole =
+      this.useColyseus() ? next : next === 'judge' ? 'spectator' : next
+
+    // Persist preference. We store only spectator/judge; player is the default (clear).
+    if (typeof window !== 'undefined') {
+      if (normalized === 'spectator' || normalized === 'judge') {
+        window.sessionStorage.setItem(ROLE_PREFERENCE_KEY, normalized)
+      } else {
+        window.sessionStorage.removeItem(ROLE_PREFERENCE_KEY)
+      }
+    }
+
+    this.desiredRoleOverride = normalized === 'player' ? undefined : normalized
+
+    // Host is assigned server-side; switching away means disconnect + reconnect.
+    this.stop()
+    await this.start()
   }
 
   async start() {
@@ -120,6 +150,24 @@ export class GameNetwork {
     }
     netLog('sendChat() ignored for MQTT transport')
     return false
+  }
+
+  fileProtest(targetBoatId: string) {
+    if (!targetBoatId) return
+    if (!this.useColyseus()) return
+    this.colyseusBridge?.sendProtestCommand({ kind: 'file', targetBoatId })
+  }
+
+  revokeProtest(targetBoatId: string) {
+    if (!targetBoatId) return
+    if (!this.useColyseus()) return
+    this.colyseusBridge?.sendProtestCommand({ kind: 'revoke', targetBoatId })
+  }
+
+  judgeClearProtest(targetBoatId: string) {
+    if (!targetBoatId) return
+    if (!this.useColyseus()) return
+    this.colyseusBridge?.sendProtestCommand({ kind: 'judge_clear', targetBoatId })
   }
 
   private emitChat(message: ChatMessage) {
@@ -518,7 +566,14 @@ export class GameNetwork {
     const raw = (params.get('role') ?? '').trim().toLowerCase()
     if (raw === 'judge') return 'judge'
     if (raw === 'spectator') return 'spectator'
-    if (raw === 'player') return 'player'
+    return undefined
+  }
+
+  private readRoleOverrideFromStorage(): Exclude<RaceRole, 'host'> | undefined {
+    if (typeof window === 'undefined') return undefined
+    const raw = (window.sessionStorage.getItem(ROLE_PREFERENCE_KEY) ?? '').trim().toLowerCase()
+    if (raw === 'judge') return 'judge'
+    if (raw === 'spectator') return 'spectator'
     return undefined
   }
 }
