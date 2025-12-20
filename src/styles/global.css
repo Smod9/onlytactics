@@ -639,6 +639,7 @@ button {
   top: 5.5rem;
   left: 1rem;
   pointer-events: auto;
+  z-index: 9;
 }
 
 .leaderboard-overlay,
@@ -1155,17 +1156,43 @@ button {
   color: #9fb7ff;
 }
 
-.leaderboard-medal {
-  margin-right: 0.3rem;
-}
-
 .leaderboard-name {
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.leaderboard-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  width: 2.6em; /* reserve space for up to 2 emoji badges */
+  flex: 0 0 auto;
+}
+
+.leaderboard-badge {
+  width: 1.3em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.leaderboard-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .leaderboard-meta {
   font-size: 0.8rem;
   color: #b7c2ff;
+  flex: 0 0 auto;
 }
 
 .progress-stepper {
