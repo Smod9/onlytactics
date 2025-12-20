@@ -37,6 +37,8 @@ const isInteractiveElement = (target: EventTarget | null) => {
   )
 }
 
+type NonHostRole = Exclude<RaceRole, 'host'>
+
 export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
@@ -44,6 +46,7 @@ export const LiveClient = () => {
   const [network] = useState(() => new GameNetwork())
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
+  const [joinRole, setJoinRole] = useState<NonHostRole>('player')
   const [needsName, setNeedsName] = useState(!identity.clientName)
   const [idleSuspended, setIdleSuspended] = useState(false)
   const [cameraMode, setCameraMode] = useState<CameraMode>('follow')
@@ -54,6 +57,10 @@ export const LiveClient = () => {
   )
   const stageShellRef = useRef<HTMLDivElement>(null)
   const [showTouchControls, setShowTouchControls] = useState(false)
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [userNameDraft, setUserNameDraft] = useState(identity.clientName ?? '')
+  const [userRoleDraft, setUserRoleDraft] = useState<NonHostRole>('player')
+  const [userSettingsError, setUserSettingsError] = useState<string | null>(null)
   const headerCtaEl =
     typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
@@ -152,6 +159,7 @@ export const LiveClient = () => {
   useTacticianControls(network, role)
 
   const canShowBoatInfo = Boolean(playerBoat) && (role === 'player' || role === 'host')
+  const iAmProtested = Boolean(canShowBoatInfo && race.protests?.[identity.boatId])
 
   const effectiveCameraMode: CameraMode =
     role === 'spectator' || role === 'judge'
@@ -217,13 +225,55 @@ export const LiveClient = () => {
     if (!trimmed) return
     setClientName(trimmed)
     setNeedsName(false)
-    network.announcePresence('online')
+    void network.switchRole(joinRole)
   }
 
   const resumeFromIdle = () => {
     if (!idleSuspended) return
     setIdleSuspended(false)
     void network.start()
+  }
+
+  const openUserModal = () => {
+    setUserSettingsError(null)
+    setUserNameDraft(identity.clientName ?? '')
+    setUserRoleDraft(role === 'host' ? 'player' : (role as NonHostRole))
+    setShowUserModal(true)
+  }
+
+  const saveUserSettings = async () => {
+    const trimmed = userNameDraft.trim()
+    if (!trimmed) {
+      setUserSettingsError('Please enter a name.')
+      return
+    }
+
+    const previousName = identity.clientName ?? ''
+    const previousNonHostRole: NonHostRole = role === 'host' ? 'player' : (role as NonHostRole)
+    const nameChanged = trimmed !== previousName
+    const roleChanged = userRoleDraft !== previousNonHostRole
+
+    setUserSettingsError(null)
+    setShowUserModal(false)
+
+    if (nameChanged) {
+      setClientName(trimmed)
+      setNameEntry(trimmed)
+    }
+
+    if (roleChanged) {
+      await network.switchRole(userRoleDraft)
+      return
+    }
+
+    if (nameChanged) {
+      if (appEnv.netTransport === 'colyseus') {
+        network.stop()
+        await network.start()
+      } else {
+        network.announcePresence('online')
+      }
+    }
   }
 
   const headerPortal =
@@ -233,26 +283,18 @@ export const LiveClient = () => {
             <div style={{ display: 'none' }}>
               <ReplaySaveButton />
             </div>
-
-            <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <span style={{ opacity: 0.8, fontSize: 12 }}>Role</span>
-              <select
-                value={role}
-                onChange={(event) => {
-                  const next = event.target.value as RaceRole
-                  if (next === 'host') return
-                  void network.switchRole(next)
-                }}
-                aria-label="Select role"
+            {!needsName && (
+              <button
+                type="button"
+                className="header-name"
+                onClick={openUserModal}
+                title="User settings"
               >
-                <option value="host" disabled>
-                  Host
-                </option>
-                <option value="player">Player</option>
-                <option value="spectator">Spectator</option>
-                <option value="judge">Judge</option>
-              </select>
-            </label>
+                <span className="header-name-text">
+                  User: {identity.clientName ?? '—'} ({role})
+                </span>
+              </button>
+            )}
 
             {role === 'host' && (
               <>
@@ -294,6 +336,24 @@ export const LiveClient = () => {
                 placeholder="Callsign or Name"
                 maxLength={24}
               />
+              <div className="user-menu-row">
+                <span className="user-menu-label">Role</span>
+                <span className="user-menu-field">
+                  <select
+                    value={joinRole}
+                    onChange={(event) => setJoinRole(event.target.value as NonHostRole)}
+                    aria-label="Select role"
+                    className="user-menu-select"
+                  >
+                    <option value="player">Player</option>
+                    <option value="spectator">Spectator</option>
+                    <option value="judge">Judge</option>
+                  </select>
+                  <span className="user-menu-chevron" aria-hidden="true">
+                    ▾
+                  </span>
+                </span>
+              </div>
               <button type="submit" disabled={!nameEntry.trim()}>
                 Join Race
               </button>
@@ -445,140 +505,164 @@ export const LiveClient = () => {
             </div>
           )}
           <div className="speed-heading-row">
-            <div
-              className={`speed-heading-overlay ${
-                canShowBoatInfo && wakeActive ? 'wake-active' : ''
-              }`}
-            >
-              {(() => {
-                const boat = canShowBoatInfo ? playerBoat : undefined
+            <div className="speed-heading-stack">
+              <div
+                className={`speed-heading-overlay ${
+                  canShowBoatInfo && wakeActive ? 'wake-active' : ''
+                }`}
+              >
+                {iAmProtested && (
+                  <span
+                    className="protest-sticker"
+                    role="img"
+                    aria-label="Under protest"
+                    title="Under protest"
+                  >
+                    🚩
+                  </span>
+                )}
+                {(() => {
+                  const boat = canShowBoatInfo ? playerBoat : undefined
 
-                // Wind panel: mirror the same shift labeling used in the Pixi HUD.
-                const rawShift =
-                  ((race.wind.directionDeg - race.baselineWindDeg + 180) % 360 + 360) % 360 - 180
-                const shiftIsOn = Math.abs(rawShift) < 0.5
-                const shiftDir = rawShift >= 0 ? 'R' : 'L'
-                const shiftMag = Math.abs(rawShift).toFixed(1)
-                // Wind shift colors (match prior scheme): orange for R, blue for L, white for 0.
-                const shiftColor = shiftIsOn
-                  ? '#ffffff'
-                  : rawShift >= 0
-                    ? '#ff8f70'
-                    : '#70d6ff'
-                const exaggeratedWindDir =
-                  ((race.baselineWindDeg + rawShift * 1.2) % 360 + 360) % 360
-                const downwindDeg = ((exaggeratedWindDir + 180) % 360 + 360) % 360
+                  // Wind panel: mirror the same shift labeling used in the Pixi HUD.
+                  const rawShift =
+                    ((race.wind.directionDeg - race.baselineWindDeg + 180) % 360 + 360) % 360 - 180
+                  const shiftIsOn = Math.abs(rawShift) < 0.5
+                  const shiftDir = rawShift >= 0 ? 'R' : 'L'
+                  const shiftMag = Math.abs(rawShift).toFixed(1)
+                  // Wind shift colors (match prior scheme): orange for R, blue for L, white for 0.
+                  const shiftColor = shiftIsOn
+                    ? '#ffffff'
+                    : rawShift >= 0
+                      ? '#ff8f70'
+                      : '#70d6ff'
+                  const exaggeratedWindDir =
+                    ((race.baselineWindDeg + rawShift * 1.2) % 360 + 360) % 360
+                  const downwindDeg = ((exaggeratedWindDir + 180) % 360 + 360) % 360
 
-                const boatSection = boat
-                  ? (() => {
-                      const twaSigned = apparentWindAngleSigned(
-                        boat.headingDeg,
-                        race.wind.directionDeg,
-                      )
-                      const isStarboardTack = twaSigned >= 0
-                      const absTwa = Math.abs(twaSigned)
-                      // Boat panel: keep AWA label, but show VMG mode status instead of degrees.
-                      const boatWindValue = boat.vmgMode ? 'VMG' : `${absTwa.toFixed(0)}°`
-                      return (
-                        <div className="hud-section">
-                          <div className="hud-section-side-label">Boat</div>
-                          <div className="hud-section-body">
-                            <div className="hud-grid hud-grid-boat">
-                              <div className="hud-metric hud-metric-speed">
+                  const boatSection = boat
+                    ? (() => {
+                        const twaSigned = apparentWindAngleSigned(
+                          boat.headingDeg,
+                          race.wind.directionDeg,
+                        )
+                        const isStarboardTack = twaSigned >= 0
+                        const absTwa = Math.abs(twaSigned)
+                        // Boat panel: keep AWA label, but show VMG mode status instead of degrees.
+                        const boatWindValue = boat.vmgMode ? 'VMG' : `${absTwa.toFixed(0)}°`
+                        return (
+                          <div className="hud-section">
+                            <div className="hud-section-side-label">Boat</div>
+                            <div className="hud-section-body">
+                              <div className="hud-grid hud-grid-boat">
+                                <div className="hud-metric hud-metric-speed">
+                                  <span className="hud-label">SPD</span>
+                                  <span className="hud-value">{boat.speed.toFixed(2)} kts</span>
+                                </div>
+                                <div className="hud-metric hud-metric-heading">
+                                  <span className="hud-label">HDG</span>
+                                  <span className="hud-value">{boat.headingDeg.toFixed(0)}°</span>
+                                </div>
+                                <div className="hud-metric hud-metric-wind">
+                                  <span className="hud-label">AWA</span>
+                                  <span className="hud-value">{boatWindValue}</span>
+                                </div>
+                                <div className="hud-metric hud-metric-tack">
+                                  <span className="hud-label">TACK</span>
+                                  <span
+                                    className={`hud-value ${
+                                      isStarboardTack ? 'tack-stbd' : 'tack-port'
+                                    }`}
+                                  >
+                                    {isStarboardTack ? 'STBD' : 'PORT'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })()
+                    : null
+
+                  return (
+                    <>
+                      {boatSection}
+                      <div className="hud-section">
+                        <div className="hud-section-side-label">Wind</div>
+                        <div className="hud-section-body">
+                          <div className="wind-section-grid">
+                            <div className="wind-section-numbers">
+                              <div className="hud-metric hud-metric-winddir">
+                                <span className="hud-label">DIR</span>
+                                <span className="hud-value">
+                                  {race.wind.directionDeg.toFixed(0)}°
+                                </span>
+                              </div>
+                              <div className="hud-metric hud-metric-windspd">
                                 <span className="hud-label">SPD</span>
-                                <span className="hud-value">{boat.speed.toFixed(2)} kts</span>
+                                <span className="hud-value">
+                                  {race.wind.speed.toFixed(1)} kts
+                                </span>
                               </div>
-                              <div className="hud-metric hud-metric-heading">
-                                <span className="hud-label">HDG</span>
-                                <span className="hud-value">{boat.headingDeg.toFixed(0)}°</span>
-                              </div>
-                              <div className="hud-metric hud-metric-wind">
-                                <span className="hud-label">AWA</span>
-                                <span className="hud-value">{boatWindValue}</span>
-                              </div>
-                              <div className="hud-metric hud-metric-tack">
-                                <span className="hud-label">TACK</span>
-                                <span
-                                  className={`hud-value ${
-                                    isStarboardTack ? 'tack-stbd' : 'tack-port'
-                                  }`}
-                                >
-                                  {isStarboardTack ? 'STBD' : 'PORT'}
+                              <div className="hud-metric hud-metric-windshift">
+                                <span className="hud-label">ANG</span>
+                                <span className="hud-value">
+                                  {shiftIsOn ? (
+                                    '0°'
+                                  ) : (
+                                    <span
+                                      className="wind-shift-value"
+                                      style={{ color: shiftColor }}
+                                    >
+                                      {shiftMag}° {shiftDir}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      )
-                    })()
-                  : null
-
-                return (
-                  <>
-                    {boatSection}
-                    <div className="hud-section">
-                      <div className="hud-section-side-label">Wind</div>
-                      <div className="hud-section-body">
-                        <div className="wind-section-grid">
-                          <div className="wind-section-numbers">
-                            <div className="hud-metric hud-metric-winddir">
-                              <span className="hud-label">DIR</span>
-                              <span className="hud-value">
-                                {race.wind.directionDeg.toFixed(0)}°
-                              </span>
-                            </div>
-                            <div className="hud-metric hud-metric-windspd">
-                              <span className="hud-label">SPD</span>
-                              <span className="hud-value">
-                                {race.wind.speed.toFixed(1)} kts
-                              </span>
-                            </div>
-                            <div className="hud-metric hud-metric-windshift">
-                              <span className="hud-label">ANG</span>
-                              <span className="hud-value">
-                                {shiftIsOn ? (
-                                  '0°'
-                                ) : (
-                                  <span
-                                    className="wind-shift-value"
-                                    style={{ color: shiftColor }}
-                                  >
-                                    {shiftMag}° {shiftDir}
-                                  </span>
-                                )}
-                              </span>
-                            </div>
-                          </div>
-                          <div
-                            className="wind-section-arrow"
-                            aria-label="Wind direction (downwind arrow)"
-                          >
-                            <svg
-                              width="64"
-                              height="64"
-                              viewBox="0 0 80 80"
-                              className="wind-arrow-svg"
-                              style={{ transform: `rotate(${downwindDeg}deg)` }}
-                              role="img"
-                              aria-hidden="true"
+                            <div
+                              className="wind-section-arrow"
+                              aria-label="Wind direction (downwind arrow)"
                             >
-                              <line
-                                x1="40"
-                                y1="56"
-                                x2="40"
-                                y2="18"
-                                stroke={shiftColor}
-                                strokeWidth="3"
-                              />
-                              <polygon points="40,12 48,26 32,26" fill={shiftColor} />
-                            </svg>
+                              <svg
+                                width="64"
+                                height="64"
+                                viewBox="0 0 80 80"
+                                className="wind-arrow-svg"
+                                style={{ transform: `rotate(${downwindDeg}deg)` }}
+                                role="img"
+                                aria-hidden="true"
+                              >
+                                <line
+                                  x1="40"
+                                  y1="56"
+                                  x2="40"
+                                  y2="18"
+                                  stroke={shiftColor}
+                                  strokeWidth="3"
+                                />
+                                <polygon points="40,12 48,26 32,26" fill={shiftColor} />
+                              </svg>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </>
-                )
-              })()}
+                    </>
+                  )
+                })()}
+              </div>
+            {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
+              <div className="spin-under-hud">
+                <button
+                  type="button"
+                  className="spin-button"
+                  onClick={() => network.requestSpin()}
+                  title="Perform a 360° spin (also clears one penalty if you have any)"
+                >
+                  Spin to clear your penalty (360)
+                </button>
+              </div>
+            )}
             </div>
             {canShowBoatInfo && wakeActive && (
               <div className="wake-overlay" aria-label="Wake slowdown">
@@ -586,19 +670,6 @@ export const LiveClient = () => {
               </div>
             )}
           </div>
-
-          {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
-            <div className="spin-overlay">
-              <button
-                type="button"
-                className="spin-button"
-                onClick={() => network.requestSpin()}
-                title="Perform a 360° spin (also clears one penalty if you have any)"
-              >
-                Spin to clear your penalty (360)
-              </button>
-            </div>
-          )}
 
           <div className="hud-stack">
             <div className="hud-top-row">
@@ -714,13 +785,45 @@ export const LiveClient = () => {
                   .reverse()
                   .slice(0, 10)
                   .map((event, index) => (
-                    <div key={event.eventId} className="event-item">
-                      <span className="event-kind">
-                        #{events.length - index} {event.kind}
-                        {event.ruleId ? ` (Rule ${event.ruleId})` : ''}
-                      </span>
-                      <span className="event-message">{event.message}</span>
-                    </div>
+                    (() => {
+                      const isProtestEvent = /protest/i.test(event.message)
+                      const targetBoatId = event.boats?.length ? event.boats[event.boats.length - 1] : undefined
+                      const hasActiveProtest = Boolean(targetBoatId && race.protests?.[targetBoatId])
+                      const canJumpToProtest = role === 'judge' && isProtestEvent && Boolean(targetBoatId) && hasActiveProtest
+                      const headerKind = isProtestEvent ? 'Protest' : event.kind.replaceAll('_', ' ')
+                      const showRuleSuffix = Boolean(event.ruleId && event.ruleId !== 'other')
+
+                      return (
+                        <div
+                          key={event.eventId}
+                          className={`event-item ${canJumpToProtest ? 'clickable' : ''}`}
+                          onClick={() => {
+                            if (!canJumpToProtest || !targetBoatId) return
+                            setSelectedBoatId(targetBoatId)
+                            setSelectedBoatAnchor(null)
+                          }}
+                          role={canJumpToProtest ? 'button' : undefined}
+                          tabIndex={canJumpToProtest ? 0 : undefined}
+                          title={canJumpToProtest ? 'Open protest for review' : undefined}
+                        >
+                          <span className="event-kind">
+                            #{events.length - index}{' '}
+                            {isProtestEvent ? (
+                              <>
+                                <span aria-hidden="true">🚩</span> {headerKind}
+                              </>
+                            ) : (
+                              headerKind
+                            )}
+                            {showRuleSuffix ? ` (Rule ${event.ruleId})` : ''}
+                            {canJumpToProtest ? ' — tap to review' : ''}
+                          </span>
+                          <span className="event-message">
+                            {event.message}
+                          </span>
+                        </div>
+                      )
+                    })()
                   ))}
                 {!events.length && <p>No rule events yet.</p>}
               </div>
@@ -783,6 +886,82 @@ export const LiveClient = () => {
       {showDebug && (
         <div className="debug-dock">
           <DebugPanel onClose={() => setShowDebug(false)} network={network} />
+        </div>
+      )}
+      {showUserModal && (
+        <div className="username-gate">
+          <div className="username-card user-menu-card" role="dialog" aria-modal="true" aria-label="User menu">
+            <div className="user-menu-header">
+              <div className="user-menu-title">
+                <span className="user-menu-icon" aria-hidden="true">
+                  ☰
+                </span>
+                <div>
+                  <h2>User Menu</h2>
+                  <p className="user-menu-subtitle">Name + role (host is assigned automatically)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="user-menu-close"
+                onClick={() => {
+                  setShowUserModal(false)
+                  setUserSettingsError(null)
+                }}
+                aria-label="Close user menu"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="username-form user-menu-form">
+              <input
+                value={userNameDraft}
+                onChange={(event) => setUserNameDraft(event.target.value)}
+                placeholder="Callsign or Name"
+                maxLength={24}
+                autoFocus
+              />
+              <div className="user-menu-row">
+                <span className="user-menu-label">Role</span>
+                <span className="user-menu-field">
+                  <select
+                    value={userRoleDraft}
+                    onChange={(event) => setUserRoleDraft(event.target.value as NonHostRole)}
+                    aria-label="Select role"
+                    className="user-menu-select"
+                  >
+                    <option value="player">Player</option>
+                    <option value="spectator">Spectator</option>
+                    <option value="judge">Judge</option>
+                  </select>
+                  <span className="user-menu-chevron" aria-hidden="true">
+                    ▾
+                  </span>
+                </span>
+              </div>
+              {userSettingsError && (
+                <p className="chat-status" role="alert">
+                  {userSettingsError}
+                </p>
+              )}
+              <div className="username-form-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUserModal(false)
+                    setUserSettingsError(null)
+                  }}
+                  className="username-form-cancel"
+                >
+                  Cancel
+                </button>
+                <button type="button" onClick={() => void saveUserSettings()}>
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
