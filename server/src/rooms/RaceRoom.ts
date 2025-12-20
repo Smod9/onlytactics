@@ -2,7 +2,7 @@ import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
 import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
-import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState, PlayerInput } from '@/types/race'
+import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState, PlayerInput, RaceRole, ProtestStatus } from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { assignLeaderboard } from '@/logic/leaderboard'
@@ -35,6 +35,13 @@ type InputMessage = {
   clearPenalty?: boolean
 }
 
+type JoinRoleOption = Exclude<RaceRole, 'host'>
+
+type ProtestCommand =
+  | { kind: 'file'; targetBoatId: string }
+  | { kind: 'revoke'; targetBoatId: string }
+  | { kind: 'judge_clear'; targetBoatId: string }
+
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
   | { kind: 'reset' }
@@ -56,6 +63,7 @@ export class RaceRoom extends Room<RaceRoomState> {
   private clientBoatMap = new Map<string, string>()
   private clientIdentityMap = new Map<string, string>()
   private clientNameMap = new Map<string, string>()
+  private clientRoleMap = new Map<string, JoinRoleOption>()
 
   private hostSessionId?: string
   private hostClientId?: string
@@ -118,7 +126,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       
       // Handle penalty clear requests
       if (message.clearPenalty) {
-        this.clearPenalty(boatId)
+        this.handlePenaltyClearRequest(boatId)
         return
       }
       
@@ -145,6 +153,42 @@ export class RaceRoom extends Room<RaceRoomState> {
         tClient: Date.now(),
       }
       this.raceStore.upsertInput(payload)
+    })
+
+    this.onMessage<ProtestCommand>('protest_command', (client, command) => {
+      if (!this.raceStore) return
+      if (!command?.targetBoatId) return
+      const targetBoatId = command.targetBoatId
+      const role = this.clientRoleMap.get(client.sessionId) ?? 'player'
+      if (command.kind === 'judge_clear') {
+        if (role !== 'judge') {
+          console.warn('[RaceRoom] ignoring judge_clear from non-judge', {
+            sessionId: client.sessionId,
+            role,
+            command,
+          })
+          return
+        }
+        this.clearProtestAsJudge(targetBoatId)
+        return
+      }
+
+      // file/revoke must come from a player with an assigned boat
+      const protestorBoatId = this.clientBoatMap.get(client.sessionId)
+      if (!protestorBoatId) {
+        console.warn('[RaceRoom] ignoring protest command from non-player', {
+          sessionId: client.sessionId,
+          role,
+          command,
+        })
+        return
+      }
+
+      if (command.kind === 'file') {
+        this.fileProtest(protestorBoatId, targetBoatId)
+      } else if (command.kind === 'revoke') {
+        this.revokeProtest(protestorBoatId, targetBoatId)
+      }
     })
 
     this.onMessage<HostCommand>('host_command', (client, command) => {
@@ -184,6 +228,8 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.clientIdentityMap.set(client.sessionId, clientId)
     const displayName = this.resolvePlayerName(client, options)
     this.clientNameMap.set(client.sessionId, displayName)
+    const joinRole = this.resolveJoinRole(options)
+    this.clientRoleMap.set(client.sessionId, joinRole)
     this.state.playerCount += 1
     console.info('[RaceRoom] client joined', {
       clientId: client.sessionId,
@@ -194,9 +240,14 @@ export class RaceRoom extends Room<RaceRoomState> {
       playerCount: this.state.playerCount,
       hostSessionId: this.hostSessionId,
     })
-    this.assignBoatToClient(client, options)
-    if (!this.hostSessionId) {
-      this.setHost(client.sessionId)
+    if (joinRole === 'player') {
+      this.assignBoatToClient(client, options)
+      if (!this.hostSessionId) {
+        this.setHost(client.sessionId)
+      }
+    } else {
+      // Judges and spectators do not control a boat.
+      client.send('boat_assignment', { boatId: null })
     }
   }
 
@@ -304,35 +355,54 @@ export class RaceRoom extends Room<RaceRoomState> {
         boat.rightsSuspended = false
       }
     })
-    // Clear one penalty if the boat has any
-    this.clearPenalty(boatId)
+    // Clear one penalty if the boat has any; and clear any active protest on that boat.
+    this.clearOnePenaltyAfterSpin(boatId)
   }
   
   /**
-   * Clear one penalty from a boat after completing a 360° spin.
-   * Creates and broadcasts an event if a penalty was cleared.
+   * Handle "P" clear requests from the client.
+   * If the penalty is protest-derived and a protest exists, this is treated as a waiver:
+   * the penalty clears but the protest remains as `active_waived`.
    */
-  private clearPenalty(boatId: string) {
+  private handlePenaltyClearRequest(boatId: string) {
     if (!this.raceStore) return
     let cleared = false
+    let waived = false
     let boatName: string | undefined
     let remaining = 0
-    
     this.mutateState((draft) => {
       const boat = draft.boats[boatId]
       if (!boat) return
       boatName = boat.name
-      if (boat.penalties > 0) {
-        boat.penalties -= 1
+
+      const protest = (draft.protests ?? {})[boatId]
+      const hasProtest = Boolean(protest)
+      const hasProtestPenalty = (boat.protestPenalties ?? 0) > 0
+
+      if (hasProtest && hasProtestPenalty) {
+        // Waive: clear protest-derived penalty but leave protest active.
+        waived = true
+        boat.protestPenalties = Math.max(0, (boat.protestPenalties ?? 0) - 1)
+        boat.penalties = Math.max(0, (boat.penalties ?? 0) - 1)
+        ;(draft.protests ?? {})[boatId] = {
+          ...protest,
+          status: 'active_waived' satisfies ProtestStatus,
+        }
+        cleared = true
+      } else if ((boat.penalties ?? 0) > 0) {
+        // Fallback: clear any penalty (prefer protestPenalties if they exist).
+        if ((boat.protestPenalties ?? 0) > 0) {
+          boat.protestPenalties = Math.max(0, boat.protestPenalties - 1)
+        }
+        boat.penalties = Math.max(0, boat.penalties - 1)
         cleared = true
       }
-      boat.fouled = boat.penalties > 0
-      remaining = boat.penalties
+      boat.fouled = (boat.penalties ?? 0) > 0
+      remaining = boat.penalties ?? 0
     })
-    
-    // Only create event if a penalty was actually cleared
+
     if (!cleared || !boatName) return
-    
+
     const state = this.raceStore.getState()
     const event: RaceEvent = {
       eventId: createId('event'),
@@ -340,9 +410,190 @@ export class RaceRoom extends Room<RaceRoomState> {
       ruleId: 'other',
       boats: [boatId],
       t: state.t,
-      message: `${boatName} completed a 360° spin and cleared a penalty (${remaining} remaining)`,
+      message: waived
+        ? `${boatName} waived the protest penalty (protest remains)`
+        : `${boatName} cleared a penalty (${remaining} remaining)`,
     }
     this.broadcastEvents([event])
+  }
+
+  /**
+   * Clear one penalty after a spin, and clear any active protest on this boat.
+   */
+  private clearOnePenaltyAfterSpin(boatId: string) {
+    if (!this.raceStore) return
+    let clearedPenalty = false
+    let clearedProtest = false
+    let boatName: string | undefined
+    let remaining = 0
+
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boatName = boat.name
+
+      if ((boat.penalties ?? 0) > 0) {
+        if ((boat.protestPenalties ?? 0) > 0) {
+          boat.protestPenalties = Math.max(0, boat.protestPenalties - 1)
+        }
+        boat.penalties = Math.max(0, boat.penalties - 1)
+        clearedPenalty = true
+      }
+      boat.fouled = (boat.penalties ?? 0) > 0
+      remaining = boat.penalties ?? 0
+
+      if (draft.protests && draft.protests[boatId]) {
+        delete draft.protests[boatId]
+        clearedProtest = true
+      }
+    })
+
+    if (!boatName) return
+
+    const state = this.raceStore.getState()
+    const events: RaceEvent[] = []
+    if (clearedPenalty) {
+      events.push({
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [boatId],
+        t: state.t,
+        message: `${boatName} completed a 360° spin and cleared a penalty (${remaining} remaining)`,
+      })
+    }
+    if (clearedProtest) {
+      events.push({
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [boatId],
+        t: state.t,
+        message: `${boatName} resolved the protest with a 360° spin`,
+      })
+    }
+    this.broadcastEvents(events)
+  }
+
+  private fileProtest(protestorBoatId: string, targetBoatId: string) {
+    if (!this.raceStore) return
+    if (protestorBoatId === targetBoatId) return
+
+    let filed = false
+    let protestorName: string | undefined
+    let targetName: string | undefined
+    this.mutateState((draft) => {
+      draft.protests ??= {}
+      const protestor = draft.boats[protestorBoatId]
+      const target = draft.boats[targetBoatId]
+      if (!protestor || !target) return
+      protestorName = protestor.name
+      targetName = target.name
+      if (draft.protests[targetBoatId]) return
+
+      draft.protests[targetBoatId] = {
+        protestedBoatId: targetBoatId,
+        protestorBoatId,
+        createdAtT: draft.t,
+        status: 'active',
+      }
+      target.penalties = (target.penalties ?? 0) + 1
+      target.protestPenalties = (target.protestPenalties ?? 0) + 1
+      filed = true
+    })
+
+    if (!filed || !protestorName || !targetName) return
+    const state = this.raceStore.getState()
+    this.broadcastEvents([
+      {
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [protestorBoatId, targetBoatId],
+        t: state.t,
+        message: `${protestorName} protested ${targetName} (penalty applied)`,
+      },
+    ])
+  }
+
+  private revokeProtest(protestorBoatId: string, targetBoatId: string) {
+    if (!this.raceStore) return
+    let revoked = false
+    let protestorName: string | undefined
+    let targetName: string | undefined
+    let penaltyRemoved = false
+    this.mutateState((draft) => {
+      const protest = draft.protests?.[targetBoatId]
+      if (!protest) return
+      if (protest.protestorBoatId !== protestorBoatId) return
+      const protestor = draft.boats[protestorBoatId]
+      const target = draft.boats[targetBoatId]
+      if (!protestor || !target) return
+      protestorName = protestor.name
+      targetName = target.name
+
+      delete draft.protests?.[targetBoatId]
+      revoked = true
+
+      if ((target.protestPenalties ?? 0) > 0) {
+        target.protestPenalties = Math.max(0, target.protestPenalties - 1)
+        target.penalties = Math.max(0, (target.penalties ?? 0) - 1)
+        penaltyRemoved = true
+      }
+      target.fouled = (target.penalties ?? 0) > 0
+    })
+
+    if (!revoked || !protestorName || !targetName) return
+    const state = this.raceStore.getState()
+    this.broadcastEvents([
+      {
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [protestorBoatId, targetBoatId],
+        t: state.t,
+        message: penaltyRemoved
+          ? `${protestorName} revoked the protest vs ${targetName} (penalty removed)`
+          : `${protestorName} revoked the protest vs ${targetName}`,
+      },
+    ])
+  }
+
+  private clearProtestAsJudge(targetBoatId: string) {
+    if (!this.raceStore) return
+    let cleared = false
+    let targetName: string | undefined
+    let penaltyRemoved = false
+    this.mutateState((draft) => {
+      const protest = draft.protests?.[targetBoatId]
+      if (!protest) return
+      const target = draft.boats[targetBoatId]
+      if (!target) return
+      targetName = target.name
+      delete draft.protests?.[targetBoatId]
+      cleared = true
+      if ((target.protestPenalties ?? 0) > 0) {
+        target.protestPenalties = Math.max(0, target.protestPenalties - 1)
+        target.penalties = Math.max(0, (target.penalties ?? 0) - 1)
+        penaltyRemoved = true
+      }
+      target.fouled = (target.penalties ?? 0) > 0
+    })
+
+    if (!cleared || !targetName) return
+    const state = this.raceStore.getState()
+    this.broadcastEvents([
+      {
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [targetBoatId],
+        t: state.t,
+        message: penaltyRemoved
+          ? `Judge cleared the protest vs ${targetName} (penalty removed)`
+          : `Judge cleared the protest vs ${targetName}`,
+      },
+    ])
   }
 
   private assignBoatToClient(client: Client, options?: Record<string, unknown>) {
@@ -390,10 +641,13 @@ export class RaceRoom extends Room<RaceRoomState> {
 
   private releaseBoat(client: Client) {
     const boatId = this.clientBoatMap.get(client.sessionId)
-    if (!boatId) return
-    this.clientBoatMap.delete(client.sessionId)
+    this.clientRoleMap.delete(client.sessionId)
     this.clientIdentityMap.delete(client.sessionId)
     this.clientNameMap.delete(client.sessionId)
+    if (!boatId) {
+      return
+    }
+    this.clientBoatMap.delete(client.sessionId)
     roomDebug('releaseBoat', { clientId: client.sessionId, boatId })
     this.mutateState((draft) => {
       if (draft.boats[boatId]) {
@@ -408,6 +662,10 @@ export class RaceRoom extends Room<RaceRoomState> {
   }
 
   private resolveBoatId(client: Client, preferredId?: string) {
+    const role = this.clientRoleMap.get(client.sessionId) ?? 'player'
+    if (role !== 'player') {
+      return undefined
+    }
     if (preferredId && Object.values(this.raceStore?.getState().boats ?? {}).some((boat) => boat.id === preferredId)) {
       this.clientBoatMap.set(client.sessionId, preferredId)
       return preferredId
@@ -425,6 +683,14 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (name) return name
     const clientId = this.clientIdentityMap.get(client.sessionId) ?? client.sessionId
     return `Sailor ${clientId.slice(0, 4)}`
+  }
+
+  private resolveJoinRole(options?: Record<string, unknown>): JoinRoleOption {
+    const raw = typeof options?.role === 'string' ? options.role.trim() : ''
+    if (raw === 'judge') return 'judge'
+    if (raw === 'spectator') return 'spectator'
+    // default: join as a controlling player
+    return 'player'
   }
 
   private mutateState(mutator: (draft: RaceState) => void) {

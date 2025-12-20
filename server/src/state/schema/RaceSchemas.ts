@@ -98,6 +98,9 @@ export class BoatStateSchema extends Schema {
   penalties = 0
 
   @type('number')
+  protestPenalties = 0
+
+  @type('number')
   stallTimer = 0
 
   @type('number')
@@ -122,6 +125,20 @@ export class BoatStateSchema extends Schema {
   vmgMode = false
 }
 
+export class ProtestSchema extends Schema {
+  @type('string')
+  protestedBoatId = ''
+
+  @type('string')
+  protestorBoatId = ''
+
+  @type('number')
+  createdAtT = 0
+
+  @type('string')
+  status: 'active' | 'active_waived' = 'active'
+}
+
 export class RaceStateSchema extends Schema {
   @type('number')
   t = 0
@@ -137,6 +154,9 @@ export class RaceStateSchema extends Schema {
 
   @type({ map: BoatStateSchema })
   boats = new MapSchema<BoatStateSchema>()
+
+  @type({ map: ProtestSchema })
+  protests = new MapSchema<ProtestSchema>()
 
   @type([Vec2Schema])
   marks = new ArraySchema<Vec2Schema>()
