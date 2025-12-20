@@ -28,7 +28,7 @@ export const appEnv = {
   fixedWind: toBool(rawEnv.FIXED_WIND ?? rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.BASELINE_WIND_DEG ?? rawEnv.VITE_BASELINE_WIND_DEG, 360),
   aiEnabled: toBool(rawEnv.AI_ENABLED ?? rawEnv.VITE_AI_ENABLED, false),
-  raceTimeoutMinutes: toNumber(rawEnv.RACE_TIMEOUT_MINUTES ?? rawEnv.VITE_RACE_TIMEOUT_MINUTES, 10),
+  raceTimeoutMinutes: toNumber(rawEnv.RACE_TIMEOUT_MINUTES ?? rawEnv.VITE_RACE_TIMEOUT_MINUTES, 25),
   hostPublishIntervalMs: toNumber(
     rawEnv.HOST_PUBLISH_INTERVAL_MS ?? rawEnv.VITE_HOST_PUBLISH_INTERVAL_MS,
     50,
