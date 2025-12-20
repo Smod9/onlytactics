@@ -19,6 +19,127 @@
   gap: 1rem;
 }
 
+.user-menu-card {
+  padding-top: 1.1rem;
+}
+
+.user-menu-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.user-menu-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.user-menu-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(79, 125, 255, 0.15);
+  border: 1px solid rgba(159, 183, 255, 0.25);
+  color: #cfe0ff;
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+.user-menu-card h2 {
+  margin: 0;
+}
+
+.user-menu-subtitle {
+  margin: 0.2rem 0 0 0;
+  color: #cdd5f3;
+  opacity: 0.85;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.user-menu-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #dbe3ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  font-size: 0.95rem;
+  flex: 0 0 auto;
+}
+
+.user-menu-close:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.user-menu-close:active {
+  transform: translateY(1px);
+}
+
+.user-menu-form {
+  padding-top: 0.25rem;
+}
+
+.user-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.user-menu-label {
+  opacity: 0.85;
+  font-size: 0.8rem;
+  min-width: 42px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #cfe0ff;
+}
+
+.user-menu-field {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.user-menu-select {
+  width: 100%;
+  padding: 0.7rem 2.2rem 0.7rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid #2c3550;
+  background: rgba(24, 31, 50, 0.9);
+  color: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.user-menu-select:focus-visible {
+  outline: 2px solid rgba(83, 224, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.user-menu-chevron {
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0.75;
+  user-select: none;
+  font-size: 0.9rem;
+}
+
 .username-card h2 {
   font-size: 1.25rem;
   color: #9fb7ff;
@@ -103,6 +224,23 @@ body.game-root {
   overscroll-behavior: none;
   overscroll-behavior-y: none;
   overflow: hidden;
+  /* Touch UX: prevent iOS long-press selection/callout and reduce tap delay/zoom behaviors. */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Allow normal text selection/caret in interactive elements even on the game route. */
+html.game-root input,
+html.game-root textarea,
+html.game-root [contenteditable='true'],
+body.game-root input,
+body.game-root textarea,
+body.game-root [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 a {
@@ -375,12 +513,21 @@ button {
   left: 0.4rem;
   z-index: 6;
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
   gap: 0.5rem;
   pointer-events: none;
 }
 
+.speed-heading-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
 .speed-heading-overlay {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
@@ -390,6 +537,17 @@ button {
   border-radius: 0.6rem;
   pointer-events: none;
   align-items: flex-start;
+}
+
+.protest-sticker {
+  position: absolute;
+  top: -0.8rem;
+  right: -1.8rem;
+  font-size: 2.5rem;
+  line-height: 1;
+  transform: rotate(12deg);
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
 }
 
 .wind-arrow-svg {
@@ -640,6 +798,10 @@ button {
   left: 1rem;
   pointer-events: auto;
   z-index: 9;
+}
+
+.spin-under-hud {
+  pointer-events: auto;
 }
 
 .leaderboard-overlay,
@@ -903,6 +1065,21 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+.event-item.clickable {
+  cursor: pointer;
+  border-color: rgba(245, 165, 36, 0.55);
+  background: rgba(245, 165, 36, 0.06);
+}
+
+.event-item.clickable:hover {
+  border-color: rgba(245, 165, 36, 0.75);
+  background: rgba(245, 165, 36, 0.1);
+}
+
+.event-item.clickable:active {
+  transform: translateY(1px);
 }
 
 .event-kind {
