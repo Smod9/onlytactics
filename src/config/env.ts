@@ -56,7 +56,7 @@ export const appEnv = {
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),
   aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, false),
-  raceTimeoutMinutes: toNumber(rawEnv.VITE_RACE_TIMEOUT_MINUTES, 15),
+  raceTimeoutMinutes: toNumber(rawEnv.VITE_RACE_TIMEOUT_MINUTES, 25),
 }
 
 export type AppEnv = typeof appEnv
