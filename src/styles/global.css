@@ -1139,9 +1139,10 @@ button {
 }
 
 .leaderboard-panel li {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1.6rem 1fr max-content;
   align-items: center;
+  column-gap: 0.25rem;
   font-size: 0.85rem;
   padding: 0.3rem 0;
   border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
@@ -1152,7 +1153,7 @@ button {
 }
 
 .leaderboard-position {
-  width: 1.5rem;
+  width: 1.6rem;
   color: #9fb7ff;
 }
 
@@ -1161,7 +1162,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.35rem;
+  gap: 0.2rem;
   flex: 1;
   min-width: 0;
   text-align: left;
@@ -1171,7 +1172,7 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.1rem;
-  width: 2.6em; /* reserve space for up to 2 emoji badges */
+  width: 2.2em; /* reserve space for up to 2 emoji badges */
   flex: 0 0 auto;
 }
 
