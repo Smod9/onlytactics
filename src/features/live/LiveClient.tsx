@@ -60,7 +60,6 @@ export const LiveClient = () => {
   const selectedBoat = selectedBoatId ? race.boats[selectedBoatId] : undefined
   const selectedProtest: Protest | undefined = selectedBoatId ? race.protests?.[selectedBoatId] : undefined
   const iAmProtestor = Boolean(selectedProtest && selectedProtest.protestorBoatId === identity.boatId)
-  const canShowBoatInfo = Boolean(playerBoat) && (role === 'player' || role === 'host')
 
   useEffect(() => {
     void startRosterWatcher()
@@ -138,6 +137,8 @@ export const LiveClient = () => {
   )
 
   useTacticianControls(network, role)
+
+  const canShowBoatInfo = Boolean(playerBoat) && (role === 'player' || role === 'host')
 
   const effectiveCameraMode: CameraMode =
     role === 'spectator' || role === 'judge' ? 'birdseye' : cameraMode
