@@ -32,6 +32,8 @@ export class GameNetwork {
 
   private currentRole: RaceRole = 'spectator'
 
+  private desiredRoleOverride?: Exclude<RaceRole, 'host'>
+
   private roleListeners = new Set<(role: RaceRole) => void>()
 
   private status: NetworkStatus = 'idle'
@@ -47,6 +49,11 @@ export class GameNetwork {
   private stopRequested = false
   private lastLoggedHostId?: string
   private chatListeners = new Set<(message: ChatMessage) => void>()
+
+  constructor() {
+    // Allow simple role selection via URL, e.g. `/app?role=judge` or `/app?role=spectator`.
+    this.desiredRoleOverride = this.readRoleOverrideFromUrl()
+  }
 
   async start() {
     if (this.startPromise) return this.startPromise
@@ -455,7 +462,7 @@ export class GameNetwork {
       endpoint: appEnv.colyseusEndpoint,
       roomId: appEnv.colyseusRoomId,
     })
-    await this.colyseusBridge.connect()
+    await this.colyseusBridge.connect({ role: this.desiredRoleOverride })
     if (this.stopRequested || !this.colyseusBridge) {
       this.teardownColyseus()
       return
@@ -492,8 +499,27 @@ export class GameNetwork {
       this.lastLoggedHostId = hostId
       netLog('hostId update', { hostId, sessionId, clientId })
     }
+    if (this.desiredRoleOverride === 'judge') {
+      this.setCurrentRole('judge')
+      return
+    }
+    if (this.desiredRoleOverride === 'spectator') {
+      this.setCurrentRole('spectator')
+      return
+    }
+
     const nextRole: RaceRole = hostId ? (isHost ? 'host' : 'player') : 'spectator'
     this.setCurrentRole(nextRole)
+  }
+
+  private readRoleOverrideFromUrl(): Exclude<RaceRole, 'host'> | undefined {
+    if (typeof window === 'undefined') return undefined
+    const params = new URLSearchParams(window.location.search)
+    const raw = (params.get('role') ?? '').trim().toLowerCase()
+    if (raw === 'judge') return 'judge'
+    if (raw === 'spectator') return 'spectator'
+    if (raw === 'player') return 'player'
+    return undefined
   }
 }
 

@@ -64,12 +64,13 @@ export const useTacticianControls = (
   }, [role])
 
   useEffect(() => {
-    if (!network || role === 'spectator') return
+    if (!network || role === 'spectator' || role === 'judge') return
 
     const handleKey = (event: KeyboardEvent) => {
       if (
         !networkRef.current ||
         roleRef.current === 'spectator' ||
+        roleRef.current === 'judge' ||
         isInteractiveElement(event.target)
       ) {
         return

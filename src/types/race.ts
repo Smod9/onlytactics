@@ -45,6 +45,7 @@ export type BoatState = {
   finishTime?: number
   distanceToNextMark?: number
   penalties: number
+  protestPenalties: number  /** Portion of `penalties` that came specifically from an on-water protest. */
   stallTimer: number
   tackTimer: number
   overEarly: boolean
@@ -71,6 +72,11 @@ export type RaceState = {
   wind: Wind
   baselineWindDeg: number
   boats: Record<string, BoatState>
+  /**
+   * Active protests keyed by `protestedBoatId`.
+   * We intentionally keep this 1:1 for now (only one protest per protested boat).
+   */
+  protests: Record<string, Protest>
   marks: Vec2[]
   startLine: StartLine
   leewardGate: Gate
@@ -139,5 +145,15 @@ export type ReplayRecording = {
   chat: ChatMessage[]
 }
 
-export type RaceRole = 'host' | 'player' | 'spectator'
+export type RaceRole = 'host' | 'player' | 'spectator' | 'judge'
+
+export type ProtestStatus = 'active' | 'active_waived'
+
+export type Protest = {
+  protestedBoatId: string
+  protestorBoatId: string
+  /** Race-time (`t`) when the protest was filed. */
+  createdAtT: number
+  status: ProtestStatus
+}
 

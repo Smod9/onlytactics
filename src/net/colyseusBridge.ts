@@ -1,6 +1,6 @@
 import { Client, type Room } from 'colyseus.js'
 import { raceStore } from '@/state/raceStore'
-import type { ChatMessage, PlayerInput, RaceEvent, RaceState } from '@/types/race'
+import type { ChatMessage, PlayerInput, RaceEvent, RaceRole, RaceState } from '@/types/race'
 import { identity, setBoatId } from '@/net/identity'
 import { appEnv } from '@/config/env'
 import { cloneRaceState } from '@/state/factories'
@@ -53,7 +53,7 @@ export class ColyseusBridge {
     return () => this.chatListeners.delete(listener)
   }
 
-  async connect() {
+  async connect(options?: { role?: Exclude<RaceRole, 'host'> }) {
     this.emitStatus('connecting')
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'connect()', {
@@ -64,6 +64,7 @@ export class ColyseusBridge {
     this.room = await this.client.joinOrCreate<RaceRoomSchema>(this.roomId, {
       name: identity.clientName ?? 'Visitor',
       clientId: identity.clientId,
+      role: options?.role,
     })
     this.sessionId = this.room.sessionId
     if (appEnv.debugNetLogs) {

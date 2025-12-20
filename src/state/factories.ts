@@ -86,6 +86,7 @@ export const createBoatState = (
     finishTime: undefined,
     distanceToNextMark: undefined,
     penalties: 0,
+    protestPenalties: 0,
     pos: { x: spawnX, y: spawnY },
     prevPos: { x: spawnX, y: spawnY },
     speed: 0,
@@ -139,6 +140,7 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     lapsToFinish: appEnv.lapsToFinish,
     leaderboard: [],
     aiEnabled: appEnv.aiEnabled,
+    protests: {},
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat
       return acc
