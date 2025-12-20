@@ -1,3 +1,14 @@
+# [1.24.0](https://github.com/Smod9/onlytactics/compare/v1.23.3...v1.24.0) (2025-12-20)
+
+
+### Features
+
+* Add protest handling and role management in race state ([75b0980](https://github.com/Smod9/onlytactics/commit/75b09805a4b08463fcf6c3a81913a57b0c3c6a0c))
+* **camera:** Implement follow boat functionality and enhance camera controls ([8672ddc](https://github.com/Smod9/onlytactics/commit/8672ddc1d21971a0e39de4987d9c170c34be289b))
+* **protest:** Basics all working ([4209ef0](https://github.com/Smod9/onlytactics/commit/4209ef0697ba1ac29a0ff2837732b014fd6ed291))
+* **protests:** Basics working. Roles added for spectator and judge ([378690a](https://github.com/Smod9/onlytactics/commit/378690a9489a2b405876978a1a5e56b6ca9f8b86))
+* **protests:** Picks up initial files that were missed ([c1f15ad](https://github.com/Smod9/onlytactics/commit/c1f15ad6f4c4b141cca7fca4390155630fe15881))
+
 ## [1.23.3](https://github.com/Smod9/onlytactics/compare/v1.23.2...v1.23.3) (2025-12-19)
 
 
