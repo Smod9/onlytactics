@@ -249,6 +249,7 @@ export class RaceScene {
   private readonly mapScaleBase = 560
   private readonly followZoomFactor = appEnv.followZoomFactor
   private cameraMode: CameraMode = 'follow'
+  private followBoatId: string | null = null
 
   private boats = new Map<string, BoatView>()
 
@@ -302,6 +303,10 @@ export class RaceScene {
 
   setCameraMode(mode: CameraMode) {
     this.cameraMode = mode
+  }
+
+  setFollowBoatId(boatId: string | null) {
+    this.followBoatId = boatId
   }
 
   update(state: RaceState) {
@@ -376,8 +381,9 @@ export class RaceScene {
     }
 
     // follow
-    const playerBoat = state.boats[identity.boatId]
-    const centerWorld = playerBoat?.pos ?? courseCenter
+    const targetId = this.followBoatId ?? identity.boatId
+    const targetBoat = state.boats[targetId]
+    const centerWorld = targetBoat?.pos ?? courseCenter
     const scale = baseScale * this.followZoomFactor
     return { scale, centerWorld }
   }

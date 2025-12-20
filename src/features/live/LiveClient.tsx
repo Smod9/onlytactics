@@ -47,11 +47,13 @@ export const LiveClient = () => {
   const [needsName, setNeedsName] = useState(!identity.clientName)
   const [idleSuspended, setIdleSuspended] = useState(false)
   const [cameraMode, setCameraMode] = useState<CameraMode>('follow')
+  const [followBoatId, setFollowBoatId] = useState<string | null>(null)
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null)
   const [selectedBoatAnchor, setSelectedBoatAnchor] = useState<{ x: number; y: number } | null>(
     null,
   )
   const stageShellRef = useRef<HTMLDivElement>(null)
+  const [showTouchControls, setShowTouchControls] = useState(false)
   const headerCtaEl =
     typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
@@ -63,6 +65,17 @@ export const LiveClient = () => {
 
   useEffect(() => {
     void startRosterWatcher()
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // Show on-screen controls only for iPad-ish / tablet-sized viewports.
+    // (Keeps desktop UI clean and avoids redundant controls.)
+    const mq = window.matchMedia('(max-width: 1024px)')
+    const update = () => setShowTouchControls(mq.matches)
+    update()
+    mq.addEventListener?.('change', update)
+    return () => mq.removeEventListener?.('change', update)
   }, [])
 
   const skipDevCleanupRef = useRef(import.meta.env.DEV)
@@ -141,7 +154,11 @@ export const LiveClient = () => {
   const canShowBoatInfo = Boolean(playerBoat) && (role === 'player' || role === 'host')
 
   const effectiveCameraMode: CameraMode =
-    role === 'spectator' || role === 'judge' ? 'birdseye' : cameraMode
+    role === 'spectator' || role === 'judge'
+      ? followBoatId
+        ? 'follow'
+        : 'birdseye'
+      : cameraMode
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -385,6 +402,20 @@ export const LiveClient = () => {
                         Clear protest (judge)
                       </button>
                     )}
+
+                    {(role === 'spectator' || role === 'judge') && selectedBoatId && (
+                      <button
+                        type="button"
+                        className="start-sequence"
+                        onClick={() => {
+                          setFollowBoatId(selectedBoatId)
+                          setSelectedBoatId(null)
+                          setSelectedBoatAnchor(null)
+                        }}
+                      >
+                        Follow
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -572,30 +603,49 @@ export const LiveClient = () => {
           <div className="hud-stack">
             <div className="hud-top-row">
               <div className="hud-camera-toggle">
-                <button
-                  type="button"
-                  className="camera-toggle"
-                  disabled={role === 'spectator' || role === 'judge'}
-                  onClick={() =>
-                    setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))
-                  }
-                  title={
-                    role === 'spectator' || role === 'judge'
-                      ? 'Birdseye view is locked for spectators/judges'
-                      : 'Toggle camera mode (Z)'
-                  }
-                >
-                  <span className="camera-toggle-icon" aria-hidden="true">
-                    <ZoomIcon />
-                  </span>
-                  <span className="camera-toggle-text">
-                    {role === 'spectator' || role === 'judge'
-                      ? 'Birdseye'
-                      : effectiveCameraMode === 'follow'
-                        ? 'Birdseye (Z)'
-                        : 'Follow (Z)'}
-                  </span>
-                </button>
+                {role === 'spectator' || role === 'judge' ? (
+                  followBoatId ? (
+                    <button
+                      type="button"
+                      className="camera-toggle"
+                      onClick={() => setFollowBoatId(null)}
+                      title="Stop following"
+                      style={{ pointerEvents: 'auto' }}
+                    >
+                      <span className="camera-toggle-text">
+                        Stop following {race.boats[followBoatId]?.name ?? 'boat'}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="camera-toggle"
+                      disabled
+                      title="Birdseye view is locked for spectators/judges"
+                    >
+                      <span className="camera-toggle-icon" aria-hidden="true">
+                        <ZoomIcon />
+                      </span>
+                      <span className="camera-toggle-text">Birdseye</span>
+                    </button>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    className="camera-toggle"
+                    onClick={() =>
+                      setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))
+                    }
+                    title="Toggle camera mode (Z)"
+                  >
+                    <span className="camera-toggle-icon" aria-hidden="true">
+                      <ZoomIcon />
+                    </span>
+                    <span className="camera-toggle-text">
+                      {effectiveCameraMode === 'follow' ? 'Birdseye (Z)' : 'Follow (Z)'}
+                    </span>
+                  </button>
+                )}
               </div>
               <div className="leaderboard-overlay">
                 <div className="leaderboard-panel">
@@ -678,6 +728,7 @@ export const LiveClient = () => {
           </div>
           <PixiStage
             cameraMode={effectiveCameraMode}
+            followBoatId={effectiveCameraMode === 'follow' ? followBoatId : null}
             onPickBoat={(boatId, anchor) => {
               if ((role === 'player' || role === 'host') && boatId === identity.boatId) {
                 setSelectedBoatId(null)
@@ -710,10 +761,16 @@ export const LiveClient = () => {
               setSelectedBoatAnchor(clamped)
             }}
           />
-          <OnScreenControls
-            cameraMode={effectiveCameraMode}
-            onToggleCamera={() => setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))}
-          />
+          {(role === 'host' || role === 'player') && (
+            showTouchControls && (
+              <OnScreenControls
+                cameraMode={effectiveCameraMode}
+                onToggleCamera={() =>
+                  setCameraMode((mode) => (mode === 'follow' ? 'birdseye' : 'follow'))
+                }
+              />
+            )
+          )}
           <ChatPanel network={network} />
         </div>
       </div>

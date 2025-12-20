@@ -5,10 +5,11 @@ import { RaceScene, type CameraMode } from './scene/RaceScene'
 
 type Props = {
   cameraMode: CameraMode
+  followBoatId?: string | null
   onPickBoat?: (boatId: string | null, anchorPx?: { x: number; y: number }) => void
 }
 
-export const PixiStage = ({ cameraMode, onPickBoat }: Props) => {
+export const PixiStage = ({ cameraMode, followBoatId, onPickBoat }: Props) => {
   const mountRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
   const sceneRef = useRef<RaceScene | null>(null)
@@ -112,6 +113,10 @@ export const PixiStage = ({ cameraMode, onPickBoat }: Props) => {
   useEffect(() => {
     sceneRef.current?.setCameraMode(cameraMode)
   }, [cameraMode])
+
+  useEffect(() => {
+    sceneRef.current?.setFollowBoatId(followBoatId ?? null)
+  }, [followBoatId])
 
   return <div className="pixi-stage" ref={mountRef} />
 }
