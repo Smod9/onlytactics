@@ -1,3 +1,13 @@
+# [1.26.0](https://github.com/Smod9/onlytactics/compare/v1.25.1...v1.26.0) (2025-12-21)
+
+
+### Features
+
+* **puffs:** Makes it a game time choice to turn puffs on and off. Some menu polish too ([be48d7f](https://github.com/Smod9/onlytactics/commit/be48d7f578c96ad0bd30af9246e792912a436797))
+* **puffs:** Picks up env files ([ea7a044](https://github.com/Smod9/onlytactics/commit/ea7a0446c97ff739a98b551de4d2dc3c1d0e411e))
+* **puffs:** Puffs working, pause game fixed for god mode ([0d811d4](https://github.com/Smod9/onlytactics/commit/0d811d4c49eafdcd469195064305cd0be5ebf6ae))
+* **windField:** Introduce wind field configuration and visualization ([f971d5a](https://github.com/Smod9/onlytactics/commit/f971d5a9329f378071ba78bfc1c96be6cc8ba216))
+
 ## [1.25.1](https://github.com/Smod9/onlytactics/compare/v1.25.0...v1.25.1) (2025-12-21)
 
 
