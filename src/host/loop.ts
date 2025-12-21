@@ -37,6 +37,7 @@ export class HostLoop {
   private timer?: ReturnType<typeof setInterval>
 
   private lastTick = 0
+  private paused = false
 
   private roundingProgress = new Map<string, RoundingProgress>()
 
@@ -78,6 +79,14 @@ export class HostLoop {
     this.timer = setInterval(() => this.tick(), intervalMs)
   }
 
+  setPaused(paused: boolean) {
+    const next = Boolean(paused)
+    if (this.paused === next) return
+    this.paused = next
+    // Prevent an enormous dt on resume.
+    this.lastTick = performance.now()
+  }
+
   stop() {
     if (!this.timer) return
     clearInterval(this.timer)
@@ -110,6 +119,9 @@ export class HostLoop {
     this.lastTick = now
 
     const next = cloneRaceState(this.store.getState())
+    if (this.paused || next.paused) {
+      return
+    }
     const inputs = this.store.consumeInputs()
     const countdownHeld = next.phase === 'prestart' && !next.countdownArmed
     if (!countdownHeld) {

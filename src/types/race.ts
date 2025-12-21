@@ -88,6 +88,8 @@ export type RaceState = {
   lapsToFinish: number
   leaderboard: string[]
   aiEnabled: boolean
+  /** Debug/admin feature: when true, the simulation is frozen (no stepping). */
+  paused?: boolean
 }
 
 export type PlayerInput = {
@@ -145,7 +147,7 @@ export type ReplayRecording = {
   chat: ChatMessage[]
 }
 
-export type RaceRole = 'host' | 'player' | 'spectator' | 'judge'
+export type RaceRole = 'host' | 'player' | 'spectator' | 'judge' | 'god'
 
 export type ProtestStatus = 'active' | 'active_waived'
 

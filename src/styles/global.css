@@ -25,11 +25,19 @@
 
 .user-menu-header {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.user-menu-header-top {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .user-menu-title {
@@ -38,30 +46,15 @@
   gap: 0.6rem;
 }
 
-.user-menu-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 0.6rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(79, 125, 255, 0.15);
-  border: 1px solid rgba(159, 183, 255, 0.25);
-  color: #cfe0ff;
-  flex: 0 0 auto;
-  user-select: none;
-}
-
 .user-menu-card h2 {
   margin: 0;
 }
 
-.user-menu-subtitle {
-  margin: 0.2rem 0 0 0;
-  color: #cdd5f3;
-  opacity: 0.85;
-  font-size: 0.9rem;
-  line-height: 1.35;
+.user-menu-header-actions,
+.user-menu-social-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .user-menu-close {
@@ -122,6 +115,10 @@
   color: inherit;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.user-menu-input {
+  width: 100%;
 }
 
 .user-menu-select:focus-visible {
@@ -309,6 +306,8 @@ button {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .header-name {
@@ -1149,7 +1148,7 @@ button {
 .chat-panel {
   position: absolute;
   left: 0.5rem;
-  top: 23rem;
+  top: 55vh;
   transform: translateY(calc(-1 * var(--touch-controls-chat-shift, 0rem)));
   transition: transform 0.2s ease;
   width: 240px;

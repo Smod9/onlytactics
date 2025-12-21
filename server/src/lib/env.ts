@@ -1,5 +1,8 @@
 import { config } from 'dotenv'
 
+// Load shared repo-root env first (so server can pick up VITE_* flags during local dev),
+// then load server-local env (which should override).
+config({ path: '../.env' })
 config()
 
 const toNumber = (value: string | undefined, fallback: number) => {

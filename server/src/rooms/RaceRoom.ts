@@ -45,6 +45,8 @@ type ProtestCommand =
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
   | { kind: 'reset' }
+  | { kind: 'pause'; paused: boolean }
+  | { kind: 'debug_set_pos'; boatId: string; x: number; y: number }
   | { kind: 'debug_lap'; boatId: string }
   | { kind: 'debug_finish'; boatId: string }
   | { kind: 'debug_warp'; boatId: string }
@@ -192,13 +194,19 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
 
     this.onMessage<HostCommand>('host_command', (client, command) => {
-      if (client.sessionId !== this.hostSessionId) {
+      const role = this.clientRoleMap.get(client.sessionId) ?? 'player'
+      const isHost = client.sessionId === this.hostSessionId
+      const isGod = role === 'god' && appEnv.debugHud
+      const godAllowed = command.kind === 'pause' || command.kind === 'debug_set_pos'
+      if (!isHost && !(isGod && godAllowed)) {
         console.warn('[RaceRoom] ignoring host command from non-host', {
           clientId: client.sessionId,
+          role,
           command,
         })
         roomDebug('host_command ignored', {
           clientId: client.sessionId,
+          role,
           command,
           hostSessionId: this.hostSessionId,
         })
@@ -209,6 +217,10 @@ export class RaceRoom extends Room<RaceRoomState> {
         this.armCountdown(command.seconds ?? appEnv.countdownSeconds)
       } else if (command.kind === 'reset') {
         this.resetRaceState()
+      } else if (command.kind === 'pause') {
+        this.setPaused(command.paused)
+      } else if (command.kind === 'debug_set_pos') {
+        this.debugSetBoatPosition(command.boatId, command.x, command.y)
       } else if (command.kind === 'debug_lap') {
         this.debugAdvanceLap(command.boatId)
       } else if (command.kind === 'debug_finish') {
@@ -709,8 +721,38 @@ export class RaceRoom extends Room<RaceRoomState> {
     const raw = typeof options?.role === 'string' ? options.role.trim() : ''
     if (raw === 'judge') return 'judge'
     if (raw === 'spectator') return 'spectator'
+    if (raw === 'god' && appEnv.debugHud) return 'god'
     // default: join as a controlling player
     return 'player'
+  }
+
+  private setPaused(paused: boolean) {
+    if (!this.raceStore) return
+    const next = Boolean(paused)
+    this.loop?.setPaused?.(next)
+    this.mutateState((draft) => {
+      draft.paused = next
+      if (next) {
+        // Freeze the race clock while paused.
+        draft.clockStartMs = null
+      } else if (draft.phase === 'running') {
+        // Resume wall clock so that t continues smoothly from the current value.
+        draft.clockStartMs = Date.now() - draft.t * 1000
+      }
+    })
+  }
+
+  private debugSetBoatPosition(boatId: string, x: number, y: number) {
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    if (!state.paused) return
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boat.pos = { x, y }
+      boat.prevPos = { x, y }
+    })
   }
 
   private findExistingSessionId(clientId: string, currentSessionId: string) {

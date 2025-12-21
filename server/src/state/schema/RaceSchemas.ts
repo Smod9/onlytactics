@@ -190,6 +190,9 @@ export class RaceStateSchema extends Schema {
 
   @type('boolean')
   aiEnabled = true
+
+  @type('boolean')
+  paused = false
 }
 
 export type {
