@@ -1,3 +1,11 @@
+# [1.25.0](https://github.com/Smod9/onlytactics/compare/v1.24.0...v1.25.0) (2025-12-21)
+
+
+### Features
+
+* Bunch of mostly protest feature related UI polish ([b068ce9](https://github.com/Smod9/onlytactics/commit/b068ce95d4af355b3dc2b5ecb27b1c946a06dd21))
+* Lots of UI cleanup, some related to protests, others menu and such ([4cf263b](https://github.com/Smod9/onlytactics/commit/4cf263b8008858126d9fef1699b5e56a7d9a2253))
+
 # [1.24.0](https://github.com/Smod9/onlytactics/compare/v1.23.3...v1.24.0) (2025-12-20)
 
 
