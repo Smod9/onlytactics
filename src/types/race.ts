@@ -5,6 +5,24 @@ export type Wind = {
   speed: number
 }
 
+export type WindFieldConfig = {
+  enabled: boolean
+  /** Typical peak delta (kts) of puffs/lulls before clamping. */
+  intensityKts: number
+  /** Number of moving puff/lull blobs in the domain. */
+  count: number
+  /** Typical blob size in world units (roughly half-width). */
+  sizeWorld: number
+  /** Along-wind wrapping length in world units. */
+  domainLengthWorld: number
+  /** Cross-wind extent (centered) in world units. */
+  domainWidthWorld: number
+  /** Multiplier for downwind advection speed relative to wind speed. */
+  advectionFactor: number
+  /** Visual tile size (world units) for square patch rendering. */
+  tileSizeWorld: number
+}
+
 export type StartLine = {
   pin: Vec2
   committee: Vec2
@@ -71,6 +89,7 @@ export type RaceState = {
   meta: RaceMeta
   wind: Wind
   baselineWindDeg: number
+  windField?: WindFieldConfig
   boats: Record<string, BoatState>
   /**
    * Active protests keyed by `protestedBoatId`.

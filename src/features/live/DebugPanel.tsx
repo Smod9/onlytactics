@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useInputTelemetry, useRaceState } from '@/state/hooks'
 import { identity } from '@/net/identity'
 import { apparentWindAngleSigned, angleDiff } from '@/logic/physics'
+import { sampleWindSpeed } from '@/logic/windField'
 import { appEnv } from '@/config/env'
 import type { GameNetwork } from '@/net/gameNetwork'
 
@@ -19,6 +20,8 @@ export const DebugPanel = ({ onClose, network }: Props) => {
   const telemetry = useInputTelemetry()
   const brokerLabel = 'Broker: CloudAMQP'
   const myLatency = telemetry[identity.boatId]
+  const myBoat = race.boats[identity.boatId]
+  const localWindSpeed = myBoat ? sampleWindSpeed(race, myBoat.pos) : race.wind.speed
 
   const boats = useMemo(
     () =>
@@ -40,7 +43,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
       <div className="debug-row">
         <strong>Wind:</strong>
         <span>{formatAngle(race.wind.directionDeg)}</span>
-        <span>@ {race.wind.speed.toFixed(1)} kts</span>
+        <span>@ {localWindSpeed.toFixed(1)} kts</span>
       </div>
       <div className="debug-row">
         <strong>Phase:</strong>

@@ -3,6 +3,7 @@ import { appEnv } from '@/config/env'
 import type { BoatState, RaceState, Vec2 } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
+import { getWindFieldConfig, sampleWindDeltaKts } from '@/logic/windField'
 import {
   BOAT_BOW_OFFSET,
   BOAT_BOW_RADIUS,
@@ -218,6 +219,7 @@ class BoatView {
 export class RaceScene {
   private waterLayer = new Graphics()
   private worldLayer = new Container()
+  private windFieldLayer = new Graphics()
   private courseLayer = new Graphics()
   private contextLayer = new Graphics()
   private overlayLayer = new Container()
@@ -264,11 +266,18 @@ export class RaceScene {
     },
   ) {
     // Render order (bottom -> top):
+    // - windFieldLayer: moving puffs/lulls visualization (world-space)
     // - courseLayer: static course visuals
     // - contextLayer: follow-mode guidance line(s)
     // - overlayLayer: debug overlays
     // - boatLayer: boats + name tags, etc.
-    this.worldLayer.addChild(this.courseLayer, this.contextLayer, this.overlayLayer, this.boatLayer)
+    this.worldLayer.addChild(
+      this.windFieldLayer,
+      this.courseLayer,
+      this.contextLayer,
+      this.overlayLayer,
+      this.boatLayer,
+    )
     this.app.stage.addChild(this.waterLayer, this.worldLayer, this.hudLayer)
     if (options?.cameraMode) {
       this.cameraMode = options.cameraMode
@@ -316,6 +325,7 @@ export class RaceScene {
   update(state: RaceState) {
     RaceScene.currentWindDeg = state.wind.directionDeg
     this.applyCameraTransform(state)
+    this.drawWindField(state)
     this.drawCourse(state)
     this.drawFollowContext(state)
     this.drawBoats(state)
@@ -453,6 +463,91 @@ export class RaceScene {
     const { scale, centerWorld } = this.getCameraTransform(state)
     this.worldLayer.scale.set(scale)
     this.worldLayer.position.set(width / 2 - centerWorld.x * scale, height / 2 - centerWorld.y * scale)
+  }
+
+  private getVisibleWorldBounds(state: RaceState) {
+    const { width, height } = this.app.canvas
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const inv = 1 / Math.max(0.0001, scale)
+    const halfW = (width / 2) * inv
+    const halfH = (height / 2) * inv
+    return {
+      minX: centerWorld.x - halfW,
+      maxX: centerWorld.x + halfW,
+      minY: centerWorld.y - halfH,
+      maxY: centerWorld.y + halfH,
+    }
+  }
+
+  private drawWindField(state: RaceState) {
+    const cfg = getWindFieldConfig(state)
+    this.windFieldLayer.clear()
+    if (!cfg) return
+
+    const { minX, maxX, minY, maxY } = this.getVisibleWorldBounds(state)
+
+    // Dynamic tile sizing to keep draw calls bounded.
+    const maxTiles = 1800
+    let tile = Math.max(6, cfg.tileSizeWorld)
+    const w = Math.max(1, maxX - minX)
+    const h = Math.max(1, maxY - minY)
+    let nx = Math.ceil(w / tile)
+    let ny = Math.ceil(h / tile)
+    const tileCount = nx * ny
+    if (tileCount > maxTiles) {
+      const factor = Math.sqrt(tileCount / maxTiles)
+      tile *= factor
+      nx = Math.ceil(w / tile)
+      ny = Math.ceil(h / tile)
+    }
+
+    const startX = Math.floor(minX / tile) * tile
+    const endX = Math.ceil(maxX / tile) * tile
+    const startY = Math.floor(minY / tile) * tile
+    const endY = Math.ceil(maxY / tile) * tile
+
+    // Batch rectangles into alpha buckets per sign to reduce fill state switches.
+    const buckets = 6
+    const puffRects: number[][] = Array.from({ length: buckets }, () => [])
+    const lullRects: number[][] = Array.from({ length: buckets }, () => [])
+    const minNormToDraw = 0.07
+
+    for (let y = startY; y < endY; y += tile) {
+      for (let x = startX; x < endX; x += tile) {
+        const center = { x: x + tile / 2, y: y + tile / 2 }
+        const delta = sampleWindDeltaKts(state, center)
+        if (!delta) continue
+        const norm = Math.abs(delta) / Math.max(0.001, cfg.intensityKts)
+        if (norm < minNormToDraw) continue
+        const b = Math.min(buckets - 1, Math.floor(norm * buckets))
+        const list = delta > 0 ? puffRects[b] : lullRects[b]
+        list.push(x, y, tile, tile)
+      }
+    }
+
+    const puffColor = 0x19d3c5 // teal
+    const lullColor = 0x12345a // deep blue
+    const maxAlpha = 0.24
+
+    for (let b = 0; b < buckets; b += 1) {
+      const alpha = maxAlpha * ((b + 1) / buckets)
+      const puff = puffRects[b]
+      if (puff.length) {
+        this.windFieldLayer.fill({ color: puffColor, alpha })
+        for (let i = 0; i < puff.length; i += 4) {
+          this.windFieldLayer.rect(puff[i], puff[i + 1], puff[i + 2], puff[i + 3])
+        }
+        this.windFieldLayer.fill()
+      }
+      const lull = lullRects[b]
+      if (lull.length) {
+        this.windFieldLayer.fill({ color: lullColor, alpha })
+        for (let i = 0; i < lull.length; i += 4) {
+          this.windFieldLayer.rect(lull[i], lull[i + 1], lull[i + 2], lull[i + 3])
+        }
+        this.windFieldLayer.fill()
+      }
+    }
   }
 
   private drawCourse(state: RaceState) {

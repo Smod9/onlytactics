@@ -35,6 +35,26 @@ export const appEnv = {
   ),
   lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 3),
   speedMultiplier: toNumber(rawEnv.SPEED_MULTIPLIER ?? rawEnv.VITE_SPEED_MULTIPLIER, 1),
+  windFieldEnabled: toBool(rawEnv.WIND_FIELD_ENABLED ?? rawEnv.VITE_WIND_FIELD_ENABLED, true),
+  windFieldIntensityKts: toNumber(rawEnv.WIND_FIELD_INTENSITY_KTS ?? rawEnv.VITE_WIND_FIELD_INTENSITY_KTS, 3),
+  windFieldCount: toNumber(rawEnv.WIND_FIELD_COUNT ?? rawEnv.VITE_WIND_FIELD_COUNT, 32),
+  windFieldSizeWorld: toNumber(rawEnv.WIND_FIELD_SIZE_WORLD ?? rawEnv.VITE_WIND_FIELD_SIZE_WORLD, 320),
+  windFieldDomainLengthWorld: toNumber(
+    rawEnv.WIND_FIELD_DOMAIN_LENGTH_WORLD ?? rawEnv.VITE_WIND_FIELD_DOMAIN_LENGTH_WORLD,
+    1800,
+  ),
+  windFieldDomainWidthWorld: toNumber(
+    rawEnv.WIND_FIELD_DOMAIN_WIDTH_WORLD ?? rawEnv.VITE_WIND_FIELD_DOMAIN_WIDTH_WORLD,
+    900,
+  ),
+  windFieldAdvectionFactor: toNumber(
+    rawEnv.WIND_FIELD_ADVECTION_FACTOR ?? rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR,
+    0.6,
+  ),
+  windFieldTileSizeWorld: toNumber(
+    rawEnv.WIND_FIELD_TILE_SIZE_WORLD ?? rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD,
+    36,
+  ),
 } as const
 
 export type AppEnv = typeof appEnv
