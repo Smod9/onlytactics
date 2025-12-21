@@ -53,6 +53,9 @@ export const appEnv = {
   // Camera zoom multiplier used in follow mode (applied on top of screen-derived base scale).
   // Smaller = zoomed out. Typical range: ~1.1 - 1.6.
   followZoomFactor: toNumber(rawEnv.VITE_FOLLOW_ZOOM, 1.33),
+  // Birdseye scale multiplier applied after computing the "fit course to screen" scale.
+  // Smaller = zoomed out (shows more around the course). Typical range: ~0.85 - 1.0.
+  birdseyeZoomFactor: toNumber(rawEnv.VITE_BIRDSEYE_ZOOM, 0.92),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
   debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, true),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
