@@ -68,6 +68,7 @@ import {
   TURN_RATE_DEG,
 } from './constants'
 import { appEnv } from '@/config/env'
+import { sampleWindSpeed } from '@/logic/windField'
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -464,7 +465,8 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     const wakeFactor = wakeFactors[boat.id] ?? 1
     boat.wakeFactor = wakeFactor
 
-    let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET) * appEnv.speedMultiplier
+    const localWindSpeed = sampleWindSpeed(state, boat.pos)
+    let targetSpeed = polarTargetSpeed(awa, localWindSpeed, DEFAULT_SHEET) * appEnv.speedMultiplier
     
     // Apply stall penalty (from sailing into no-go zone)
     if (boat.stallTimer > 0) {

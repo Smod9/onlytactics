@@ -63,6 +63,19 @@ export const applyRaceStateToSchema = (target: RaceStateSchema, source: RaceStat
   target.wind.directionDeg = source.wind.directionDeg
   target.wind.speed = source.wind.speed
   target.baselineWindDeg = source.baselineWindDeg
+  const windField = source.windField
+  if (windField) {
+    target.windField.enabled = Boolean(windField.enabled)
+    target.windField.intensityKts = windField.intensityKts ?? 0
+    target.windField.count = windField.count ?? 0
+    target.windField.sizeWorld = windField.sizeWorld ?? 0
+    target.windField.domainLengthWorld = windField.domainLengthWorld ?? 0
+    target.windField.domainWidthWorld = windField.domainWidthWorld ?? 0
+    target.windField.advectionFactor = windField.advectionFactor ?? 0
+    target.windField.tileSizeWorld = windField.tileSizeWorld ?? 0
+  } else {
+    target.windField.enabled = false
+  }
   target.phase = source.phase
   target.countdownArmed = source.countdownArmed
   target.clockStartMs = source.clockStartMs ?? -1

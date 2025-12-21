@@ -25,6 +25,7 @@ import { useRoster } from '@/state/rosterStore'
 import type { CameraMode } from '@/view/scene/RaceScene'
 import { ZoomIcon } from '@/view/icons'
 import { apparentWindAngleSigned } from '@/logic/physics'
+import { sampleWindSpeed } from '@/logic/windField'
 
 const isInteractiveElement = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
@@ -563,6 +564,7 @@ export const LiveClient = () => {
                   const exaggeratedWindDir =
                     ((race.baselineWindDeg + rawShift * 1.2) % 360 + 360) % 360
                   const downwindDeg = ((exaggeratedWindDir + 180) % 360 + 360) % 360
+                  const windSpeedAtBoat = boat ? sampleWindSpeed(race, boat.pos) : race.wind.speed
 
                   const boatSection = boat
                     ? (() => {
@@ -619,7 +621,7 @@ export const LiveClient = () => {
                               <div className="hud-metric hud-metric-windspd">
                                 <span className="hud-label">SPD</span>
                                 <span className="hud-value">
-                                  {race.wind.speed.toFixed(1)} kts
+                                  {windSpeedAtBoat.toFixed(1)} kts
                                 </span>
                               </div>
                               <div className="hud-metric hud-metric-windshift">

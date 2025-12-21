@@ -21,6 +21,32 @@ export class WindSchema extends Schema {
   speed = 0
 }
 
+export class WindFieldSchema extends Schema {
+  @type('boolean')
+  enabled = false
+
+  @type('number')
+  intensityKts = 0
+
+  @type('number')
+  count = 0
+
+  @type('number')
+  sizeWorld = 0
+
+  @type('number')
+  domainLengthWorld = 0
+
+  @type('number')
+  domainWidthWorld = 0
+
+  @type('number')
+  advectionFactor = 0
+
+  @type('number')
+  tileSizeWorld = 0
+}
+
 export class RaceMetaSchema extends Schema {
   @type('string')
   raceId = ''
@@ -151,6 +177,9 @@ export class RaceStateSchema extends Schema {
 
   @type('number')
   baselineWindDeg = 0
+
+  @type(WindFieldSchema)
+  windField = new WindFieldSchema()
 
   @type({ map: BoatStateSchema })
   boats = new MapSchema<BoatStateSchema>()
