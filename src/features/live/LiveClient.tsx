@@ -292,26 +292,16 @@ export const LiveClient = () => {
             <div style={{ display: 'none' }}>
               <ReplaySaveButton />
             </div>
-            {!needsName && (
-              <button
-                type="button"
-                className="header-name"
-                onClick={openUserModal}
-                title="Menu"
-                aria-label="Open menu"
-              >
-                <span aria-hidden="true" style={{ opacity: 0.9 }}>
-                  👤
-                </span>
-                <span className="header-name-text">Menu</span>
-                <span aria-hidden="true" style={{ opacity: 0.75 }}>
-                  ▾
-                </span>
-              </button>
-            )}
-
             {role === 'host' && (
               <>
+                <button
+                  type="button"
+                  className="start-sequence"
+                  onClick={() => network.setWindFieldEnabled(!race.windField?.enabled)}
+                  title="Toggle puffs/lulls (wind field)"
+                >
+                  Puffs: {race.windField?.enabled ? 'On' : 'Off'}
+                </button>
                 <button
                   type="button"
                   className="start-sequence"
@@ -337,6 +327,26 @@ export const LiveClient = () => {
                 title="Pause/resume race"
               >
                 {race.paused ? 'Resume Race' : 'Pause Race'}
+              </button>
+            )}
+
+            {/* Always keep the user menu at the far right of the header controls. */}
+            {!needsName && (
+              <button
+                type="button"
+                className="header-name"
+                onClick={openUserModal}
+                title="Menu"
+                aria-label="Open menu"
+                style={{ marginLeft: 'auto' }}
+              >
+                <span aria-hidden="true" style={{ opacity: 0.9 }}>
+                  👤
+                </span>
+                <span className="header-name-text">Menu</span>
+                <span aria-hidden="true" style={{ opacity: 0.75 }}>
+                  ▾
+                </span>
               </button>
             )}
           </div>,

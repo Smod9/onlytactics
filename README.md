@@ -70,6 +70,34 @@ With debug HUD enabled (`VITE_DEBUG_HUD=true`):
 
 This system encourages tactical positioning—staying out of other boats' wakes when possible, and using your wake to slow down competitors when advantageous.
 
+## Puffs & Lulls (Wind Field)
+
+The simulator can add **spatial wind-speed variation** across the course (“puffs” and “lulls”). Boats use the **local wind speed** at their position (wind direction is still global), and the water renders a **square patch** visualization that drifts downwind.
+
+### Runtime toggle (host)
+
+If you are the host, you can toggle the feature at runtime via the header button:
+
+- `Puffs: On/Off`
+
+This sends a Colyseus host command and updates the authoritative race state for everyone immediately.
+
+### Key tuning knobs
+
+These settings are part of `RaceState.windField` and are controlled via env vars.
+
+- **Make puffs bigger**: increase `WIND_FIELD_SIZE_WORLD` (server) or `VITE_WIND_FIELD_SIZE_WORLD` (client).
+- **Make puffs stronger/weaker**: adjust `WIND_FIELD_INTENSITY_KTS` / `VITE_WIND_FIELD_INTENSITY_KTS`.
+- **Make the visual grid finer/coarser**: adjust `WIND_FIELD_TILE_SIZE_WORLD` / `VITE_WIND_FIELD_TILE_SIZE_WORLD`.
+- **More/fewer puffs**: adjust `WIND_FIELD_COUNT` / `VITE_WIND_FIELD_COUNT`.
+
+### Colyseus note (important)
+
+In Colyseus mode, the **server is authoritative**. To ensure puffs stay enabled after the race starts:
+
+- Set server env `WIND_FIELD_ENABLED=true` (or toggle via the host button).
+- Restart the server after env changes (or redeploy).
+
 ## Other scripts
 
 - `npm run build` – type-check and build for production

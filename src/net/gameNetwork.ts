@@ -420,6 +420,15 @@ export class GameNetwork {
     netLog('setPaused() not supported for MQTT mode')
   }
 
+  setWindFieldEnabled(enabled: boolean) {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'wind_field', enabled })
+      this.colyseusBridge?.sendHostCommand({ kind: 'wind_field', enabled: Boolean(enabled) })
+      return
+    }
+    netLog('setWindFieldEnabled() not supported for MQTT mode')
+  }
+
   debugSetBoatPosition(boatId: string, pos: { x: number; y: number }) {
     if (this.useColyseus()) {
       netLog('send host command', { kind: 'debug_set_pos', boatId, pos })
