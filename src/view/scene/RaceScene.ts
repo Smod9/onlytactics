@@ -254,6 +254,7 @@ export class RaceScene {
 
   private readonly mapScaleBase = 560
   private readonly followZoomFactor = appEnv.followZoomFactor
+  private readonly birdseyeZoomFactor = appEnv.birdseyeZoomFactor
   private cameraMode: CameraMode = 'follow'
   private followBoatId: string | null = null
 
@@ -390,7 +391,9 @@ export class RaceScene {
       const worldW = Math.max(1, bounds.maxX - bounds.minX)
       const worldH = Math.max(1, bounds.maxY - bounds.minY)
       const fitScale = Math.min(availableW / worldW, availableH / worldH)
-      const scale = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : baseScale
+      const computed = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : baseScale
+      // Slightly zoom out in birdseye so pre-start spawn (often just below the line) is still visible.
+      const scale = computed * Math.max(0.1, this.birdseyeZoomFactor)
       return { scale, centerWorld: courseCenter }
     }
 
