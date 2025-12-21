@@ -238,6 +238,7 @@ export class RaceRoom extends Room<RaceRoomState> {
   onJoin(client: Client, options?: Record<string, unknown>) {
     const clientId = this.resolveClientIdentity(client, options)
     const joinRole = this.resolveJoinRole(options)
+    client.send('role_assignment', { role: joinRole })
 
     // De-dupe: if the same clientId is already connected, evict the previous session.
     const existingSessionId = this.findExistingSessionId(clientId, client.sessionId)

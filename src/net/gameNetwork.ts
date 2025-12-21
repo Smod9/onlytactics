@@ -31,6 +31,8 @@ export class GameNetwork {
 
   private colyseusRoleUnsub?: () => void
   private colyseusChatUnsub?: () => void
+  private colyseusRoleAssignmentUnsub?: () => void
+  private colyseusAssignedRole?: Exclude<RaceRole, 'host'>
 
   private latestHeadingDeg = 0
 
@@ -546,6 +548,12 @@ export class GameNetwork {
       return
     }
     netLog('colyseus joined', { sessionId: this.colyseusBridge.getSessionId() })
+    this.colyseusRoleAssignmentUnsub?.()
+    this.colyseusAssignedRole = undefined
+    this.colyseusRoleAssignmentUnsub = this.colyseusBridge.onRoleAssignment((role) => {
+      this.colyseusAssignedRole = role
+      this.syncColyseusRole()
+    })
     this.colyseusRoleUnsub?.()
     this.colyseusRoleUnsub = raceStore.subscribe(() => this.syncColyseusRole())
     this.colyseusChatUnsub?.()
@@ -562,6 +570,9 @@ export class GameNetwork {
     this.colyseusRoleUnsub = undefined
     this.colyseusChatUnsub?.()
     this.colyseusChatUnsub = undefined
+    this.colyseusRoleAssignmentUnsub?.()
+    this.colyseusRoleAssignmentUnsub = undefined
+    this.colyseusAssignedRole = undefined
     this.setStatus('idle')
   }
 
@@ -577,15 +588,17 @@ export class GameNetwork {
       this.lastLoggedHostId = hostId
       netLog('hostId update', { hostId, sessionId, clientId })
     }
-    if (this.desiredRoleOverride === 'judge') {
+    // In Colyseus mode, non-host special roles must be acknowledged by the server.
+    // (Otherwise we'd show UI controls that the server will reject, e.g. pause in god mode.)
+    if (this.colyseusAssignedRole === 'judge') {
       this.setCurrentRole('judge')
       return
     }
-    if (this.desiredRoleOverride === 'spectator') {
+    if (this.colyseusAssignedRole === 'spectator') {
       this.setCurrentRole('spectator')
       return
     }
-    if (this.desiredRoleOverride === 'god') {
+    if (this.colyseusAssignedRole === 'god') {
       this.setCurrentRole('god')
       return
     }

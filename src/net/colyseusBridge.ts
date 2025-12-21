@@ -29,6 +29,7 @@ export class ColyseusBridge {
 
   private statusListeners = new Set<(status: ColyseusStatus) => void>()
   private chatListeners = new Set<(message: ChatMessage) => void>()
+  private roleListeners = new Set<(role: Exclude<RaceRole, 'host'>) => void>()
 
   private sessionId?: string
 
@@ -51,6 +52,11 @@ export class ColyseusBridge {
   onChatMessage(listener: (message: ChatMessage) => void) {
     this.chatListeners.add(listener)
     return () => this.chatListeners.delete(listener)
+  }
+
+  onRoleAssignment(listener: (role: Exclude<RaceRole, 'host'>) => void) {
+    this.roleListeners.add(listener)
+    return () => this.roleListeners.delete(listener)
   }
 
   async connect(options?: { role?: Exclude<RaceRole, 'host'> }) {
@@ -141,6 +147,14 @@ export class ColyseusBridge {
       if (Array.isArray(payload) && payload.length) {
         raceStore.appendEvents(payload)
       }
+    })
+    room.onMessage('role_assignment', (payload: { role?: Exclude<RaceRole, 'host'> }) => {
+      const role = payload?.role
+      if (!role) return
+      if (appEnv.debugNetLogs) {
+        console.info('[ColyseusBridge]', 'role assignment', role)
+      }
+      this.roleListeners.forEach((listener) => listener(role))
     })
     room.onLeave(() => {
       if (appEnv.debugNetLogs) {
