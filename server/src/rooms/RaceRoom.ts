@@ -46,6 +46,7 @@ type HostCommand =
   | { kind: 'arm'; seconds?: number }
   | { kind: 'reset' }
   | { kind: 'pause'; paused: boolean }
+  | { kind: 'wind_field'; enabled: boolean }
   | { kind: 'debug_set_pos'; boatId: string; x: number; y: number }
   | { kind: 'debug_lap'; boatId: string }
   | { kind: 'debug_finish'; boatId: string }
@@ -219,6 +220,8 @@ export class RaceRoom extends Room<RaceRoomState> {
         this.resetRaceState()
       } else if (command.kind === 'pause') {
         this.setPaused(command.paused)
+      } else if (command.kind === 'wind_field') {
+        this.setWindFieldEnabled(command.enabled)
       } else if (command.kind === 'debug_set_pos') {
         this.debugSetBoatPosition(command.boatId, command.x, command.y)
       } else if (command.kind === 'debug_lap') {
@@ -740,6 +743,25 @@ export class RaceRoom extends Room<RaceRoomState> {
         // Resume wall clock so that t continues smoothly from the current value.
         draft.clockStartMs = Date.now() - draft.t * 1000
       }
+    })
+  }
+
+  private setWindFieldEnabled(enabled: boolean) {
+    if (!this.raceStore) return
+    const next = Boolean(enabled)
+    this.mutateState((draft) => {
+      // Ensure a config object exists (older recordings / mismatched clients could omit it).
+      draft.windField = draft.windField ?? {
+        enabled: next,
+        intensityKts: appEnv.windFieldIntensityKts,
+        count: appEnv.windFieldCount,
+        sizeWorld: appEnv.windFieldSizeWorld,
+        domainLengthWorld: appEnv.windFieldDomainLengthWorld,
+        domainWidthWorld: appEnv.windFieldDomainWidthWorld,
+        advectionFactor: appEnv.windFieldAdvectionFactor,
+        tileSizeWorld: appEnv.windFieldTileSizeWorld,
+      }
+      draft.windField.enabled = next
     })
   }
 
