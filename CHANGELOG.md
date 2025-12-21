@@ -1,3 +1,10 @@
+## [1.26.3](https://github.com/Smod9/onlytactics/compare/v1.26.2...v1.26.3) (2025-12-21)
+
+
+### Bug Fixes
+
+* makes default number of laps 2 ([7df5000](https://github.com/Smod9/onlytactics/commit/7df5000e42dbbc85320fa7e6399d573035df96ec))
+
 ## [1.26.2](https://github.com/Smod9/onlytactics/compare/v1.26.1...v1.26.2) (2025-12-21)
 
 
