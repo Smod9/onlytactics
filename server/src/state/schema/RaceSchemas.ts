@@ -212,7 +212,7 @@ export class RaceStateSchema extends Schema {
   hostBoatId = ''
 
   @type('number')
-  lapsToFinish = 3
+  lapsToFinish = 2
 
   @type(['string'])
   leaderboard = new ArraySchema<string>()
