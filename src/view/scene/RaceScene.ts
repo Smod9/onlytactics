@@ -147,9 +147,13 @@ class BoatView {
     const awa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
     const leewardSign: 1 | -1 = awa >= 0 ? -1 : 1
     this.drawSailShape(leewardSign)
-    const apparent = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
-    const trimFactor = Math.min(1, apparent / 140)
-    const rotationDeg = leewardSign * (8 + trimFactor * 24)
+    const absAwa = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
+    // NOTE: Our sail geometry starts fairly "eased" at 0° rotation, and rotating it
+    // pulls it closer to centerline (more trimmed in). So: upwind (small AWA) => more
+    // rotation, downwind (large AWA) => less rotation.
+    const easedFactor = Math.min(1, absAwa / 140)
+    const trimmedInFactor = 1 - easedFactor
+    const rotationDeg = leewardSign * (8 + trimmedInFactor * 24)
     this.sail.rotation = degToRad(rotationDeg)
     this.nameTag.text = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
     if (boat.overEarly || boat.fouled || boat.penalties > 0) {
