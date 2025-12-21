@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/Smod9/onlytactics/compare/v1.25.0...v1.25.1) (2025-12-21)
+
+
+### Bug Fixes
+
+* **trim:** Improve sail rotation calculation based on apparent wind angle ([1b51a8d](https://github.com/Smod9/onlytactics/commit/1b51a8d40c01a4f37de7aaf16596a4c9d24a9f6f))
+
 # [1.25.0](https://github.com/Smod9/onlytactics/compare/v1.24.0...v1.25.0) (2025-12-21)
 
 
