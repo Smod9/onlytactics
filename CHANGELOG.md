@@ -1,3 +1,10 @@
+## [1.26.2](https://github.com/Smod9/onlytactics/compare/v1.26.1...v1.26.2) (2025-12-21)
+
+
+### Bug Fixes
+
+* Increases max speed to 16knts (from 12) ([ebe5add](https://github.com/Smod9/onlytactics/commit/ebe5add37e7e64e9fdc7639a28da047cb48bc220))
+
 ## [1.26.1](https://github.com/Smod9/onlytactics/compare/v1.26.0...v1.26.1) (2025-12-21)
 
 
