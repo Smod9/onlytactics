@@ -329,12 +329,12 @@ export const LiveClient = () => {
                 </button>
               </>
             )}
-            {role === 'god' && (
+            {(role === 'host' || role === 'god') && (
               <button
                 type="button"
                 className="start-sequence"
                 onClick={() => network.setPaused(!race.paused)}
-                title="Pause/resume race (god mode)"
+                title="Pause/resume race"
               >
                 {race.paused ? 'Resume Race' : 'Pause Race'}
               </button>
