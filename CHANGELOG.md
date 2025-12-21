@@ -1,3 +1,10 @@
+## [1.26.4](https://github.com/Smod9/onlytactics/compare/v1.26.3...v1.26.4) (2025-12-21)
+
+
+### Bug Fixes
+
+* boats now mostly spawn on the screen when in birdseye ([129159f](https://github.com/Smod9/onlytactics/commit/129159f5893e082dc1d3834e400592c67fff1058))
+
 ## [1.26.3](https://github.com/Smod9/onlytactics/compare/v1.26.2...v1.26.3) (2025-12-21)
 
 
