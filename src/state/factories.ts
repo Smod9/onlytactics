@@ -140,6 +140,7 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     lapsToFinish: appEnv.lapsToFinish,
     leaderboard: [],
     aiEnabled: appEnv.aiEnabled,
+    paused: false,
     protests: {},
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat

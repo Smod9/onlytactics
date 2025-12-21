@@ -65,13 +65,20 @@ export class GameNetwork {
    * can apply the join options (boat assignment or no-boat).
    */
   async switchRole(next: NonHostRole) {
+    if (next === 'god' && !appEnv.debugHud) {
+      return
+    }
     // MQTT transport doesn't support judge semantics; treat judge as spectator.
     const normalized: NonHostRole =
-      this.useColyseus() ? next : next === 'judge' ? 'spectator' : next
+      this.useColyseus()
+        ? next
+        : next === 'judge' || next === 'god'
+          ? 'spectator'
+          : next
 
     // Persist preference. We store only spectator/judge; player is the default (clear).
     if (typeof window !== 'undefined') {
-      if (normalized === 'spectator' || normalized === 'judge') {
+      if (normalized === 'spectator' || normalized === 'judge' || normalized === 'god') {
         window.sessionStorage.setItem(ROLE_PREFERENCE_KEY, normalized)
       } else {
         window.sessionStorage.removeItem(ROLE_PREFERENCE_KEY)
@@ -402,6 +409,29 @@ export class GameNetwork {
     }
   }
 
+  setPaused(paused: boolean) {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'pause', paused })
+      this.colyseusBridge?.sendHostCommand({ kind: 'pause', paused: Boolean(paused) })
+      return
+    }
+    netLog('setPaused() not supported for MQTT mode')
+  }
+
+  debugSetBoatPosition(boatId: string, pos: { x: number; y: number }) {
+    if (this.useColyseus()) {
+      netLog('send host command', { kind: 'debug_set_pos', boatId, pos })
+      this.colyseusBridge?.sendHostCommand({
+        kind: 'debug_set_pos',
+        boatId,
+        x: pos.x,
+        y: pos.y,
+      })
+      return
+    }
+    netLog('debugSetBoatPosition() not supported for MQTT mode')
+  }
+
   private ensureBoatAssignment() {
     // placeholder for future multi-boat assignment logic
   }
@@ -555,6 +585,10 @@ export class GameNetwork {
       this.setCurrentRole('spectator')
       return
     }
+    if (this.desiredRoleOverride === 'god') {
+      this.setCurrentRole('god')
+      return
+    }
 
     const nextRole: RaceRole = hostId ? (isHost ? 'host' : 'player') : 'spectator'
     this.setCurrentRole(nextRole)
@@ -566,6 +600,7 @@ export class GameNetwork {
     const raw = (params.get('role') ?? '').trim().toLowerCase()
     if (raw === 'judge') return 'judge'
     if (raw === 'spectator') return 'spectator'
+    if (raw === 'god' && appEnv.debugHud) return 'god'
     return undefined
   }
 
@@ -574,6 +609,7 @@ export class GameNetwork {
     const raw = (window.sessionStorage.getItem(ROLE_PREFERENCE_KEY) ?? '').trim().toLowerCase()
     if (raw === 'judge') return 'judge'
     if (raw === 'spectator') return 'spectator'
+    if (raw === 'god' && appEnv.debugHud) return 'god'
     return undefined
   }
 }

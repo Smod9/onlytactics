@@ -70,6 +70,7 @@ export const applyRaceStateToSchema = (target: RaceStateSchema, source: RaceStat
   target.hostBoatId = source.hostBoatId ?? ''
   target.lapsToFinish = source.lapsToFinish
   target.aiEnabled = source.aiEnabled
+  target.paused = Boolean(source.paused)
 
   assignVec(target.startLine.pin, source.startLine.pin)
   assignVec(target.startLine.committee, source.startLine.committee)

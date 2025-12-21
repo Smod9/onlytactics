@@ -419,6 +419,18 @@ export class RaceScene {
   }
 
   /**
+   * Convert a canvas pixel coordinate (canvas internal pixel space) to world coordinates.
+   */
+  canvasPointToWorld(xPx: number, yPx: number, state: RaceState): { x: number; y: number } {
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const { width, height } = this.app.canvas
+    return {
+      x: centerWorld.x + (xPx - width / 2) / scale,
+      y: centerWorld.y + (yPx - height / 2) / scale,
+    }
+  }
+
+  /**
    * Convert a boat's world position to canvas pixel coordinates (in canvas internal pixel space).
    */
   getBoatCanvasPoint(boatId: string, state: RaceState): { x: number; y: number } | null {
