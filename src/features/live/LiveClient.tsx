@@ -24,7 +24,7 @@ import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
 import type { CameraMode } from '@/view/scene/RaceScene'
 import { ZoomIcon } from '@/view/icons'
-import { apparentWindAngleSigned } from '@/logic/physics'
+import { angleDiff } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
 
 const isInteractiveElement = (target: EventTarget | null) => {
@@ -578,10 +578,9 @@ export const LiveClient = () => {
 
                   const boatSection = boat
                     ? (() => {
-                        const twaSigned = apparentWindAngleSigned(
-                          boat.headingDeg,
-                          race.wind.directionDeg,
-                        )
+                        // IMPORTANT: For tack labeling we want the sign of wind relative to heading
+                        // (windDir - heading). This matches `RaceScene` and avoids PORT/STBD inversion.
+                        const twaSigned = angleDiff(race.wind.directionDeg, boat.headingDeg)
                         const isStarboardTack = twaSigned >= 0
                         const absTwa = Math.abs(twaSigned)
                         // Boat panel: keep AWA label, but show VMG mode status instead of degrees.
