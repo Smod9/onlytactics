@@ -45,7 +45,9 @@ export const appEnv = {
   hostHeartbeatMs: toNumber(rawEnv.VITE_HOST_HEARTBEAT_MS, 5000),
   hostPublishIntervalMs: toNumber(rawEnv.VITE_HOST_PUBLISH_INTERVAL_MS, 50),
   clientIdleTimeoutMs: toNumber(rawEnv.VITE_CLIENT_IDLE_TIMEOUT_MS, 5 * 60 * 1000),
-  lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 1),
+  // "Laps" here correspond to the number of windward roundings (W steps) in the loop.
+  // Example: lapsToFinish=2 => Start -> W -> Gate -> W -> Finish
+  lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 2),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 180),
   penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
   // Camera zoom multiplier used in follow mode (applied on top of screen-derived base scale).

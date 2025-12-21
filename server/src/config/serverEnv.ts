@@ -33,7 +33,9 @@ export const appEnv = {
     rawEnv.HOST_PUBLISH_INTERVAL_MS ?? rawEnv.VITE_HOST_PUBLISH_INTERVAL_MS,
     50,
   ),
-  lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 3),
+  // "Laps" here correspond to the number of windward roundings (W steps) in the loop.
+  // Example: lapsToFinish=2 => Start -> W -> Gate -> W -> Finish
+  lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 2),
   speedMultiplier: toNumber(rawEnv.SPEED_MULTIPLIER ?? rawEnv.VITE_SPEED_MULTIPLIER, 1),
   windFieldEnabled: toBool(rawEnv.WIND_FIELD_ENABLED ?? rawEnv.VITE_WIND_FIELD_ENABLED, true),
   windFieldIntensityKts: toNumber(rawEnv.WIND_FIELD_INTENSITY_KTS ?? rawEnv.VITE_WIND_FIELD_INTENSITY_KTS, 3),
