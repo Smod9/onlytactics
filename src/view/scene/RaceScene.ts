@@ -26,9 +26,9 @@ const normalizeDeg = (deg: number) => {
 }
 
 // Mark-zone radius in world units.
-// Note: our boat sprite is drawn larger than the physics/collision `BOAT_LENGTH`,
-// so using a higher multiplier matches what “2 boat lengths” looks like on screen.
-const MARK_ZONE_RADIUS = 6 * BOAT_LENGTH
+// Note: our boat sprite is drawn ~2× the physics/collision `BOAT_LENGTH` (see hull points),
+// so use a multiplier that makes the ring read like ~2 boat lengths on screen.
+const MARK_ZONE_RADIUS = 4 * BOAT_LENGTH
 
 export type CameraMode = 'follow' | 'birdseye'
 
