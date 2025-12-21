@@ -1,3 +1,11 @@
+## [1.26.1](https://github.com/Smod9/onlytactics/compare/v1.26.0...v1.26.1) (2025-12-21)
+
+
+### Bug Fixes
+
+* 2 boat length zone became 4 somehow. 2 again ([d79e0c8](https://github.com/Smod9/onlytactics/commit/d79e0c8ce903f302f7f9c26c0eb735d5ec50deb8))
+* Resolves TACK in HUD ([8c449c4](https://github.com/Smod9/onlytactics/commit/8c449c48be8ec0a7ea5a0714ba300f723f92c7eb))
+
 # [1.26.0](https://github.com/Smod9/onlytactics/compare/v1.25.1...v1.26.0) (2025-12-21)
 
 
