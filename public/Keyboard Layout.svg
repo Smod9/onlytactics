@@ -140,20 +140,24 @@
       </text>
     </g>
     <text transform="matrix(1, 0, 0, 1, 1034.555, 294.734)">
-      <tspan x="-66" y="3.5" font-family="Helvetica-Bold" font-size="20" fill="#FFFFFF">Head up</tspan>
+      <tspan x="-66" y="3.5" font-family="Helvetica-Bold" font-size="20" fill="#FFFFFF">Head Up</tspan>
     </text>
     <text transform="matrix(1, 0, 0, 1, 1058.555, 331.234)">
       <tspan x="-89" y="-13" font-family="Helvetica" font-size="15" fill="#FFFFFF">Head up 5</tspan>
       <tspan x="-19.779" y="-13" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">° </tspan>
-      <tspan x="-89" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">(hold shift to turn harder)</tspan>
+      <tspan x="-89" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">(hold shift to turn 20</tspan>
+      <tspan x="43.576" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">°</tspan>
+      <tspan x="49.574" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">)</tspan>
     </text>
     <text transform="matrix(1, 0, 0, 1, 1023.385, 418.618)">
-      <tspan x="-66" y="3.5" font-family="Helvetica-Bold" font-size="20" fill="#FFFFFF">Head up</tspan>
+      <tspan x="-66" y="3.5" font-family="Helvetica-Bold" font-size="20" fill="#FFFFFF">Head Down</tspan>
     </text>
     <text transform="matrix(1, 0, 0, 1, 1047.385, 455.118)">
-      <tspan x="-89" y="-13" font-family="Helvetica" font-size="15" fill="#FFFFFF">Head up 5</tspan>
-      <tspan x="-19.779" y="-13" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">° </tspan>
-      <tspan x="-89" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">(hold shift to turn harder)</tspan>
+      <tspan x="-89" y="-13" font-family="Helvetica" font-size="15" fill="#FFFFFF">Head down 5</tspan>
+      <tspan x="-0.604" y="-13" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">° </tspan>
+      <tspan x="-89" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">(hold shift to turn 20</tspan>
+      <tspan x="43.576" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">°</tspan>
+      <tspan x="49.574" y="5" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">)</tspan>
     </text>
     <g>
       <path d="M510.647,298.477 L542.647,298.477 C549.275,298.477 554.647,303.849 554.647,310.477 L554.647,341.477 C554.647,348.104 549.275,353.477 542.647,353.477 L510.647,353.477 C504.02,353.477 498.647,348.104 498.647,341.477 L498.647,310.477 C498.647,303.849 504.02,298.477 510.647,298.477 z" fill="#D2DDFF"/>
@@ -172,7 +176,7 @@
       </text>
       <text transform="matrix(1, 0, 0, 1, 348.656, 454.796)">
         <tspan x="-80.267" y="-11.322" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">Quick jump to chat, esc. </tspan>
-        <tspan x="-80.267" y="6.678" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">To exit</tspan>
+        <tspan x="-80.267" y="6.678" font-family="Helvetica" font-size="15" kerning="0" fill="#FFFFFF">to quickly jump back</tspan>
       </text>
     </g>
     <g>

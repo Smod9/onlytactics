@@ -1,3 +1,10 @@
+## [1.26.6](https://github.com/Smod9/onlytactics/compare/v1.26.5...v1.26.6) (2025-12-22)
+
+
+### Bug Fixes
+
+* Updates keyboard svg ([5aefb5b](https://github.com/Smod9/onlytactics/commit/5aefb5b396cda799ce8f0cdfa487f35f72f6d826))
+
 ## [1.26.5](https://github.com/Smod9/onlytactics/compare/v1.26.4...v1.26.5) (2025-12-22)
 
 
