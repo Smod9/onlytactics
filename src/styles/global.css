@@ -1613,11 +1613,45 @@ button {
 }
 
 .tactician-toggle {
-  padding: 0.4rem 0.8rem;
-  border-radius: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
   border: 1px solid #2e3450;
   background: rgba(12, 18, 36, 0.9);
   color: inherit;
+  font-weight: 650;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.tactician-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  opacity: 0.95;
+}
+
+.tactician-toggle-text {
+  display: inline-block;
+}
+
+.tactician-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(18, 26, 48, 0.92);
+}
+
+.tactician-toggle:active {
+  transform: translateY(1px);
+}
+
+.tactician-toggle:focus-visible {
+  outline: 2px solid rgba(83, 224, 255, 0.55);
+  outline-offset: 2px;
 }
 
 .tactician-card {
@@ -1642,6 +1676,66 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.keyboard-help-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 15, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 30;
+}
+
+.keyboard-help-card {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboard-help-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.keyboard-help-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #dbe3ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  font-size: 0.95rem;
+  backdrop-filter: blur(6px);
+}
+
+.keyboard-help-close:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.keyboard-help-close:active {
+  transform: translateY(1px);
+}
+
+.keyboard-help-close:focus-visible {
+  outline: 2px solid rgba(83, 224, 255, 0.55);
+  outline-offset: 2px;
 }
 
 kbd {
