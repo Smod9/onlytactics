@@ -16,4 +16,13 @@ export const KeyboardIcon = () => (
   </svg>
 )
 
+export const LightbulbIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="14" height="14">
+    <path
+      fill="currentColor"
+      d="M9 21a1 1 0 001 1h4a1 1 0 001-1v-1H9v1zm3-20a7 7 0 00-4 12.75V17a1 1 0 001 1h6a1 1 0 001-1v-3.25A7 7 0 0012 1zm2.78 11.25A1 1 0 0014 13.1V16h-4v-2.9a1 1 0 00-.78-.85A5 5 0 1114.78 12.25z"
+    />
+  </svg>
+)
+
 
