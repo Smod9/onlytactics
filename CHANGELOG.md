@@ -1,3 +1,14 @@
+## [1.26.5](https://github.com/Smod9/onlytactics/compare/v1.26.4...v1.26.5) (2025-12-22)
+
+
+### Bug Fixes
+
+* better help menu and tips ([091dfcf](https://github.com/Smod9/onlytactics/commit/091dfcfaa8c3db96cd7d35828db30e17a2e0da4f))
+* help menu ([898afb9](https://github.com/Smod9/onlytactics/commit/898afb9e36c4ad8d673aadefad56913e493b53a1))
+* improved help menu ([45c788c](https://github.com/Smod9/onlytactics/commit/45c788c09ca9c3a53225ff5d8b6f403387a04dcb))
+* tweaks help tips ([e836229](https://github.com/Smod9/onlytactics/commit/e836229868917470e6331c806efa7f13b4640cac))
+* Updates keyboard svg ([819514c](https://github.com/Smod9/onlytactics/commit/819514ca2dd93cbbb54f5fa94606f8182130d5c6))
+
 ## [1.26.4](https://github.com/Smod9/onlytactics/compare/v1.26.3...v1.26.4) (2025-12-21)
 
 
