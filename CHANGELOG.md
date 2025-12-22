@@ -1,3 +1,10 @@
+## [1.26.7](https://github.com/Smod9/onlytactics/compare/v1.26.6...v1.26.7) (2025-12-22)
+
+
+### Bug Fixes
+
+* Return focus to game after typing message ([#62](https://github.com/Smod9/onlytactics/issues/62)) ([17c9ce1](https://github.com/Smod9/onlytactics/commit/17c9ce13da987a41be28bbd853ee083881c0a49d)), closes [#60](https://github.com/Smod9/onlytactics/issues/60)
+
 ## [1.26.6](https://github.com/Smod9/onlytactics/compare/v1.26.5...v1.26.6) (2025-12-22)
 
 
