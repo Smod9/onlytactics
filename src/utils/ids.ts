@@ -7,4 +7,3 @@ export const createId = (prefix = 'id') => {
       : fallbackRandom()
   return `${prefix}-${base}`
 }
-

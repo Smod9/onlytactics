@@ -102,7 +102,10 @@ export const createBoatState = (
   }
 }
 
-export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds): RaceState => {
+export const createInitialRaceState = (
+  raceId: string,
+  countdown = appEnv.countdownSeconds,
+): RaceState => {
   const boatConfigs = appEnv.aiEnabled ? AI_BOAT_CONFIGS : []
   const boats = boatConfigs.map((config, idx) =>
     createBoatState(config.name, idx, config.id, config.aiProfileId),
@@ -160,4 +163,3 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
 }
 
 export const cloneRaceState = (state: RaceState): RaceState => structuredCopy(state)
-

@@ -12,4 +12,3 @@ export interface Controller {
   stop(): void
   updateLocalInput?(update: ControlUpdate): void
 }
-

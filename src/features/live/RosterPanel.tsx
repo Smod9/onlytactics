@@ -45,4 +45,3 @@ export const RosterPanel = ({ role }: Props) => {
     </div>
   )
 }
-

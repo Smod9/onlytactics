@@ -37,7 +37,9 @@ export const appEnv = {
   clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'host') as ClientRole,
   clientName: rawEnv.VITE_CLIENT_NAME ?? 'Debug Host',
   netTransport: (rawEnv.VITE_NET_TRANSPORT ?? 'colyseus') as 'mqtt' | 'colyseus',
-  colyseusEndpoint: normalizeWsUrl(rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint),
+  colyseusEndpoint: normalizeWsUrl(
+    rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint,
+  ),
   colyseusRoomId: rawEnv.VITE_COLYSEUS_ROOM_ID ?? 'onlytactics-dev',
   speedMultiplier: toNumber(rawEnv.VITE_SPEED_MULTIPLIER, 1),
   tickRateHz: toNumber(rawEnv.VITE_TICK_RATE, 10),
@@ -73,4 +75,3 @@ export const appEnv = {
 }
 
 export type AppEnv = typeof appEnv
-

@@ -71,24 +71,31 @@ export const LiveClient = () => {
   const [cameraMode, setCameraMode] = useState<CameraMode>('follow')
   const [followBoatId, setFollowBoatId] = useState<string | null>(null)
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null)
-  const [selectedBoatAnchor, setSelectedBoatAnchor] = useState<{ x: number; y: number } | null>(
-    null,
-  )
+  const [selectedBoatAnchor, setSelectedBoatAnchor] = useState<{
+    x: number
+    y: number
+  } | null>(null)
   const stageShellRef = useRef<HTMLDivElement>(null)
   const [showUserModal, setShowUserModal] = useState(false)
   const [userNameDraft, setUserNameDraft] = useState(identity.clientName ?? '')
   const [userRoleDraft, setUserRoleDraft] = useState<NonHostRole>('player')
   const [userSettingsError, setUserSettingsError] = useState<string | null>(null)
   const dragRafRef = useRef<number | null>(null)
-  const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(null)
+  const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(
+    null,
+  )
   const headerCtaEl =
     typeof document === 'undefined' ? null : document.getElementById('header-cta-root')
 
   const playerBoat = useMemo(() => race.boats[identity.boatId], [race.boats])
   const myLatency = telemetry[identity.boatId]
   const selectedBoat = selectedBoatId ? race.boats[selectedBoatId] : undefined
-  const selectedProtest: Protest | undefined = selectedBoatId ? race.protests?.[selectedBoatId] : undefined
-  const iAmProtestor = Boolean(selectedProtest && selectedProtest.protestorBoatId === identity.boatId)
+  const selectedProtest: Protest | undefined = selectedBoatId
+    ? race.protests?.[selectedBoatId]
+    : undefined
+  const iAmProtestor = Boolean(
+    selectedProtest && selectedProtest.protestorBoatId === identity.boatId,
+  )
 
   useEffect(() => {
     void startRosterWatcher()
@@ -206,7 +213,8 @@ export const LiveClient = () => {
 
   const roster = useRoster()
   const rosterHostName =
-    roster.hostId && roster.entries.find((entry) => entry.clientId === roster.hostId)?.name
+    roster.hostId &&
+    roster.entries.find((entry) => entry.clientId === roster.hostId)?.name
 
   const countdownLabel = formatCountdownLabel(appEnv.countdownSeconds)
   const showStartOverlay =
@@ -220,7 +228,7 @@ export const LiveClient = () => {
     hostBoat?.name ??
     rosterHostName ??
     (role === 'host'
-      ? identity.clientName ?? 'You'
+      ? (identity.clientName ?? 'You')
       : race.hostId
         ? `Host (${race.hostId.slice(0, 6)})`
         : 'Host')
@@ -258,7 +266,8 @@ export const LiveClient = () => {
     }
 
     const previousName = identity.clientName ?? ''
-    const previousNonHostRole: NonHostRole = role === 'host' ? 'player' : (role as NonHostRole)
+    const previousNonHostRole: NonHostRole =
+      role === 'host' ? 'player' : (role as NonHostRole)
     const nameChanged = trimmed !== previousName
     const roleChanged = userRoleDraft !== previousNonHostRole
 
@@ -285,74 +294,76 @@ export const LiveClient = () => {
     }
   }
 
-  const headerPortal =
-    headerCtaEl
-      ? createPortal(
-          <div className="header-controls" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ display: 'none' }}>
-              <ReplaySaveButton />
-            </div>
-            {role === 'host' && (
-              <>
-                <button
-                  type="button"
-                  className="start-sequence"
-                  onClick={() => network.setWindFieldEnabled(!race.windField?.enabled)}
-                  title="Toggle puffs/lulls (wind field)"
-                >
-                  Puffs: {race.windField?.enabled ? 'On' : 'Off'}
-                </button>
-                <button
-                  type="button"
-                  className="start-sequence"
-                  onClick={() => network.setAiEnabled(!race.aiEnabled)}
-                  style={{ display: 'none' }}
-                >
-                  {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
-                </button>
-                <button
-                  type="button"
-                  className="start-sequence"
-                  onClick={() => network.resetRace()}
-                >
-                  Restart Race
-                </button>
-              </>
-            )}
-            {(role === 'host' || role === 'god') && (
+  const headerPortal = headerCtaEl
+    ? createPortal(
+        <div
+          className="header-controls"
+          style={{ display: 'flex', gap: 10, alignItems: 'center' }}
+        >
+          <div style={{ display: 'none' }}>
+            <ReplaySaveButton />
+          </div>
+          {role === 'host' && (
+            <>
               <button
                 type="button"
                 className="start-sequence"
-                onClick={() => network.setPaused(!race.paused)}
-                title="Pause/resume race"
+                onClick={() => network.setWindFieldEnabled(!race.windField?.enabled)}
+                title="Toggle puffs/lulls (wind field)"
               >
-                {race.paused ? 'Resume Race' : 'Pause Race'}
+                Puffs: {race.windField?.enabled ? 'On' : 'Off'}
               </button>
-            )}
-
-            {/* Always keep the user menu at the far right of the header controls. */}
-            {!needsName && (
               <button
                 type="button"
-                className="header-name"
-                onClick={openUserModal}
-                title="Menu"
-                aria-label="Open menu"
-                style={{ marginLeft: 'auto' }}
+                className="start-sequence"
+                onClick={() => network.setAiEnabled(!race.aiEnabled)}
+                style={{ display: 'none' }}
               >
-                <span aria-hidden="true" style={{ opacity: 0.9 }}>
-                  👤
-                </span>
-                <span className="header-name-text">Menu</span>
-                <span aria-hidden="true" style={{ opacity: 0.75 }}>
-                  ▾
-                </span>
+                {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
               </button>
-            )}
-          </div>,
-          headerCtaEl,
-        )
-      : null
+              <button
+                type="button"
+                className="start-sequence"
+                onClick={() => network.resetRace()}
+              >
+                Restart Race
+              </button>
+            </>
+          )}
+          {(role === 'host' || role === 'god') && (
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => network.setPaused(!race.paused)}
+              title="Pause/resume race"
+            >
+              {race.paused ? 'Resume Race' : 'Pause Race'}
+            </button>
+          )}
+
+          {/* Always keep the user menu at the far right of the header controls. */}
+          {!needsName && (
+            <button
+              type="button"
+              className="header-name"
+              onClick={openUserModal}
+              title="Menu"
+              aria-label="Open menu"
+              style={{ marginLeft: 'auto' }}
+            >
+              <span aria-hidden="true" style={{ opacity: 0.9 }}>
+                👤
+              </span>
+              <span className="header-name-text">Menu</span>
+              <span aria-hidden="true" style={{ opacity: 0.75 }}>
+                ▾
+              </span>
+            </button>
+          )}
+        </div>,
+        headerCtaEl,
+      )
+    : null
 
   return (
     <div className="live-client">
@@ -424,8 +435,13 @@ export const LiveClient = () => {
               }}
             >
               <div className="event-list" style={{ gap: 8 }}>
-                <div className="event-item" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <div
+                  className="event-item"
+                  style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+                >
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}
+                  >
                     <strong style={{ fontSize: 13 }}>
                       Selected: {selectedBoat.name}
                       {selectedBoatId === identity.boatId ? ' (You)' : ''}
@@ -448,7 +464,9 @@ export const LiveClient = () => {
                   {selectedProtest ? (
                     <div style={{ opacity: 0.9, fontSize: 12 }}>
                       Protest: {selectedProtest.status}
-                      {selectedProtest.protestorBoatId === identity.boatId ? ' (filed by you)' : ''}
+                      {selectedProtest.protestorBoatId === identity.boatId
+                        ? ' (filed by you)'
+                        : ''}
                     </div>
                   ) : (
                     <div style={{ opacity: 0.75, fontSize: 12 }}>No active protest</div>
@@ -471,19 +489,21 @@ export const LiveClient = () => {
                           🚩 Protest
                         </button>
                       )}
-                    {(role === 'player' || role === 'host') && selectedBoatId && iAmProtestor && (
-                      <button
-                        type="button"
-                        className="start-sequence"
-                        onClick={() => {
-                          network.revokeProtest(selectedBoatId)
-                          setSelectedBoatId(null)
-                          setSelectedBoatAnchor(null)
-                        }}
-                      >
-                        Revoke protest
-                      </button>
-                    )}
+                    {(role === 'player' || role === 'host') &&
+                      selectedBoatId &&
+                      iAmProtestor && (
+                        <button
+                          type="button"
+                          className="start-sequence"
+                          onClick={() => {
+                            network.revokeProtest(selectedBoatId)
+                            setSelectedBoatId(null)
+                            setSelectedBoatAnchor(null)
+                          }}
+                        >
+                          Revoke protest
+                        </button>
+                      )}
                     {role === 'judge' && selectedBoatId && selectedProtest && (
                       <button
                         type="button"
@@ -498,19 +518,20 @@ export const LiveClient = () => {
                       </button>
                     )}
 
-                    {(role === 'spectator' || role === 'judge' || role === 'god') && selectedBoatId && (
-                      <button
-                        type="button"
-                        className="start-sequence"
-                        onClick={() => {
-                          setFollowBoatId(selectedBoatId)
-                          setSelectedBoatId(null)
-                          setSelectedBoatAnchor(null)
-                        }}
-                      >
-                        Follow
-                      </button>
-                    )}
+                    {(role === 'spectator' || role === 'judge' || role === 'god') &&
+                      selectedBoatId && (
+                        <button
+                          type="button"
+                          className="start-sequence"
+                          onClick={() => {
+                            setFollowBoatId(selectedBoatId)
+                            setSelectedBoatId(null)
+                            setSelectedBoatAnchor(null)
+                          }}
+                        >
+                          Follow
+                        </button>
+                      )}
                   </div>
                 </div>
               </div>
@@ -561,7 +582,10 @@ export const LiveClient = () => {
 
                   // Wind panel: mirror the same shift labeling used in the Pixi HUD.
                   const rawShift =
-                    ((race.wind.directionDeg - race.baselineWindDeg + 180) % 360 + 360) % 360 - 180
+                    ((((race.wind.directionDeg - race.baselineWindDeg + 180) % 360) +
+                      360) %
+                      360) -
+                    180
                   const shiftIsOn = Math.abs(rawShift) < 0.5
                   const shiftDir = rawShift >= 0 ? 'R' : 'L'
                   const shiftMag = Math.abs(rawShift).toFixed(1)
@@ -572,19 +596,26 @@ export const LiveClient = () => {
                       ? '#ff8f70'
                       : '#70d6ff'
                   const exaggeratedWindDir =
-                    ((race.baselineWindDeg + rawShift * 1.2) % 360 + 360) % 360
-                  const downwindDeg = ((exaggeratedWindDir + 180) % 360 + 360) % 360
-                  const windSpeedAtBoat = boat ? sampleWindSpeed(race, boat.pos) : race.wind.speed
+                    (((race.baselineWindDeg + rawShift * 1.2) % 360) + 360) % 360
+                  const downwindDeg = (((exaggeratedWindDir + 180) % 360) + 360) % 360
+                  const windSpeedAtBoat = boat
+                    ? sampleWindSpeed(race, boat.pos)
+                    : race.wind.speed
 
                   const boatSection = boat
                     ? (() => {
                         // IMPORTANT: For tack labeling we want the sign of wind relative to heading
                         // (windDir - heading). This matches `RaceScene` and avoids PORT/STBD inversion.
-                        const twaSigned = angleDiff(race.wind.directionDeg, boat.headingDeg)
+                        const twaSigned = angleDiff(
+                          race.wind.directionDeg,
+                          boat.headingDeg,
+                        )
                         const isStarboardTack = twaSigned >= 0
                         const absTwa = Math.abs(twaSigned)
                         // Boat panel: keep AWA label, but show VMG mode status instead of degrees.
-                        const boatWindValue = boat.vmgMode ? 'VMG' : `${absTwa.toFixed(0)}°`
+                        const boatWindValue = boat.vmgMode
+                          ? 'VMG'
+                          : `${absTwa.toFixed(0)}°`
                         return (
                           <div className="hud-section">
                             <div className="hud-section-side-label">Boat</div>
@@ -592,11 +623,15 @@ export const LiveClient = () => {
                               <div className="hud-grid hud-grid-boat">
                                 <div className="hud-metric hud-metric-speed">
                                   <span className="hud-label">SPD</span>
-                                  <span className="hud-value">{boat.speed.toFixed(2)} kts</span>
+                                  <span className="hud-value">
+                                    {boat.speed.toFixed(2)} kts
+                                  </span>
                                 </div>
                                 <div className="hud-metric hud-metric-heading">
                                   <span className="hud-label">HDG</span>
-                                  <span className="hud-value">{boat.headingDeg.toFixed(0)}°</span>
+                                  <span className="hud-value">
+                                    {boat.headingDeg.toFixed(0)}°
+                                  </span>
                                 </div>
                                 <div className="hud-metric hud-metric-wind">
                                   <span className="hud-label">AWA</span>
@@ -680,18 +715,18 @@ export const LiveClient = () => {
                   )
                 })()}
               </div>
-            {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
-              <div className="spin-under-hud">
-                <button
-                  type="button"
-                  className="spin-button"
-                  onClick={() => network.requestSpin()}
-                  title="Perform a 360° spin (also clears one penalty if you have any)"
-                >
-                  Spin to clear your penalty (360)
-                </button>
-              </div>
-            )}
+              {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
+                <div className="spin-under-hud">
+                  <button
+                    type="button"
+                    className="spin-button"
+                    onClick={() => network.requestSpin()}
+                    title="Perform a 360° spin (also clears one penalty if you have any)"
+                  >
+                    Spin to clear your penalty (360)
+                  </button>
+                </div>
+              )}
             </div>
             {canShowBoatInfo && wakeActive && (
               <div className="wake-overlay" aria-label="Wake slowdown">
@@ -762,7 +797,8 @@ export const LiveClient = () => {
                           boatId === race.hostBoatId
                         const internalLap = Math.min(boat.lap ?? 0, race.lapsToFinish)
                         const finished = boat.finished || internalLap >= race.lapsToFinish
-                        const atLine = boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
+                        const atLine =
+                          boat.nextMarkIndex === 1 || boat.nextMarkIndex === 2
                         const onFinalLap = internalLap >= race.lapsToFinish - 1
                         const displayLap = internalLap + 1
                         const medal =
@@ -813,14 +849,26 @@ export const LiveClient = () => {
                   .slice()
                   .reverse()
                   .slice(0, 10)
-                  .map((event, index) => (
+                  .map((event, index) =>
                     (() => {
                       const isProtestEvent = /protest/i.test(event.message)
-                      const targetBoatId = event.boats?.length ? event.boats[event.boats.length - 1] : undefined
-                      const hasActiveProtest = Boolean(targetBoatId && race.protests?.[targetBoatId])
-                      const canJumpToProtest = role === 'judge' && isProtestEvent && Boolean(targetBoatId) && hasActiveProtest
-                      const headerKind = isProtestEvent ? 'Protest' : event.kind.replaceAll('_', ' ')
-                      const showRuleSuffix = Boolean(event.ruleId && event.ruleId !== 'other')
+                      const targetBoatId = event.boats?.length
+                        ? event.boats[event.boats.length - 1]
+                        : undefined
+                      const hasActiveProtest = Boolean(
+                        targetBoatId && race.protests?.[targetBoatId],
+                      )
+                      const canJumpToProtest =
+                        role === 'judge' &&
+                        isProtestEvent &&
+                        Boolean(targetBoatId) &&
+                        hasActiveProtest
+                      const headerKind = isProtestEvent
+                        ? 'Protest'
+                        : event.kind.replaceAll('_', ' ')
+                      const showRuleSuffix = Boolean(
+                        event.ruleId && event.ruleId !== 'other',
+                      )
 
                       return (
                         <div
@@ -847,13 +895,11 @@ export const LiveClient = () => {
                             {showRuleSuffix ? ` (Rule ${event.ruleId})` : ''}
                             {canJumpToProtest ? ' — tap to review' : ''}
                           </span>
-                          <span className="event-message">
-                            {event.message}
-                          </span>
+                          <span className="event-message">{event.message}</span>
                         </div>
                       )
-                    })()
-                  ))}
+                    })(),
+                  )}
                 {!events.length && <p>No rule events yet.</p>}
               </div>
             </div>
@@ -930,7 +976,12 @@ export const LiveClient = () => {
       )}
       {showUserModal && (
         <div className="username-gate">
-          <div className="username-card user-menu-card" role="dialog" aria-modal="true" aria-label="User menu">
+          <div
+            className="username-card user-menu-card"
+            role="dialog"
+            aria-modal="true"
+            aria-label="User menu"
+          >
             <div className="user-menu-header">
               <div className="user-menu-header-top">
                 <div className="user-menu-title">
@@ -1003,7 +1054,9 @@ export const LiveClient = () => {
                 <span className="user-menu-field">
                   <select
                     value={userRoleDraft}
-                    onChange={(event) => setUserRoleDraft(event.target.value as NonHostRole)}
+                    onChange={(event) =>
+                      setUserRoleDraft(event.target.value as NonHostRole)
+                    }
                     aria-label="Select role"
                     className="user-menu-select"
                   >
@@ -1044,5 +1097,3 @@ export const LiveClient = () => {
     </div>
   )
 }
-
-

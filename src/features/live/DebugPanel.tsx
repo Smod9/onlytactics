@@ -24,10 +24,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
   const localWindSpeed = myBoat ? sampleWindSpeed(race, myBoat.pos) : race.wind.speed
 
   const boats = useMemo(
-    () =>
-      Object.values(race.boats).sort((a, b) =>
-        a.name.localeCompare(b.name),
-      ),
+    () => Object.values(race.boats).sort((a, b) => a.name.localeCompare(b.name)),
     [race.boats],
   )
   const isHost = race.hostId === identity.clientId
@@ -75,7 +72,10 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         </div>
         {boats.map((boat) => {
           const awa = apparentWindAngleSigned(boat.headingDeg, race.wind.directionDeg)
-          const headingError = angleDiff(boat.desiredHeadingDeg ?? boat.headingDeg, boat.headingDeg)
+          const headingError = angleDiff(
+            boat.desiredHeadingDeg ?? boat.headingDeg,
+            boat.headingDeg,
+          )
           return (
             <div
               key={boat.id}
@@ -84,7 +84,8 @@ export const DebugPanel = ({ onClose, network }: Props) => {
               <span>{boat.name}</span>
               <span>{formatAngle(boat.headingDeg)}</span>
               <span>
-                {formatAngle(boat.desiredHeadingDeg ?? boat.headingDeg)} ({headingError.toFixed(1)}°)
+                {formatAngle(boat.desiredHeadingDeg ?? boat.headingDeg)} (
+                {headingError.toFixed(1)}°)
               </span>
               <span>{formatAngle(awa)}</span>
               <span>{formatSpeed(boat.speed)}</span>
@@ -127,10 +128,16 @@ export const DebugPanel = ({ onClose, network }: Props) => {
               <span>{boat.name}</span>
               <span>{(boat.lap ?? 0) + 1}</span>
               <span className="debug-actions">
-                <button type="button" onClick={() => network.debugJumpBoatToNextMark(boat.id)}>
+                <button
+                  type="button"
+                  onClick={() => network.debugJumpBoatToNextMark(boat.id)}
+                >
                   Jump
                 </button>
-                <button type="button" onClick={() => network.debugAdvanceBoatLap(boat.id)}>
+                <button
+                  type="button"
+                  onClick={() => network.debugAdvanceBoatLap(boat.id)}
+                >
                   + Lap
                 </button>
                 <button type="button" onClick={() => network.debugFinishBoat(boat.id)}>
@@ -144,4 +151,3 @@ export const DebugPanel = ({ onClose, network }: Props) => {
     </div>
   )
 }
-

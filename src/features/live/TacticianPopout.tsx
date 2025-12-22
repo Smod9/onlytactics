@@ -69,7 +69,9 @@ export const TacticianPopout = () => {
   }, [open])
 
   return (
-    <div className={`tactician-popout${open ? ' open' : ''}${showNudge && !open ? ' nudge' : ''}`}>
+    <div
+      className={`tactician-popout${open ? ' open' : ''}${showNudge && !open ? ' nudge' : ''}`}
+    >
       <button
         type="button"
         className="tactician-toggle"
@@ -99,10 +101,17 @@ export const TacticianPopout = () => {
             aria-label="Keyboard help"
             onMouseDown={() => close()}
           >
-            <div className="keyboard-help-card" onMouseDown={(event) => event.stopPropagation()}>
+            <div
+              className="keyboard-help-card"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
               <div className="keyboard-help-header">
                 <div className="keyboard-help-title">Help</div>
-                <div className="keyboard-help-tabs" role="tablist" aria-label="Help sections">
+                <div
+                  className="keyboard-help-tabs"
+                  role="tablist"
+                  aria-label="Help sections"
+                >
                   <button
                     type="button"
                     className={`keyboard-help-tab${section === 'keyboard' ? ' active' : ''}`}
@@ -141,8 +150,14 @@ export const TacticianPopout = () => {
               </div>
               <div className="keyboard-help-body">
                 {section === 'keyboard' && (
-                  <div className="keyboard-help-section" role="tabpanel" aria-label="Keyboard layout">
-                    <p className="keyboard-help-lead">Keyboard layout (click outside to close).</p>
+                  <div
+                    className="keyboard-help-section"
+                    role="tabpanel"
+                    aria-label="Keyboard layout"
+                  >
+                    <p className="keyboard-help-lead">
+                      Keyboard layout (click outside to close).
+                    </p>
                     <div className="keyboard-help-layout">
                       <img
                         className="keyboard-help-image"
@@ -154,7 +169,11 @@ export const TacticianPopout = () => {
                   </div>
                 )}
                 {section === 'tips' && (
-                  <div className="keyboard-help-section" role="tabpanel" aria-label="Tips">
+                  <div
+                    className="keyboard-help-section"
+                    role="tabpanel"
+                    aria-label="Tips"
+                  >
                     <p className="keyboard-help-lead">Quick tips:</p>
                     <ul className="keyboard-help-tips">
                       {HELP_TIPS.map((tip) => (
@@ -171,4 +190,3 @@ export const TacticianPopout = () => {
     </div>
   )
 }
-

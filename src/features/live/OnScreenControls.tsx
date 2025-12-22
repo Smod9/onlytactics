@@ -97,13 +97,23 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     }
   }, [open])
 
-  const handleKeyButtonWithModifiers = (button: ControlButton, modifiers?: KeyModifiers) => {
+  const handleKeyButtonWithModifiers = (
+    button: ControlButton,
+    modifiers?: KeyModifiers,
+  ) => {
     const isArrow = button.code === 'ArrowUp' || button.code === 'ArrowDown'
-    const wantsHardTurn = isArrow && (hardTurnHeld || Boolean(modifiers?.shiftKey) || Boolean(modifiers?.altKey))
+    const wantsHardTurn =
+      isArrow &&
+      (hardTurnHeld || Boolean(modifiers?.shiftKey) || Boolean(modifiers?.altKey))
     dispatchKey(
       button.code,
       button.key,
-      wantsHardTurn ? { shiftKey: Boolean(modifiers?.shiftKey) || hardTurnHeld, altKey: Boolean(modifiers?.altKey) } : modifiers,
+      wantsHardTurn
+        ? {
+            shiftKey: Boolean(modifiers?.shiftKey) || hardTurnHeld,
+            altKey: Boolean(modifiers?.altKey),
+          }
+        : modifiers,
     )
   }
 
@@ -152,7 +162,13 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       classes: 'wide',
       onClick: (modifiers) =>
         handleKeyButtonWithModifiers(
-          { label: 'Enter VMG', subLabel: 'Space', code: 'Space', key: ' ', classes: 'wide' },
+          {
+            label: 'Enter VMG',
+            subLabel: 'Space',
+            code: 'Space',
+            key: ' ',
+            classes: 'wide',
+          },
           modifiers,
         ),
     },
@@ -166,7 +182,13 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       classes: 'wide',
       onClick: (modifiers) =>
         handleKeyButtonWithModifiers(
-          { label: 'Clear Penalty', subLabel: 'P', code: 'KeyP', key: 'p', classes: 'wide' },
+          {
+            label: 'Clear Penalty',
+            subLabel: 'P',
+            code: 'KeyP',
+            key: 'p',
+            classes: 'wide',
+          },
           modifiers,
         ),
     },
@@ -209,7 +231,13 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       classes: 'wide',
       onClick: (modifiers) =>
         handleKeyButtonWithModifiers(
-          { label: 'Tack/Gybe', subLabel: 'Enter', code: 'Enter', key: 'Enter', classes: 'wide' },
+          {
+            label: 'Tack/Gybe',
+            subLabel: 'Enter',
+            code: 'Enter',
+            key: 'Enter',
+            classes: 'wide',
+          },
           modifiers,
         ),
     },
@@ -235,7 +263,10 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     },
   ]
 
-  const handlePointerDown = (button: TouchButton, event: React.PointerEvent<HTMLButtonElement>) => {
+  const handlePointerDown = (
+    button: TouchButton,
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
     markPressed(button.id)
     if (event.pointerType === 'touch') {
       event.preventDefault()
@@ -261,7 +292,11 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     button.onPointerLeave?.()
   }
 
-  const handleClick = (button: TouchButton, modifiers: KeyModifiers, timeStamp: number) => {
+  const handleClick = (
+    button: TouchButton,
+    modifiers: KeyModifiers,
+    timeStamp: number,
+  ) => {
     if (shouldIgnoreClick(button.id, timeStamp)) return
     // If the platform doesn't reliably fire :active, provide a short "pressed" flash.
     markPressed(button.id)
@@ -269,7 +304,11 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     button.onClick?.(modifiers)
   }
 
-  const renderCluster = (buttons: TouchButton[], side: 'left' | 'right', extra?: boolean) => (
+  const renderCluster = (
+    buttons: TouchButton[],
+    side: 'left' | 'right',
+    extra?: boolean,
+  ) => (
     <div className={`on-screen-cluster ${side}${extra ? ' extras' : ''}`}>
       {buttons.map((button) => (
         <button
@@ -279,7 +318,11 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
             pressedId === button.id ? ' pressed' : ''
           }`}
           onClick={(event) =>
-            handleClick(button, { shiftKey: event.shiftKey, altKey: event.altKey }, event.timeStamp)
+            handleClick(
+              button,
+              { shiftKey: event.shiftKey, altKey: event.altKey },
+              event.timeStamp,
+            )
           }
           onPointerDown={(event) => handlePointerDown(button, event)}
           onPointerUp={() => handlePointerUp(button)}
@@ -289,7 +332,9 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
           title={button.title}
         >
           <span className="on-screen-label">{button.label}</span>
-          {button.subLabel && <span className="on-screen-sublabel">{button.subLabel}</span>}
+          {button.subLabel && (
+            <span className="on-screen-sublabel">{button.subLabel}</span>
+          )}
         </button>
       ))}
     </div>
@@ -315,5 +360,3 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     </div>
   )
 }
-
-

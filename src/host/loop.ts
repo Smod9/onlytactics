@@ -256,14 +256,14 @@ export class HostLoop {
       events.push(...gateEvents)
       return events
     }
-    
+
     // Handle FINISH line specially
     if (currentLeg.kind === 'finish' && currentLeg.finishLineIndices) {
       const finishEvents = this.advanceFinishLeg(boat, state, currentLeg)
       events.push(...finishEvents)
       return events
     }
-    
+
     // For non-gate legs, use single mark logic
     const targetIndex = currentLeg.markIndices[0]
     const targetMark = marks[targetIndex]
@@ -272,7 +272,7 @@ export class HostLoop {
     boat.nextMarkIndex = targetIndex
     const distance = distanceBetween(boat.pos, targetMark)
     boat.distanceToNextMark = distance
-    
+
     if (appEnv.debugHud && progress.stage === 0 && distance < 100) {
       lapDebug('active_leg', {
         boatId: boat.id,
@@ -287,9 +287,14 @@ export class HostLoop {
       progress.stage = 0
       return events
     }
-    
+
     // Track rounding using radials
-    const { completed, debugEvent } = this.trackRadialCrossings(boat, progress, targetMark, currentLeg)
+    const { completed, debugEvent } = this.trackRadialCrossings(
+      boat,
+      progress,
+      targetMark,
+      currentLeg,
+    )
     if (debugEvent) {
       events.push(debugEvent)
     }
@@ -314,7 +319,7 @@ export class HostLoop {
     const [committeeIdx, pinIdx] = leg.finishLineIndices!
     const committeeMark = marks[committeeIdx] ?? state.startLine.committee
     const pinMark = marks[pinIdx] ?? state.startLine.pin
-    
+
     const committee = committeeMark ?? state.startLine.committee
     const pin = pinMark ?? state.startLine.pin
 
@@ -334,23 +339,23 @@ export class HostLoop {
 
     // Check if boat crossed the start line (from pre-start side TO course side)
     const crossed = this.checkStartLineCrossing(boat, state, committee, pin)
-    
+
     if (crossed) {
       lapDebug('boat_started', {
         boatId: boat.id,
         startTime: state.t.toFixed(2),
       })
-      
+
       // Advance to next sequence (windward mark)
       progress.legIndex += 1
       progress.stage = 0
-      
+
       // Update next mark to windward
       const nextLeg = courseLegs[progress.legIndex % courseLegs.length]
       boat.nextMarkIndex = nextLeg.markIndices[0]
       const nextMark = state.marks[boat.nextMarkIndex]
       boat.distanceToNextMark = nextMark ? distanceBetween(boat.pos, nextMark) : 0
-      
+
       events.push({
         eventId: createId('start'),
         kind: 'rule_hint',
@@ -374,37 +379,37 @@ export class HostLoop {
     pin: { x: number; y: number },
   ): boolean {
     const prevPos = boat.prevPos ?? boat.pos
-    
+
     // Line vector from committee to pin
     const lineVec = { x: pin.x - committee.x, y: pin.y - committee.y }
-    
+
     // Determine course side based on wind direction
     const windRad = (state.baselineWindDeg * Math.PI) / 180
     const windVec = { x: Math.sin(windRad), y: -Math.cos(windRad) }
     const cross = lineVec.x * windVec.y - lineVec.y * windVec.x
     const courseSideSign = cross >= 0 ? 1 : -1
-    
+
     // Calculate position relative to committee
     const prevRel = { x: prevPos.x - committee.x, y: prevPos.y - committee.y }
     const currRel = { x: boat.pos.x - committee.x, y: boat.pos.y - committee.y }
-    
+
     // Cross product to determine which side of line
     const prevCross = lineVec.x * prevRel.y - lineVec.y * prevRel.x
     const currCross = lineVec.x * currRel.y - lineVec.y * currRel.x
-    
+
     const prevOnCourseSide = prevCross * courseSideSign > 0
     const currOnCourseSide = currCross * courseSideSign > 0
-    
+
     // Crossed if we went from pre-start side TO course side
     const crossedLine = !prevOnCourseSide && currOnCourseSide
-    
+
     // Also check that we're between the marks
     const lineLen = Math.sqrt(lineVec.x * lineVec.x + lineVec.y * lineVec.y)
     if (lineLen === 0) return false
-    
+
     const t = (currRel.x * lineVec.x + currRel.y * lineVec.y) / (lineLen * lineLen)
     const betweenMarks = t >= -0.1 && t <= 1.1
-    
+
     return crossedLine && betweenMarks
   }
 
@@ -422,7 +427,7 @@ export class HostLoop {
     const [committeeIdx, pinIdx] = leg.finishLineIndices!
     const committeeMark = marks[committeeIdx] ?? state.startLine.committee
     const pinMark = marks[pinIdx] ?? state.startLine.pin
-    
+
     // Use start line marks as fallback
     const committee = committeeMark ?? state.startLine.committee
     const pin = pinMark ?? state.startLine.pin
@@ -438,18 +443,18 @@ export class HostLoop {
 
     // Check if boat crossed the finish line
     const crossed = this.checkFinishLineCrossing(boat, state, committee, pin)
-    
+
     if (crossed) {
       boat.finished = true
       boat.finishTime = state.t
       boat.distanceToNextMark = 0
-      
+
       lapDebug('boat_finished', {
         boatId: boat.id,
         finishTime: state.t.toFixed(2),
         lap: boat.lap,
       })
-      
+
       events.push({
         eventId: createId('finish'),
         kind: 'finish',
@@ -472,38 +477,38 @@ export class HostLoop {
     pin: { x: number; y: number },
   ): boolean {
     const prevPos = boat.prevPos ?? boat.pos
-    
+
     // Line vector from committee to pin
     const lineVec = { x: pin.x - committee.x, y: pin.y - committee.y }
-    
+
     // Check which side of the line we need to cross FROM
     // (based on wind direction - we want to cross from the course side)
     const windRad = (state.baselineWindDeg * Math.PI) / 180
     const windVec = { x: Math.sin(windRad), y: -Math.cos(windRad) }
     const cross = lineVec.x * windVec.y - lineVec.y * windVec.x
     const courseSideSign = cross >= 0 ? 1 : -1
-    
+
     // Calculate position relative to committee
     const prevRel = { x: prevPos.x - committee.x, y: prevPos.y - committee.y }
     const currRel = { x: boat.pos.x - committee.x, y: boat.pos.y - committee.y }
-    
+
     // Cross product to determine which side of line
     const prevCross = lineVec.x * prevRel.y - lineVec.y * prevRel.x
     const currCross = lineVec.x * currRel.y - lineVec.y * currRel.x
-    
+
     const prevOnCourseSide = prevCross * courseSideSign > 0
     const currOnCourseSide = currCross * courseSideSign > 0
-    
+
     // Crossed if we went from course side to non-course side
     const crossedLine = prevOnCourseSide && !currOnCourseSide
-    
+
     // Also check that we're between the marks (using projection)
     const lineLen = Math.sqrt(lineVec.x * lineVec.x + lineVec.y * lineVec.y)
     if (lineLen === 0) return false
-    
+
     const t = (currRel.x * lineVec.x + currRel.y * lineVec.y) / (lineLen * lineLen)
     const betweenMarks = t >= -0.1 && t <= 1.1 // Small margin
-    
+
     return crossedLine && betweenMarks
   }
 
@@ -532,13 +537,13 @@ export class HostLoop {
       y: (leftMark.y + rightMark.y) / 2,
     }
     const distanceToGate = distanceBetween(boat.pos, gateMidpoint)
-    
+
     // Set display target to closest gate mark
     const distToLeft = distanceBetween(boat.pos, leftMark)
     const distToRight = distanceBetween(boat.pos, rightMark)
     boat.nextMarkIndex = distToLeft < distToRight ? leftIdx : rightIdx
     boat.distanceToNextMark = Math.min(distToLeft, distToRight)
-    
+
     // Debug: log gate entry state when close
     if (appEnv.debugHud && distanceToGate < 150) {
       lapDebug('gate_approach', {
@@ -569,7 +574,7 @@ export class HostLoop {
       // Ensure gate-specific progress is clean when starting fresh
       progress.gateSide = undefined
       progress.activeMarkIndex = undefined
-      
+
       const crossed = this.checkGateLineCrossing(boat, leftMark, rightMark)
       if (crossed) {
         // Determine which side they went: left of midpoint = left mark, right = right mark
@@ -577,7 +582,7 @@ export class HostLoop {
         progress.gateSide = side
         progress.activeMarkIndex = side === 'left' ? leftIdx : rightIdx
         progress.stage = 1
-        
+
         lapDebug('gate_line_crossed', {
           boatId: boat.id,
           side,
@@ -595,8 +600,16 @@ export class HostLoop {
       const leftSouth = gateRadials.left[0] // { axis:'y', direction:1 }
       const rightSouth = gateRadials.right[0]
 
-      const { crossed: crossedLeft, debugInfo: dbgLeft } = this.checkRadialCrossing(boat, leftMark, leftSouth)
-      const { crossed: crossedRight, debugInfo: dbgRight } = this.checkRadialCrossing(boat, rightMark, rightSouth)
+      const { crossed: crossedLeft, debugInfo: dbgLeft } = this.checkRadialCrossing(
+        boat,
+        leftMark,
+        leftSouth,
+      )
+      const { crossed: crossedRight, debugInfo: dbgRight } = this.checkRadialCrossing(
+        boat,
+        rightMark,
+        rightSouth,
+      )
 
       if (appEnv.debugHud) {
         lapDebug('gate_commit_check', {
@@ -635,7 +648,7 @@ export class HostLoop {
     const radials = gateRadials[progress.gateSide].slice(1)
     const radialStage = progress.stage - 2 // 0-based within remaining radials
     const step = radials[radialStage]
-    
+
     if (!step) {
       // All stages complete!
       progress.stage = 0
@@ -647,7 +660,7 @@ export class HostLoop {
 
     // Check radial crossing for this stage
     const { crossed, debugInfo } = this.checkRadialCrossing(boat, chosenMark, step)
-    
+
     if (appEnv.debugHud) {
       lapDebug('gate_radial_state', {
         boatId: boat.id,
@@ -689,21 +702,23 @@ export class HostLoop {
     rightMark: { x: number; y: number },
   ): boolean {
     const prevPos = boat.prevPos ?? boat.pos
-    
+
     // Gate line Y is average of the two marks (they might be at slightly different Y)
     const gateLineY = (leftMark.y + rightMark.y) / 2
     const minX = Math.min(leftMark.x, rightMark.x)
     const maxX = Math.max(leftMark.x, rightMark.x)
-    
+
     // Check if boat crossed the gate line Y threshold while between the marks
     const prevY = prevPos.y
     const currY = boat.pos.y
-    const crossedY = (prevY < gateLineY && currY >= gateLineY) || (prevY > gateLineY && currY <= gateLineY)
-    
+    const crossedY =
+      (prevY < gateLineY && currY >= gateLineY) ||
+      (prevY > gateLineY && currY <= gateLineY)
+
     // Must be between the gate marks (with some margin)
     const margin = 20 // Allow some tolerance
     const inGateX = boat.pos.x >= minX - margin && boat.pos.x <= maxX + margin
-    
+
     return crossedY && inGateX
   }
 
@@ -716,32 +731,35 @@ export class HostLoop {
     step: { axis: 'x' | 'y'; direction: 1 | -1 },
   ): { crossed: boolean; debugInfo: Record<string, string> } {
     const prevPos = boat.prevPos ?? boat.pos
-    
+
     // The radial extends along step.axis in step.direction from the mark
     // To cross it, check the perpendicular axis
     const perpAxis = step.axis === 'x' ? 'y' : 'x'
     const perpThreshold = perpAxis === 'x' ? mark.x : mark.y
     const sectorAxis = step.axis
     const sectorThreshold = sectorAxis === 'x' ? mark.x : mark.y
-    
+
     const prevPerpValue = prevPos[perpAxis]
     const currPerpValue = boat.pos[perpAxis]
     const currSectorValue = boat.pos[sectorAxis]
     const prevSectorValue = prevPos[sectorAxis]
-    
+
     // Check sector (must be on the correct side of the mark for this radial)
-    const currInSector = step.direction === 1
-      ? currSectorValue >= sectorThreshold
-      : currSectorValue <= sectorThreshold
-    const prevInSector = step.direction === 1
-      ? prevSectorValue >= sectorThreshold
-      : prevSectorValue <= sectorThreshold
+    const currInSector =
+      step.direction === 1
+        ? currSectorValue >= sectorThreshold
+        : currSectorValue <= sectorThreshold
+    const prevInSector =
+      step.direction === 1
+        ? prevSectorValue >= sectorThreshold
+        : prevSectorValue <= sectorThreshold
     const inSector = currInSector || prevInSector
-    
+
     // Check if crossed perpendicular threshold
-    const crossedPerp = (prevPerpValue < perpThreshold && currPerpValue >= perpThreshold) ||
-                        (prevPerpValue > perpThreshold && currPerpValue <= perpThreshold)
-    
+    const crossedPerp =
+      (prevPerpValue < perpThreshold && currPerpValue >= perpThreshold) ||
+      (prevPerpValue > perpThreshold && currPerpValue <= perpThreshold)
+
     return {
       crossed: inSector && crossedPerp,
       debugInfo: {
@@ -769,7 +787,7 @@ export class HostLoop {
     const legCount = courseLegs.length
     const completedSequence = completedLeg.sequence
     const completedMarkIndices = new Set(completedLeg.markIndices)
-    
+
     // Increment lap after completing the gate (kind='gate')
     if (completedLeg.kind === 'gate') {
       boat.lap += 1
@@ -780,26 +798,27 @@ export class HostLoop {
         return
       }
     }
-    
+
     // After completing windward-return, check if this is the final lap
     // If NOT final lap, skip finish and go back to gate
     const isFinalLap = boat.lap >= lapTarget - 1
-    const completedWindwardReturn = completedLeg.kind === 'windward' && completedLeg.id === 'windward-return'
-    
+    const completedWindwardReturn =
+      completedLeg.kind === 'windward' && completedLeg.id === 'windward-return'
+
     if (completedWindwardReturn && !isFinalLap) {
       // Go directly to gate (seq 2), skipping finish
-      const gateLeg = courseLegs.find(leg => leg.kind === 'gate')
+      const gateLeg = courseLegs.find((leg) => leg.kind === 'gate')
       if (gateLeg) {
         progress.legIndex = courseLegs.indexOf(gateLeg)
         // Reset gate progress for the new gate rounding
         progress.stage = 0
         progress.gateSide = undefined
         progress.activeMarkIndex = undefined
-        
+
         boat.nextMarkIndex = gateLeg.markIndices[0]
         const nextMark = state.marks[boat.nextMarkIndex]
         boat.distanceToNextMark = nextMark ? distanceBetween(boat.pos, nextMark) : 0
-        
+
         lapDebug('advanced_to_gate_for_next_lap', {
           boatId: boat.id,
           lap: boat.lap,
@@ -808,7 +827,7 @@ export class HostLoop {
         return
       }
     }
-    
+
     // Advance past all legs with the completed sequence
     let safety = 0
     do {
@@ -822,16 +841,18 @@ export class HostLoop {
     // Since we're already AT the windward mark, skip seq 1 and go to seq 2 (gate)
     const nextLeg = courseLegs[progress.legIndex % legCount]
     const nextMarkIndices = new Set(nextLeg.markIndices)
-    const sameMarkAsBefore = [...completedMarkIndices].some(idx => nextMarkIndices.has(idx))
-    
+    const sameMarkAsBefore = [...completedMarkIndices].some((idx) =>
+      nextMarkIndices.has(idx),
+    )
+
     if (sameMarkAsBefore) {
       lapDebug('skip_same_mark_sequence', {
         boatId: boat.id,
         completedSequence,
         nextSequence: nextLeg.sequence,
-        sharedMarks: [...completedMarkIndices].filter(idx => nextMarkIndices.has(idx)),
+        sharedMarks: [...completedMarkIndices].filter((idx) => nextMarkIndices.has(idx)),
       })
-      
+
       // Skip to the sequence after this one
       const skipSequence = nextLeg.sequence
       do {
@@ -843,19 +864,19 @@ export class HostLoop {
 
     // Update boat's next mark
     const finalNextLeg = courseLegs[progress.legIndex % legCount]
-    
+
     // If entering gate, reset gate-specific progress
     if (finalNextLeg.kind === 'gate') {
       progress.stage = 0
       progress.gateSide = undefined
       progress.activeMarkIndex = undefined
     }
-    
+
     const nextMarkIndex = finalNextLeg.markIndices[0]
     boat.nextMarkIndex = nextMarkIndex
     const nextMark = state.marks[nextMarkIndex]
     boat.distanceToNextMark = nextMark ? distanceBetween(boat.pos, nextMark) : 0
-    
+
     lapDebug('advanced_to_sequence', {
       boatId: boat.id,
       newLegIndex: progress.legIndex,
@@ -894,43 +915,46 @@ export class HostLoop {
     }
 
     const prevPos = boat.prevPos ?? boat.pos
-    
+
     // The visual radial extends along `step.axis` in `step.direction`.
     // To cross that visual ray, we check the PERPENDICULAR axis threshold,
     // but only when we're in the sector where the ray exists.
     //
-    // For axis='x', direction=1 (ray extends east): 
+    // For axis='x', direction=1 (ray extends east):
     //   - Ray is at y=mark.y, extending from mark.x to +infinity
     //   - Crossing means: x >= mark.x (in sector) AND path crosses y=mark.y
     //
     // For axis='y', direction=-1 (ray extends north):
-    //   - Ray is at x=mark.x, extending from mark.y to -infinity  
+    //   - Ray is at x=mark.x, extending from mark.y to -infinity
     //   - Crossing means: y <= mark.y (in sector) AND path crosses x=mark.x
-    
+
     const perpAxis = step.axis === 'x' ? 'y' : 'x'
     const perpThreshold = perpAxis === 'x' ? mark.x : mark.y
     const sectorAxis = step.axis
     const sectorThreshold = sectorAxis === 'x' ? mark.x : mark.y
-    
+
     const prevPerpValue = prevPos[perpAxis]
     const currPerpValue = boat.pos[perpAxis]
     const prevSectorValue = prevPos[sectorAxis]
     const currSectorValue = boat.pos[sectorAxis]
-    
+
     // Check if we're in the sector where this ray exists (or were in it during the crossing)
-    const currInSector = step.direction === 1
-      ? currSectorValue >= sectorThreshold
-      : currSectorValue <= sectorThreshold
-    const prevInSector = step.direction === 1
-      ? prevSectorValue >= sectorThreshold
-      : prevSectorValue <= sectorThreshold
+    const currInSector =
+      step.direction === 1
+        ? currSectorValue >= sectorThreshold
+        : currSectorValue <= sectorThreshold
+    const prevInSector =
+      step.direction === 1
+        ? prevSectorValue >= sectorThreshold
+        : prevSectorValue <= sectorThreshold
     const inSector = currInSector || prevInSector
-    
+
     // Check if we crossed the perpendicular threshold (in either direction)
     // The sector check ensures this is a valid crossing of the visual ray
-    const crossedPerp = (prevPerpValue < perpThreshold && currPerpValue >= perpThreshold) ||
-                        (prevPerpValue > perpThreshold && currPerpValue <= perpThreshold)
-    
+    const crossedPerp =
+      (prevPerpValue < perpThreshold && currPerpValue >= perpThreshold) ||
+      (prevPerpValue > perpThreshold && currPerpValue <= perpThreshold)
+
     const crossed = inSector && crossedPerp
 
     let finished = false
@@ -1171,4 +1195,3 @@ export class HostLoop {
     this.pendingSpinClears.clear()
   }
 }
-

@@ -82,9 +82,7 @@ export const ReplayClient = () => {
 
   const nextEventTime = useMemo(() => {
     if (!recording) return null
-    const future = recording.frames.find(
-      (frame) => frame.t > time && frame.events.length,
-    )
+    const future = recording.frames.find((frame) => frame.t > time && frame.events.length)
     return future?.t ?? null
   }, [recording, time])
 
@@ -110,7 +108,9 @@ export const ReplayClient = () => {
               type="button"
               key={entry.raceId}
               className={entry.raceId === selected ? 'active' : ''}
-              onClick={() => { void handleSelect(entry.raceId) }}
+              onClick={() => {
+                void handleSelect(entry.raceId)
+              }}
             >
               <span>{entry.courseName}</span>
               <small>{new Date(entry.savedAt).toLocaleString()}</small>
@@ -153,20 +153,27 @@ export const ReplayClient = () => {
               }}
               disabled={!recording}
             />
-            <span>{time.toFixed(1)}s / {duration.toFixed(1)}s</span>
+            <span>
+              {time.toFixed(1)}s / {duration.toFixed(1)}s
+            </span>
           </div>
           <div className="replay-chat">
             <h3>Chat</h3>
             <div className="replay-chat-log">
               {visibleChat.map((message) => (
-                <div key={message.messageId} className={`chat-message chat-${message.senderRole}`}>
+                <div
+                  key={message.messageId}
+                  className={`chat-message chat-${message.senderRole}`}
+                >
                   <span className="chat-author">
                     {message.senderName} ({message.senderRole})
                   </span>
                   <span className="chat-text">{message.text}</span>
                 </div>
               ))}
-              {!visibleChat.length && <p className="chat-empty">No messages in this window.</p>}
+              {!visibleChat.length && (
+                <p className="chat-empty">No messages in this window.</p>
+              )}
             </div>
           </div>
         </div>
@@ -175,4 +182,3 @@ export const ReplayClient = () => {
     </div>
   )
 }
-

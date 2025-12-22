@@ -12,7 +12,5 @@ if (isGameRoute) {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    {isGameRoute ? <App /> : <LandingPage />}
-  </StrictMode>,
+  <StrictMode>{isGameRoute ? <App /> : <LandingPage />}</StrictMode>,
 )

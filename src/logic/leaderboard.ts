@@ -27,11 +27,13 @@ export const compareBoats = (a: BoatState, b: BoatState) => {
     return (b.nextMarkIndex ?? 0) - (a.nextMarkIndex ?? 0)
   }
 
-  return (a.distanceToNextMark ?? Number.POSITIVE_INFINITY) - (b.distanceToNextMark ?? Number.POSITIVE_INFINITY)
+  return (
+    (a.distanceToNextMark ?? Number.POSITIVE_INFINITY) -
+    (b.distanceToNextMark ?? Number.POSITIVE_INFINITY)
+  )
 }
 
 export const assignLeaderboard = (state: RaceState) => {
   const boats = Object.values(state.boats).sort(compareBoats)
   state.leaderboard = boats.map((boat) => boat.id)
 }
-

@@ -1,6 +1,12 @@
 import { Client, type Room } from 'colyseus.js'
 import { raceStore } from '@/state/raceStore'
-import type { ChatMessage, PlayerInput, RaceEvent, RaceRole, RaceState } from '@/types/race'
+import type {
+  ChatMessage,
+  PlayerInput,
+  RaceEvent,
+  RaceRole,
+  RaceState,
+} from '@/types/race'
 import { identity, setBoatId } from '@/net/identity'
 import { appEnv } from '@/config/env'
 import { cloneRaceState } from '@/state/factories'
@@ -36,7 +42,10 @@ export class ColyseusBridge {
 
   private endpoint: string
 
-  constructor(endpoint: string, private roomId: string) {
+  constructor(
+    endpoint: string,
+    private roomId: string,
+  ) {
     this.endpoint = endpoint
     this.client = new Client(endpoint)
   }
@@ -118,7 +127,10 @@ export class ColyseusBridge {
     this.room.send('chat', { text })
   }
 
-  sendProtestCommand(command: { kind: 'file' | 'revoke' | 'judge_clear'; targetBoatId: string }) {
+  sendProtestCommand(command: {
+    kind: 'file' | 'revoke' | 'judge_clear'
+    targetBoatId: string
+  }) {
     if (!this.room) return
     this.room.send('protest_command', command)
   }
@@ -169,4 +181,3 @@ export class ColyseusBridge {
     })
   }
 }
-

@@ -59,7 +59,8 @@ export class GameNetwork {
   constructor() {
     // Allow simple role selection via URL, e.g. `/app?role=judge` or `/app?role=spectator`.
     // If no URL override, fall back to a persisted preference.
-    this.desiredRoleOverride = this.readRoleOverrideFromUrl() ?? this.readRoleOverrideFromStorage()
+    this.desiredRoleOverride =
+      this.readRoleOverrideFromUrl() ?? this.readRoleOverrideFromStorage()
   }
 
   /**
@@ -71,12 +72,11 @@ export class GameNetwork {
       return
     }
     // MQTT transport doesn't support judge semantics; treat judge as spectator.
-    const normalized: NonHostRole =
-      this.useColyseus()
-        ? next
-        : next === 'judge' || next === 'god'
-          ? 'spectator'
-          : next
+    const normalized: NonHostRole = this.useColyseus()
+      ? next
+      : next === 'judge' || next === 'god'
+        ? 'spectator'
+        : next
 
     // Persist preference. We store only spectator/judge; player is the default (clear).
     if (typeof window !== 'undefined') {
@@ -303,14 +303,17 @@ export class GameNetwork {
 
       cleanup.push(() => window.clearTimeout(timeout))
 
-      const unsubscribeHost = mqttClient.subscribe<HostAnnouncement>(hostTopic, (payload) => {
-        if (resolved) return
-        if (!payload?.clientId) return
-        const status = presenceStatus.get(payload.clientId)
-        if (status && status === 'online') {
-          finish(payload.clientId === identity.clientId ? 'host' : 'player')
-        }
-      })
+      const unsubscribeHost = mqttClient.subscribe<HostAnnouncement>(
+        hostTopic,
+        (payload) => {
+          if (resolved) return
+          if (!payload?.clientId) return
+          const status = presenceStatus.get(payload.clientId)
+          if (status && status === 'online') {
+            finish(payload.clientId === identity.clientId ? 'host' : 'player')
+          }
+        },
+      )
       cleanup.push(unsubscribeHost)
 
       const unsubscribePresence = mqttClient.subscribe<{
@@ -423,7 +426,10 @@ export class GameNetwork {
   setWindFieldEnabled(enabled: boolean) {
     if (this.useColyseus()) {
       netLog('send host command', { kind: 'wind_field', enabled })
-      this.colyseusBridge?.sendHostCommand({ kind: 'wind_field', enabled: Boolean(enabled) })
+      this.colyseusBridge?.sendHostCommand({
+        kind: 'wind_field',
+        enabled: Boolean(enabled),
+      })
       return
     }
     netLog('setWindFieldEnabled() not supported for MQTT mode')
@@ -533,7 +539,10 @@ export class GameNetwork {
 
   private async startColyseus() {
     if (!this.colyseusBridge) {
-      this.colyseusBridge = new ColyseusBridge(appEnv.colyseusEndpoint, appEnv.colyseusRoomId)
+      this.colyseusBridge = new ColyseusBridge(
+        appEnv.colyseusEndpoint,
+        appEnv.colyseusRoomId,
+      )
       this.colyseusBridge.onStatusChange((status) => {
         netLog('colyseus status', { status })
         if (status === 'connected') {
@@ -566,7 +575,9 @@ export class GameNetwork {
     this.colyseusRoleUnsub?.()
     this.colyseusRoleUnsub = raceStore.subscribe(() => this.syncColyseusRole())
     this.colyseusChatUnsub?.()
-    this.colyseusChatUnsub = this.colyseusBridge.onChatMessage((message) => this.emitChat(message))
+    this.colyseusChatUnsub = this.colyseusBridge.onChatMessage((message) =>
+      this.emitChat(message),
+    )
     this.syncColyseusRole()
     this.setStatus('ready')
   }
@@ -628,7 +639,9 @@ export class GameNetwork {
 
   private readRoleOverrideFromStorage(): Exclude<RaceRole, 'host'> | undefined {
     if (typeof window === 'undefined') return undefined
-    const raw = (window.sessionStorage.getItem(ROLE_PREFERENCE_KEY) ?? '').trim().toLowerCase()
+    const raw = (window.sessionStorage.getItem(ROLE_PREFERENCE_KEY) ?? '')
+      .trim()
+      .toLowerCase()
     if (raw === 'judge') return 'judge'
     if (raw === 'spectator') return 'spectator'
     if (raw === 'god' && appEnv.debugHud) return 'god'
@@ -637,4 +650,3 @@ export class GameNetwork {
 }
 
 type NetworkStatus = 'idle' | 'connecting' | 'looking_for_host' | 'joining' | 'ready'
-

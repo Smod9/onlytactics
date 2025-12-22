@@ -21,22 +21,22 @@ type RaceStep = {
  */
 const buildRaceSteps = (lapsToFinish: number): RaceStep[] => {
   const steps: RaceStep[] = []
-  
+
   // Start
   steps.push({ id: 'start', label: 'Start', kind: 'start', lap: 0 })
-  
+
   // First windward
   steps.push({ id: 'w-0', label: 'W', kind: 'windward', lap: 0 })
-  
+
   // For each lap (except the last), add L then W
   for (let lap = 0; lap < lapsToFinish - 1; lap++) {
     steps.push({ id: `l-${lap}`, label: 'L', kind: 'gate', lap })
     steps.push({ id: `w-${lap + 1}`, label: 'W', kind: 'windward', lap: lap + 1 })
   }
-  
+
   // Finish
   steps.push({ id: 'finish', label: 'Finish', kind: 'finish', lap: lapsToFinish - 1 })
-  
+
   return steps
 }
 
@@ -90,7 +90,7 @@ const getCurrentStepIndex = (
 export const ProgressStepper = ({ boat }: Props) => {
   const race = useRaceState()
   const lapsToFinish = race.lapsToFinish || 1
-  
+
   const steps = useMemo(() => buildRaceSteps(lapsToFinish), [lapsToFinish])
   const currentStepIndex = getCurrentStepIndex(boat, steps, race)
 
@@ -102,7 +102,8 @@ export const ProgressStepper = ({ boat }: Props) => {
     return 'pending'
   }
 
-  const shouldShowLabel = (step: RaceStep) => step.kind === 'start' || step.kind === 'finish'
+  const shouldShowLabel = (step: RaceStep) =>
+    step.kind === 'start' || step.kind === 'finish'
 
   return (
     <div className="progress-stepper">
@@ -124,4 +125,3 @@ export const ProgressStepper = ({ boat }: Props) => {
     </div>
   )
 }
-

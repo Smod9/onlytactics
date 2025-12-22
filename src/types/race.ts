@@ -63,7 +63,7 @@ export type BoatState = {
   finishTime?: number
   distanceToNextMark?: number
   penalties: number
-  protestPenalties: number  /** Portion of `penalties` that came specifically from an on-water protest. */
+  protestPenalties: number /** Portion of `penalties` that came specifically from an on-water protest. */
   stallTimer: number
   tackTimer: number
   overEarly: boolean
@@ -177,4 +177,3 @@ export type Protest = {
   createdAtT: number
   status: ProtestStatus
 }
-

@@ -166,10 +166,7 @@ export const useTacticianControls = (
           const hardModifier = event.shiftKey || event.altKey
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.max(absAwa - step, 0)
-          const heading = headingFromAwa(
-            state.wind.directionDeg,
-            tackSign * desiredAbs,
-          )
+          const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
           sendHeading(heading)
           break
         }
@@ -178,10 +175,7 @@ export const useTacticianControls = (
           const hardModifier = event.shiftKey || event.altKey
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
-          const heading = headingFromAwa(
-            state.wind.directionDeg,
-            tackSign * desiredAbs,
-          )
+          const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
           sendHeading(heading)
           break
         }
@@ -224,4 +218,3 @@ export const useTacticianControls = (
     raceStore.recordInputLatency(boat.id, boat.lastInputSeq, latencyMs)
   }, [raceState])
 }
-

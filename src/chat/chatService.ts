@@ -10,7 +10,10 @@ import type { GameNetwork } from '@/net/gameNetwork'
 class RateLimiter {
   private timestamps: number[] = []
 
-  constructor(private limit: number, private windowMs: number) {}
+  constructor(
+    private limit: number,
+    private windowMs: number,
+  ) {}
 
   canSend() {
     const now = Date.now()
@@ -88,4 +91,3 @@ export class ChatService {
 }
 
 export const chatService = new ChatService()
-

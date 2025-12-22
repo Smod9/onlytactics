@@ -11,4 +11,3 @@ export const persistReplay = async () => {
   await saveRecording(recording)
   return { ok: true as const, raceId: recording.meta.raceId }
 }
-

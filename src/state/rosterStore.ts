@@ -116,4 +116,3 @@ const injectAiEntries = () => {
 
 export const useRoster = () =>
   useSyncExternalStore(rosterStore.subscribe, rosterStore.getSnapshot)
-

@@ -17,7 +17,7 @@ const wrap = (value: number, period: number) => wrap01(value / period) * period
 const shortestWrappedDelta = (value: number, center: number, period: number) => {
   // Returns delta in [-period/2, period/2]
   let d = value - center
-  d = ((d + period / 2) % period + period) % period - period / 2
+  d = ((((d + period / 2) % period) + period) % period) - period / 2
   return d
 }
 
@@ -160,5 +160,3 @@ export const sampleWindSpeed = (state: RaceState, pos: Vec2): number => {
   const speed = state.wind.speed + sampleWindDeltaKts(state, pos)
   return Math.max(0, speed)
 }
-
-

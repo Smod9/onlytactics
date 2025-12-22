@@ -1,7 +1,11 @@
 import { HostLoop } from '@/host/loop'
 import { AiManager } from '@/ai/manager'
 import { appEnv } from '@/config/env'
-import { AI_BOAT_CONFIGS, createBoatState, createInitialRaceState } from '@/state/factories'
+import {
+  AI_BOAT_CONFIGS,
+  createBoatState,
+  createInitialRaceState,
+} from '@/state/factories'
 import {
   inputsTopic,
   inputsWildcard,
@@ -300,11 +304,14 @@ export class HostController extends BaseController {
 
     const state = this.store.getState()
     const boat = state.boats[input.boatId]
-    const baseHeading = boat ? boat.desiredHeadingDeg ?? boat.headingDeg : undefined
+    const baseHeading = boat ? (boat.desiredHeadingDeg ?? boat.headingDeg) : undefined
     let desired: number | undefined
     if (typeof input.absoluteHeadingDeg === 'number') {
       desired = quantizeHeading(input.absoluteHeadingDeg)
-    } else if (typeof input.deltaHeadingDeg === 'number' && typeof baseHeading === 'number') {
+    } else if (
+      typeof input.deltaHeadingDeg === 'number' &&
+      typeof baseHeading === 'number'
+    ) {
       desired = quantizeHeading(baseHeading + input.deltaHeadingDeg)
     } else if (typeof input.desiredHeadingDeg === 'number') {
       desired = quantizeHeading(input.desiredHeadingDeg)
@@ -349,11 +356,7 @@ export class HostController extends BaseController {
       }
     })
     const origin = boat.desiredHeadingDeg ?? boat.headingDeg
-    const headings = [
-      origin + 120,
-      origin + 240,
-      origin,
-    ].map((deg) => normalizeDeg(deg))
+    const headings = [origin + 120, origin + 240, origin].map((deg) => normalizeDeg(deg))
     let delay = 0
     const timers: number[] = headings.map((heading, index) => {
       const timer = window.setTimeout(() => {
@@ -502,4 +505,3 @@ export class HostController extends BaseController {
     }
   }
 }
-
