@@ -14,7 +14,7 @@ export const HELP_TIPS: HelpTip[] = [
   },
   {
     id: 'slow-mode',
-    text: '🐢 Repeatedly smashing the up arrow (\'↑\' key) will keep you slow (~10% of TWS). This is great for parking at the start.',
+    text: '🐢 Repeatedly hitting the up arrow (\'↑\' key) will keep you slow (roughly 10% of TWS). This is great for parking at the start, and a single tap can help \'shoot the moon\' around the windward mark.',
   },
   {
     id: 'follow-boat',
@@ -22,7 +22,7 @@ export const HELP_TIPS: HelpTip[] = [
   },
   {
     id: 'birdseye',
-    text: '🔍 Zoom back out (\'z\' key) to make sure you can see what everyone else is doing and what the wind is doing.',
+    text: '🔍 Zoom back out (\'z\' key) to make sure you can see what everyone else (and the wind) is doing.',
   },
   {
     id: 'touch-controls',
