@@ -1,3 +1,10 @@
+## [1.26.8](https://github.com/Smod9/onlytactics/compare/v1.26.7...v1.26.8) (2025-12-23)
+
+
+### Bug Fixes
+
+* decreases refresh rate to 100ms or 20hz ([#67](https://github.com/Smod9/onlytactics/issues/67)) ([9173623](https://github.com/Smod9/onlytactics/commit/9173623ab170ca47309d45ba28503c51a66d406a))
+
 ## [1.26.7](https://github.com/Smod9/onlytactics/compare/v1.26.6...v1.26.7) (2025-12-22)
 
 
