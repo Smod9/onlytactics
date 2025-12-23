@@ -10,9 +10,7 @@ export class SubscriberController extends BaseController {
 
   protected onStart() {
     this.track(
-      this.mqtt.subscribe<RaceState>(stateTopic, (snapshot) =>
-        this.onState(snapshot),
-      ),
+      this.mqtt.subscribe<RaceState>(stateTopic, (snapshot) => this.onState(snapshot)),
     )
 
     this.track(
@@ -26,4 +24,3 @@ export class SubscriberController extends BaseController {
     this.store.setState(snapshot)
   }
 }
-

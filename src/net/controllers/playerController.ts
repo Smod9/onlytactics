@@ -1,10 +1,6 @@
 import { appEnv } from '@/config/env'
 import { identity } from '@/net/identity'
-import {
-  hostTopic,
-  inputsTopic,
-  presenceWildcard,
-} from '@/net/topics'
+import { hostTopic, inputsTopic, presenceWildcard } from '@/net/topics'
 import { SubscriberController } from './subscriberController'
 import type { PlayerInput, RaceRole, RaceState } from '@/types/race'
 import type { ControlUpdate } from './types'
@@ -112,7 +108,9 @@ export class PlayerController extends SubscriberController {
 
     console.debug('[inputs] sent', {
       ...payload,
-      headingText: formatHeadingLabel(payload.desiredHeadingDeg ?? payload.absoluteHeadingDeg),
+      headingText: formatHeadingLabel(
+        payload.desiredHeadingDeg ?? payload.absoluteHeadingDeg,
+      ),
     })
     this.mqtt.publish(inputsTopic(identity.boatId), payload, { qos: 0 })
     this.currentInput = {
@@ -196,4 +194,3 @@ export class PlayerController extends SubscriberController {
     return false
   }
 }
-

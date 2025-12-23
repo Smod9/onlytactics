@@ -15,7 +15,11 @@ const buildChecklist = () => {
     if (existing) {
       existing.labels = Array.from(new Set([...existing.labels, leg.label]))
     } else {
-      map.set(leg.sequence, { sequence: leg.sequence, labels: [leg.label], kind: leg.kind })
+      map.set(leg.sequence, {
+        sequence: leg.sequence,
+        labels: [leg.label],
+        kind: leg.kind,
+      })
     }
   })
   return Array.from(map.values()).sort((a, b) => a.sequence - b.sequence)
@@ -27,7 +31,9 @@ type Props = {
 
 export const MarkChecklist = ({ boat }: Props) => {
   const entries = useMemo(() => buildChecklist(), [])
-  const currentLeg = courseLegs.find((leg) => leg.markIndices.includes(boat?.nextMarkIndex ?? -1))
+  const currentLeg = courseLegs.find((leg) =>
+    leg.markIndices.includes(boat?.nextMarkIndex ?? -1),
+  )
   const currentSequence = currentLeg?.sequence ?? entries[0]?.sequence
 
   const statusForSequence = (sequence: number) => {
@@ -56,7 +62,9 @@ export const MarkChecklist = ({ boat }: Props) => {
           return (
             <li key={entry.sequence} className={`checklist-item status-${status}`}>
               <span className="marker-label">{describeLabels(entry.labels)}</span>
-              <span className="marker-status">{status === 'done' ? 'Done' : status === 'active' ? 'Now' : 'Next'}</span>
+              <span className="marker-status">
+                {status === 'done' ? 'Done' : status === 'active' ? 'Now' : 'Next'}
+              </span>
             </li>
           )
         })}
@@ -64,4 +72,3 @@ export const MarkChecklist = ({ boat }: Props) => {
     </div>
   )
 }
-

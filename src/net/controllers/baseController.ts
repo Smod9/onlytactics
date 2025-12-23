@@ -32,4 +32,3 @@ export abstract class BaseController implements Controller {
     this.disposers.push(disposer)
   }
 }
-

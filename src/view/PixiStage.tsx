@@ -11,7 +11,13 @@ type Props = {
   onDragBoat?: (boatId: string, worldPos: { x: number; y: number }) => void
 }
 
-export const PixiStage = ({ cameraMode, followBoatId, onPickBoat, godDragEnabled, onDragBoat }: Props) => {
+export const PixiStage = ({
+  cameraMode,
+  followBoatId,
+  onPickBoat,
+  godDragEnabled,
+  onDragBoat,
+}: Props) => {
   const mountRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
   const sceneRef = useRef<RaceScene | null>(null)
@@ -85,7 +91,11 @@ export const PixiStage = ({ cameraMode, followBoatId, onPickBoat, godDragEnabled
         const { xCanvas, yCanvas, rect } = eventToCanvasPoint(event)
 
         const picked =
-          sceneRef.current?.pickBoatAtCanvasPoint(xCanvas, yCanvas, raceStateRef.current) ?? null
+          sceneRef.current?.pickBoatAtCanvasPoint(
+            xCanvas,
+            yCanvas,
+            raceStateRef.current,
+          ) ?? null
 
         if (!picked) {
           callback?.(null)
@@ -123,7 +133,8 @@ export const PixiStage = ({ cameraMode, followBoatId, onPickBoat, godDragEnabled
         if (!onDrag) return
         const { xCanvas, yCanvas } = eventToCanvasPoint(event)
         const world =
-          sceneRef.current?.canvasPointToWorld(xCanvas, yCanvas, raceStateRef.current) ?? null
+          sceneRef.current?.canvasPointToWorld(xCanvas, yCanvas, raceStateRef.current) ??
+          null
         if (!world) return
         onDrag(boatId, world)
       }
@@ -182,4 +193,3 @@ export const PixiStage = ({ cameraMode, followBoatId, onPickBoat, godDragEnabled
 
   return <div className="pixi-stage" ref={mountRef} />
 }
-

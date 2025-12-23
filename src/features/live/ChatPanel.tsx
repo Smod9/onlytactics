@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { ChangeEvent as ReactChangeEvent, KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type {
+  ChangeEvent as ReactChangeEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import { chatService } from '@/chat/chatService'
 import { useChatLog } from '@/state/hooks'
 import type { GameNetwork } from '@/net/gameNetwork'
@@ -103,12 +106,15 @@ export const ChatPanel = ({ network }: Props) => {
     }
   }
 
-  const handleEnterKey = useCallback((event: ReactKeyboardEvent<HTMLInputElement | HTMLButtonElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      void sendMessage()
-    }
-  }, [sendMessage])
+  const handleEnterKey = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement | HTMLButtonElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        void sendMessage()
+      }
+    },
+    [sendMessage],
+  )
 
   const handleInputChange = useCallback((event: ReactChangeEvent<HTMLInputElement>) => {
     setDraft(event.target.value)
@@ -143,11 +149,7 @@ export const ChatPanel = ({ network }: Props) => {
           onChange={handleInputChange}
           onKeyDown={handleEnterKey}
         />
-        <button
-          type="button"
-          onClick={sendMessage}
-          onKeyDown={handleEnterKey}
-        >
+        <button type="button" onClick={sendMessage} onKeyDown={handleEnterKey}>
           Send
         </button>
       </div>

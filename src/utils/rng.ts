@@ -19,4 +19,3 @@ export const seedFromString = (input: string) => {
   }
   return hash >>> 0
 }
-

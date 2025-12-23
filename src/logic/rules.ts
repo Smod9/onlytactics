@@ -86,10 +86,7 @@ export class RulesEngine {
       for (let j = i + 1; j < boats.length; j += 1) {
         const a = boats[i]
         const b = boats[j]
-        const pairs = [
-          ...this.checkRule10(state, a, b),
-          ...this.checkRule11(state, a, b),
-        ]
+        const pairs = [...this.checkRule10(state, a, b), ...this.checkRule11(state, a, b)]
         if (pairs.length && state.t < 0) {
           console.debug('[rules] prestart violation', {
             phase,
@@ -116,11 +113,7 @@ export class RulesEngine {
     }))
   }
 
-  private checkRule10(
-    state: RaceState,
-    a: BoatState,
-    b: BoatState,
-  ): RuleResolution[] {
+  private checkRule10(state: RaceState, a: BoatState, b: BoatState): RuleResolution[] {
     if (!boatsTooClose(a, b)) return []
 
     const tackA = getTack(a, state.wind.directionDeg)
@@ -140,11 +133,7 @@ export class RulesEngine {
     })
   }
 
-  private checkRule11(
-    state: RaceState,
-    a: BoatState,
-    b: BoatState,
-  ): RuleResolution[] {
+  private checkRule11(state: RaceState, a: BoatState, b: BoatState): RuleResolution[] {
     if (!boatsTooClose(a, b)) return []
     const tackA = getTack(a, state.wind.directionDeg)
     const tackB = getTack(b, state.wind.directionDeg)
@@ -155,7 +144,8 @@ export class RulesEngine {
       x: Math.cos(perpAngle),
       y: Math.sin(perpAngle),
     }
-    const project = (boat: BoatState) => boat.pos.x * lineNormal.x + boat.pos.y * lineNormal.y
+    const project = (boat: BoatState) =>
+      boat.pos.x * lineNormal.x + boat.pos.y * lineNormal.y
 
     const aScore = project(a)
     const bScore = project(b)
@@ -195,4 +185,3 @@ export class RulesEngine {
 }
 
 type RaceResolution = RuleResolution
-

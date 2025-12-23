@@ -59,10 +59,16 @@ export const courseLegs: CourseLeg[] = [
   },
 ]
 
-const sequenceByMark = new Map<number, { rounding: 'port' | 'starboard'; sequences: number[] }>()
+const sequenceByMark = new Map<
+  number,
+  { rounding: 'port' | 'starboard'; sequences: number[] }
+>()
 courseLegs.forEach((leg) => {
   leg.markIndices.forEach((markIndex) => {
-    const entry = sequenceByMark.get(markIndex) ?? { rounding: leg.rounding, sequences: [] }
+    const entry = sequenceByMark.get(markIndex) ?? {
+      rounding: leg.rounding,
+      sequences: [],
+    }
     entry.sequences.push(leg.sequence)
     sequenceByMark.set(markIndex, entry)
   })
@@ -75,21 +81,24 @@ export type CourseMarkAnnotation = {
   kind?: CourseLeg['kind']
 }
 
-export const courseMarkAnnotations: CourseMarkAnnotation[] = Array.from(sequenceByMark.entries()).map(
-  ([markIndex, { rounding, sequences }]) => {
-    const matchingLeg = courseLegs.find(
-      (leg) => leg.rounding === rounding && leg.markIndices.includes(markIndex),
-    )
-    return {
-      markIndex,
-      rounding,
-      sequences: sequences.sort((a, b) => a - b),
-      kind: matchingLeg?.kind,
-    }
-  },
-)
+export const courseMarkAnnotations: CourseMarkAnnotation[] = Array.from(
+  sequenceByMark.entries(),
+).map(([markIndex, { rounding, sequences }]) => {
+  const matchingLeg = courseLegs.find(
+    (leg) => leg.rounding === rounding && leg.markIndices.includes(markIndex),
+  )
+  return {
+    markIndex,
+    rounding,
+    sequences: sequences.sort((a, b) => a - b),
+    kind: matchingLeg?.kind,
+  }
+})
 
-export const radialSets: Record<'windward' | 'leeward', Record<'port' | 'starboard', RadialStep[]>> = {
+export const radialSets: Record<
+  'windward' | 'leeward',
+  Record<'port' | 'starboard', RadialStep[]>
+> = {
   windward: {
     port: [
       { axis: 'x', direction: 1 }, // 3 o'clock
@@ -133,4 +142,3 @@ export const gateRadials: Record<'left' | 'right', RadialStep[]> = {
     { axis: 'x', direction: 1 }, // Cross east radial (exiting to east/north)
   ],
 }
-

@@ -30,4 +30,3 @@ export const placeBoatNearNextMark = (boat: BoatState, state: RaceState) => {
 
   return true
 }
-

@@ -16,7 +16,12 @@ import {
   WAKE_MAX_SLOWDOWN,
 } from '@/logic/constants'
 import { raceStore } from '@/state/raceStore'
-import { courseLegs, courseMarkAnnotations, radialSets, gateRadials } from '@/config/course'
+import {
+  courseLegs,
+  courseMarkAnnotations,
+  radialSets,
+  gateRadials,
+} from '@/config/course'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
@@ -92,16 +97,7 @@ class BoatView {
 
     this.hull.clear()
     this.hull.fill({ color: this.color })
-    const hullPoints = [
-      0,
-      -20,
-      10,
-      10,
-      0,
-      16,
-      -10,
-      10,
-    ]
+    const hullPoints = [0, -20, 10, 10, 0, 16, -10, 10]
     this.hull.poly(hullPoints)
     this.hull.fill()
     this.hull.setStrokeStyle({ width: 2, color: 0x00c389 })
@@ -132,13 +128,14 @@ class BoatView {
 
     // Smooth leech curve: control point halfway up, curved inwards
     this.sail.quadraticCurveTo(
-      leewardSign * 32, 4,   // control point
-      leewardSign * 10, 0    // head of the sail, slightly forward
+      leewardSign * 32,
+      4, // control point
+      leewardSign * 10,
+      0, // head of the sail, slightly forward
     )
 
     this.sail.closePath()
     this.sail.fill()
-
   }
 
   update(boat: BoatState, isPlayer = false) {
@@ -368,7 +365,12 @@ export class RaceScene {
       if (p.y > maxY) maxY = p.y
     }
 
-    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+    if (
+      !Number.isFinite(minX) ||
+      !Number.isFinite(minY) ||
+      !Number.isFinite(maxX) ||
+      !Number.isFinite(maxY)
+    ) {
       return { minX: -1, minY: -1, maxX: 1, maxY: 1 }
     }
 
@@ -438,7 +440,11 @@ export class RaceScene {
   /**
    * Convert a canvas pixel coordinate (canvas internal pixel space) to world coordinates.
    */
-  canvasPointToWorld(xPx: number, yPx: number, state: RaceState): { x: number; y: number } {
+  canvasPointToWorld(
+    xPx: number,
+    yPx: number,
+    state: RaceState,
+  ): { x: number; y: number } {
     const { scale, centerWorld } = this.getCameraTransform(state)
     const { width, height } = this.app.canvas
     return {
@@ -465,7 +471,10 @@ export class RaceScene {
     const { width, height } = this.app.canvas
     const { scale, centerWorld } = this.getCameraTransform(state)
     this.worldLayer.scale.set(scale)
-    this.worldLayer.position.set(width / 2 - centerWorld.x * scale, height / 2 - centerWorld.y * scale)
+    this.worldLayer.position.set(
+      width / 2 - centerWorld.x * scale,
+      height / 2 - centerWorld.y * scale,
+    )
   }
 
   private getVisibleWorldBounds(state: RaceState) {
@@ -722,8 +731,9 @@ export class RaceScene {
           const dx = target.pos.x - source.pos.x
           const dy = target.pos.y - source.pos.y
           const distSq = dx * dx + dy * dy
-          if (distSq === 0 || distSq > (WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2) ** 2) return
-          
+          if (distSq === 0 || distSq > (WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2) ** 2)
+            return
+
           const dist = Math.sqrt(distSq)
           const relUnitX = dx / dist
           const relUnitY = dy / dist
@@ -739,7 +749,7 @@ export class RaceScene {
     // This lets you see where the wake effect would be, even when empty
     Object.values(state.boats).forEach((boat) => {
       const isAffectingOthers = boatsAffectingOthers.has(boat.id)
-      
+
       // Always show in debug mode, or show when actually affecting others
       if (!appEnv.debugHud && !isAffectingOthers) return
 
@@ -804,7 +814,7 @@ export class RaceScene {
 
   private drawMarkRadials(state: RaceState) {
     const radialLength = 70
-    
+
     // Track which marks are part of gates so we draw them differently
     const gateMarkIndices = new Set<number>()
     courseLegs.forEach((leg) => {
@@ -812,25 +822,26 @@ export class RaceScene {
         leg.gateMarkIndices.forEach((idx) => gateMarkIndices.add(idx))
       }
     })
-    
+
     // Draw gate lines and radials for gate marks
     courseLegs.forEach((leg) => {
       if (leg.kind === 'gate' && leg.gateMarkIndices) {
         this.drawGateRadials(state, leg.gateMarkIndices, radialLength)
       }
     })
-    
+
     // Draw regular radials for non-gate marks
     courseMarkAnnotations.forEach((annotation) => {
       // Skip gate marks - they're handled above
       if (gateMarkIndices.has(annotation.markIndex)) return
-      
+
       const mark = state.marks[annotation.markIndex]
       if (!mark) return
       const x = mark.x
       const y = mark.y
       const color = annotation.rounding === 'port' ? 0xff6b6b : 0x00ffc3
-      const kind: 'windward' | 'leeward' = annotation.kind === 'leeward' ? 'leeward' : 'windward'
+      const kind: 'windward' | 'leeward' =
+        annotation.kind === 'leeward' ? 'leeward' : 'windward'
       const steps = radialSets[kind][annotation.rounding]
       steps.forEach((step, idx) => {
         const dx = step.axis === 'x' ? step.direction : 0
@@ -852,7 +863,7 @@ export class RaceScene {
       })
     })
   }
-  
+
   private drawGateRadials(
     state: RaceState,
     gateMarkIndices: [number, number],
@@ -862,14 +873,14 @@ export class RaceScene {
     const leftMark = state.marks[leftIdx]
     const rightMark = state.marks[rightIdx]
     if (!leftMark || !rightMark) return
-    
+
     const leftScreen = leftMark
     const rightScreen = rightMark
-    
+
     // Draw the gate line (stage 1) - dashed yellow line between the two marks
     const gateLine = new Graphics()
     gateLine.setStrokeStyle({ width: 3, color: 0xffe066, alpha: 0.8 })
-    
+
     // Draw dashed line
     const segments = 8
     const dx = (rightScreen.x - leftScreen.x) / segments
@@ -879,18 +890,23 @@ export class RaceScene {
       gateLine.lineTo(leftScreen.x + dx * (i + 1), leftScreen.y + dy * (i + 1))
     }
     gateLine.stroke()
-    
+
     // Draw "1" label at midpoint of gate line
     const midX = (leftScreen.x + rightScreen.x) / 2
     const midY = (leftScreen.y + rightScreen.y) / 2
     const gateLabel = new Text({
       text: '1',
-      style: { fill: 0xffe066, fontSize: 13, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 'bold' },
+      style: {
+        fill: 0xffe066,
+        fontSize: 13,
+        fontFamily: 'IBM Plex Mono, monospace',
+        fontWeight: 'bold',
+      },
     })
     gateLabel.anchor.set(0.5)
     gateLabel.position.set(midX, midY - 12)
     this.overlayLayer.addChild(gateLine, gateLabel)
-    
+
     // Draw radials for left gate mark (stages 2, 3)
     const leftSteps = gateRadials.left
     leftSteps.forEach((step, idx) => {
@@ -911,7 +927,7 @@ export class RaceScene {
       tag.position.set(endX, endY)
       this.overlayLayer.addChild(line, tag)
     })
-    
+
     // Draw radials for right gate mark (stages 2, 3)
     const rightSteps = gateRadials.right
     rightSteps.forEach((step, idx) => {
@@ -959,25 +975,27 @@ export class RaceScene {
 
       const x = mark.x
       const y = mark.y
-    const label = new Text({
-      text: textLabel,
-      style: {
-        fill: '#ffffff',
-        fontSize: 12,
-        fontFamily: 'IBM Plex Mono, monospace',
-        fontWeight: 'bold',
-      },
-    })
-    label.anchor.set(0.5)
-    label.position.set(x, y - 20)
-    this.overlayLayer.addChild(label)
+      const label = new Text({
+        text: textLabel,
+        style: {
+          fill: '#ffffff',
+          fontSize: 12,
+          fontFamily: 'IBM Plex Mono, monospace',
+          fontWeight: 'bold',
+        },
+      })
+      label.anchor.set(0.5)
+      label.position.set(x, y - 20)
+      this.overlayLayer.addChild(label)
     })
   }
 
   private drawNextMarkHighlight(state: RaceState) {
     const boat = state.boats[identity.boatId]
     if (!boat) return
-    const currentLeg = courseLegs.find((entry) => entry.markIndices.includes(boat.nextMarkIndex ?? -1))
+    const currentLeg = courseLegs.find((entry) =>
+      entry.markIndices.includes(boat.nextMarkIndex ?? -1),
+    )
     const marksToHighlight =
       currentLeg && currentLeg.sequence
         ? courseLegs
@@ -999,14 +1017,16 @@ export class RaceScene {
 
   private drawCrossingMarkers(state: RaceState) {
     if (!appEnv.debugHud) return
-    
+
     // Find the most recent completed rounding (stage = stagesTotal) per boat
     // to filter out old markers
     const completedRoundings = new Map<string, number>() // boatId -> event time
     const allLapEvents = raceStore
       .getRecentEvents()
-      .filter((event) => event.kind === 'rule_hint' && event.message.startsWith('[lap-debug]'))
-    
+      .filter(
+        (event) => event.kind === 'rule_hint' && event.message.startsWith('[lap-debug]'),
+      )
+
     allLapEvents.forEach((event) => {
       // Check if this is a completed rounding (stage equals total)
       const stageMatch = event.message.match(/stage=(\d+)\/(\d+)/)
@@ -1022,7 +1042,7 @@ export class RaceScene {
         }
       }
     })
-    
+
     // Only show events that occurred after the last completed rounding for each boat
     const lapEvents = allLapEvents
       .filter((event) => {
@@ -1033,7 +1053,7 @@ export class RaceScene {
         return completedAt === undefined || event.t > completedAt
       })
       .slice(-6)
-    
+
     lapEvents.forEach((event) => {
       event.boats?.forEach((boatId) => {
         const boat = state.boats[boatId]
@@ -1045,7 +1065,12 @@ export class RaceScene {
         marker.stroke()
         const label = new Text({
           text: event.message.replace('[lap-debug]', '').trim(),
-          style: { fill: '#00ffc3', fontSize: 12, fontFamily: 'IBM Plex Mono, monospace', align: 'left' },
+          style: {
+            fill: '#00ffc3',
+            fontSize: 12,
+            fontFamily: 'IBM Plex Mono, monospace',
+            align: 'left',
+          },
         })
         label.anchor.set(0, 0.5)
         label.position.set(pos.x + 18, pos.y)
@@ -1079,12 +1104,12 @@ export class RaceScene {
     // Boat shape: pointed bow, wider stern
     const s = 0.75
     const hull = [
-      { x: 0 * s, y: -16 * s },      // Bow point
-      { x: 8 * s, y: -8 * s },       // Bow starboard
-      { x: 20 * s, y: 14 * s },      // Stern starboard
-      { x: 0 * s, y: 18 * s },       // Stern center
-      { x: -20 * s, y: 14 * s },     // Stern port
-      { x: -8 * s, y: -8 * s },      // Bow port
+      { x: 0 * s, y: -16 * s }, // Bow point
+      { x: 8 * s, y: -8 * s }, // Bow starboard
+      { x: 20 * s, y: 14 * s }, // Stern starboard
+      { x: 0 * s, y: 18 * s }, // Stern center
+      { x: -20 * s, y: 14 * s }, // Stern port
+      { x: -8 * s, y: -8 * s }, // Bow port
     ].map(({ x, y }) => ({
       x: committee.x + x * cos - y * sin,
       y: committee.y + x * sin + y * cos,
@@ -1092,12 +1117,18 @@ export class RaceScene {
 
     this.courseLayer.fill({ color: 0x5cc8ff, alpha: 0.95 })
     this.courseLayer.poly([
-      hull[0].x, hull[0].y,
-      hull[1].x, hull[1].y,
-      hull[2].x, hull[2].y,
-      hull[3].x, hull[3].y,
-      hull[4].x, hull[4].y,
-      hull[5].x, hull[5].y,
+      hull[0].x,
+      hull[0].y,
+      hull[1].x,
+      hull[1].y,
+      hull[2].x,
+      hull[2].y,
+      hull[3].x,
+      hull[3].y,
+      hull[4].x,
+      hull[4].y,
+      hull[5].x,
+      hull[5].y,
     ])
     this.courseLayer.fill()
     // Add a mast
@@ -1173,7 +1204,11 @@ export class RaceScene {
     this.drawDirectionArrow(mid, direction, color)
   }
 
-  private drawDirectionArrow(center: { x: number; y: number }, direction: 1 | -1, color: number) {
+  private drawDirectionArrow(
+    center: { x: number; y: number },
+    direction: 1 | -1,
+    color: number,
+  ) {
     const length = 28
     const tip = { x: center.x, y: center.y + direction * length }
     const tail = { x: center.x, y: center.y - direction * length }
@@ -1234,7 +1269,11 @@ export class RaceScene {
     this.timerText.text = ''
     const shift = state.wind.directionDeg - state.baselineWindDeg
     const shiftText =
-      Math.abs(shift) < 0.5 ? '0' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
+      Math.abs(shift) < 0.5
+        ? '0'
+        : shift > 0
+          ? `${shift.toFixed(1)}° R`
+          : `${shift.toFixed(1)}° L`
     // Keep string generation only in debug mode (windText is hidden in normal HUD).
     this.windText.text = appEnv.debugHud
       ? `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts | cam=${this.cameraMode} x${this.worldLayer.scale.x.toFixed(2)}`
@@ -1258,14 +1297,7 @@ export class RaceScene {
 
       this.windArrowFill.clear()
       this.windArrowFill.fill({ color: shiftColor })
-      this.windArrowFill.poly([
-        tipX,
-        tipY,
-        tipX + 8,
-        tipY - 12,
-        tipX - 8,
-        tipY - 12,
-      ])
+      this.windArrowFill.poly([tipX, tipY, tipX + 8, tipY - 12, tipX - 8, tipY - 12])
       this.windArrowFill.fill()
     }
 
@@ -1295,7 +1327,9 @@ export class RaceScene {
     const overlayWidthRaw = Math.min(stageWidth - 32, 640)
     // Make the countdown overlay ~25% less wide while keeping it centered.
     // Clamp so we never exceed the available width on very small screens.
-    const overlayWidth = Math.round(Math.min(overlayWidthRaw, Math.max(220, overlayWidthRaw * 0.75)))
+    const overlayWidth = Math.round(
+      Math.min(overlayWidthRaw, Math.max(220, overlayWidthRaw * 0.75)),
+    )
     const overlayHeight = Math.min(stageHeight * 0.25, 140)
     const overlayX = (stageWidth - overlayWidth) / 2
     const overlayY = Math.max(16, stageHeight * 0.08)
@@ -1315,7 +1349,13 @@ export class RaceScene {
     this.countdownFill.clear()
     if (percent > 0) {
       this.countdownFill.fill({ color: fillColor, alpha: 0.95 })
-      this.countdownFill.roundRect(barX, barY, barWidth * percent, barHeight, barHeight / 2)
+      this.countdownFill.roundRect(
+        barX,
+        barY,
+        barWidth * percent,
+        barHeight,
+        barHeight / 2,
+      )
       this.countdownFill.fill()
     }
     this.countdownFill.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.2 })
@@ -1328,4 +1368,3 @@ export class RaceScene {
     this.countdownTime.text = timeText
   }
 }
-

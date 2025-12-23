@@ -169,10 +169,14 @@ export class GameMqttClient {
 
   disconnect() {
     if (this.disabled) return
-    this.publish(presenceTopic(identity.clientId), {
-      clientId: identity.clientId,
-      status: 'offline' as const,
-    }, { retain: true })
+    this.publish(
+      presenceTopic(identity.clientId),
+      {
+        clientId: identity.clientId,
+        status: 'offline' as const,
+      },
+      { retain: true },
+    )
     this.client?.end(true)
     this.handlers.clear()
     this.client = undefined
@@ -181,4 +185,3 @@ export class GameMqttClient {
 }
 
 export const mqttClient = new GameMqttClient()
-

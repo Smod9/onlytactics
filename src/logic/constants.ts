@@ -20,7 +20,7 @@ export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be consid
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
 export const BOAT_BOW_RADIUS = 4
 export const BOAT_STERN_RADIUS = 9
-export const BOAT_BOW_OFFSET = 12  // forward offset from boat center (scene units)
+export const BOAT_BOW_OFFSET = 12 // forward offset from boat center (scene units)
 export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
 export const BOAT_LENGTH = BOAT_BOW_OFFSET - BOAT_STERN_OFFSET // total boat length (scene units)
 
@@ -31,6 +31,3 @@ export const WAKE_HALF_WIDTH_START = 18 // Near-boat half width
 export const WAKE_HALF_WIDTH_END = 35 // Wake widens farther downwind
 export const WAKE_CONE_HALF_ANGLE_DEG = 35 // Limit wake to downwind sector
 export const WAKE_MIN_STRENGTH = 0.01 // Ignore negligible contributions
-
-
-

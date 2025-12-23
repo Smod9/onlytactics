@@ -42,9 +42,7 @@ export const deleteRecording = async (raceId: string) => {
 }
 
 export const listReplayIndex = () =>
-  readJson<ReplayIndexEntry[]>(INDEX_KEY, []).sort(
-    (a, b) => b.savedAt - a.savedAt,
-  )
+  readJson<ReplayIndexEntry[]>(INDEX_KEY, []).sort((a, b) => b.savedAt - a.savedAt)
 
 const updateIndex = (recording: ReplayRecording) => {
   const current = listReplayIndex().filter(
@@ -57,4 +55,3 @@ const updateIndex = (recording: ReplayRecording) => {
   })
   writeJson(INDEX_KEY, current.slice(0, 25))
 }
-
