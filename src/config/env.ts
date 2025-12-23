@@ -66,7 +66,7 @@ export const appEnv = {
   windFieldSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_SIZE_WORLD, 320),
   windFieldDomainLengthWorld: toNumber(rawEnv.VITE_WIND_FIELD_DOMAIN_LENGTH_WORLD, 1800),
   windFieldDomainWidthWorld: toNumber(rawEnv.VITE_WIND_FIELD_DOMAIN_WIDTH_WORLD, 900),
-  windFieldAdvectionFactor: toNumber(rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR, 0.6),
+  windFieldAdvectionFactor: toNumber(rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR, 0.1),
   windFieldTileSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD, 36),
 }
 
