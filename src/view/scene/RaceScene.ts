@@ -62,6 +62,11 @@ class BoatView {
     },
   })
 
+  private lastLeewardSign: 1 | -1 = 1
+  private lastNameText = ''
+  private lastNameFill = '#ffffff'
+  private lastProjectionLen = NaN
+
   constructor(private color: number) {
     this.drawBoat()
     // Draw hull/sail first, then overlay collision outlines for visibility
@@ -114,23 +119,25 @@ class BoatView {
     this.hull.stroke()
     this.sail.position.set(0, -20)
     this.sail.pivot.set(0, 0)
-    this.drawSailShape(1)
+    // Draw the sail once (starboard/positive-x side) and mirror it via scale per-frame.
+    this.drawSailShape()
+    this.sail.scale.set(1, 1)
   }
 
-  private drawSailShape(leewardSign: 1 | -1) {
+  private drawSailShape() {
     this.sail.clear()
     this.sail.fill({ color: 0xffffff, alpha: 0.4 })
     // Bow tack
     this.sail.moveTo(0, 0)
 
     // Clew (foot angle)
-    this.sail.lineTo(leewardSign * 25, 38)
+    this.sail.lineTo(25, 38)
 
     // Smooth leech curve: control point halfway up, curved inwards
     this.sail.quadraticCurveTo(
-      leewardSign * 32,
+      32,
       4, // control point
-      leewardSign * 10,
+      10,
       0, // head of the sail, slightly forward
     )
 
@@ -140,26 +147,36 @@ class BoatView {
 
   update(boat: BoatState, isPlayer = false) {
     this.container.position.set(boat.pos.x, boat.pos.y)
-    this.container.scale.set(1)
     this.container.rotation = degToRad(boat.headingDeg)
     const awa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
     const leewardSign: 1 | -1 = awa >= 0 ? -1 : 1
-    this.drawSailShape(leewardSign)
+    if (leewardSign !== this.lastLeewardSign) {
+      this.sail.scale.x = leewardSign
+      this.lastLeewardSign = leewardSign
+    }
     const absAwa = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
     // NOTE: Our sail geometry starts fairly "eased" at 0° rotation, and rotating it
     // pulls it closer to centerline (more trimmed in). So: upwind (small AWA) => more
     // rotation, downwind (large AWA) => less rotation.
     const easedFactor = Math.min(1, absAwa / 140)
     const trimmedInFactor = 1 - easedFactor
-    const rotationDeg = leewardSign * (8 + trimmedInFactor * 24)
+    // Rotation is always "trim in" for the positive-x sail; when mirrored (scale.x = -1),
+    // the effective rotation direction is mirrored automatically.
+    const rotationDeg = 8 + trimmedInFactor * 24
     this.sail.rotation = degToRad(rotationDeg)
-    this.nameTag.text = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
-    if (boat.overEarly || boat.fouled || boat.penalties > 0) {
-      this.nameTag.style.fill = '#ff6b6b'
-    } else {
-      this.nameTag.style.fill = '#ffffff'
+
+    const nextNameText = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
+    if (nextNameText !== this.lastNameText) {
+      this.nameTag.text = nextNameText
+      this.lastNameText = nextNameText
     }
-    this.drawProjection(boat, isPlayer)
+    const nextFill =
+      boat.overEarly || boat.fouled || boat.penalties > 0 ? '#ff6b6b' : '#ffffff'
+    if (nextFill !== this.lastNameFill) {
+      this.nameTag.style.fill = nextFill
+      this.lastNameFill = nextFill
+    }
+    this.drawProjection(isPlayer)
     this.updateWakeIndicator(boat)
   }
 
@@ -198,13 +215,22 @@ class BoatView {
     }
   }
 
-  private drawProjection(boat: BoatState, isPlayer: boolean) {
+  private drawProjection(isPlayer: boolean) {
+    // Only show this guidance line for "our boat".
+    if (!isPlayer) {
+      if (this.lastProjectionLen !== 0) {
+        this.lastProjectionLen = 0
+        this.projection.clear()
+      }
+      return
+    }
+
+    // Fixed in world units: 2 boat lengths.
+    const length = 2 * BOAT_LENGTH
+    if (this.lastProjectionLen === length) return
+    this.lastProjectionLen = length
+
     this.projection.clear()
-    const baseLength = Math.max(40, boat.speed * 6)
-    // Draw in world units so the projection scales with the camera/boat size.
-    // Previously this divided by `scale` to keep a constant pixel length, but that
-    // makes it look shorter relative to the boat when zoomed in.
-    const length = isPlayer ? baseLength * 4 : baseLength
     this.projection
       .setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.3 })
       .moveTo(0, -10)
@@ -218,6 +244,7 @@ export class RaceScene {
   private worldLayer = new Container()
   private windFieldLayer = new Graphics()
   private courseLayer = new Graphics()
+  private windShadowLayer = new Graphics()
   private contextLayer = new Graphics()
   private overlayLayer = new Container()
   private boatLayer = new Container()
@@ -256,6 +283,8 @@ export class RaceScene {
   private followBoatId: string | null = null
 
   private boats = new Map<string, BoatView>()
+  private lastCourseKey: string | null = null
+  private lastCourseWasDebug = false
 
   constructor(
     private app: Application,
@@ -263,14 +292,19 @@ export class RaceScene {
       cameraMode?: CameraMode
     },
   ) {
+    // On dark water, a "darkening" overlay can be imperceptible; use a lightening blend.
+    this.windShadowLayer.blendMode = 'screen'
+
     // Render order (bottom -> top):
     // - windFieldLayer: moving puffs/lulls visualization (world-space)
-    // - courseLayer: static course visuals
+    // - windShadowLayer: subtle wind shadow / wake cones (world-space, under boats)
+    // - courseLayer: static course visuals (kept above wind shadows for readability)
     // - contextLayer: follow-mode guidance line(s)
     // - overlayLayer: debug overlays
     // - boatLayer: boats + name tags, etc.
     this.worldLayer.addChild(
       this.windFieldLayer,
+      this.windShadowLayer,
       this.courseLayer,
       this.contextLayer,
       this.overlayLayer,
@@ -325,6 +359,7 @@ export class RaceScene {
     this.applyCameraTransform(state)
     this.drawWindField(state)
     this.drawCourse(state)
+    this.drawWindShadows(state)
     this.drawFollowContext(state)
     this.drawBoats(state)
     this.drawHud(state)
@@ -562,7 +597,39 @@ export class RaceScene {
     }
   }
 
+  private getCourseKey(state: RaceState): string {
+    const parts: string[] = []
+    const push = (p: Vec2) => {
+      // Course geometry is effectively static; round to avoid accidental redraws from tiny float noise.
+      parts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`)
+    }
+    state.marks.forEach(push)
+    push(state.startLine.pin)
+    push(state.startLine.committee)
+    push(state.leewardGate.left)
+    push(state.leewardGate.right)
+    return parts.join('|')
+  }
+
   private drawCourse(state: RaceState) {
+    const debug = appEnv.debugHud
+    if (!debug) {
+      const key = this.getCourseKey(state)
+      if (!this.lastCourseWasDebug && key === this.lastCourseKey) return
+      this.lastCourseKey = key
+      this.lastCourseWasDebug = false
+
+      this.courseLayer.clear()
+      this.drawStartLine(state)
+      this.drawMarks(state)
+      this.drawLeewardGate(state)
+      return
+    }
+
+    // In debug mode, redraw every tick since we draw stateful annotations/guides.
+    this.lastCourseWasDebug = true
+    this.lastCourseKey = this.getCourseKey(state)
+
     this.courseLayer.clear()
     this.drawStartLine(state)
     this.drawMarks(state)
@@ -678,7 +745,7 @@ export class RaceScene {
   private drawDebugAnnotations(state: RaceState) {
     this.overlayLayer.removeChildren()
     if (!appEnv.debugHud) return
-    this.drawWindShadows(state)
+    this.drawWindShadowsDebug(state)
     this.drawMarkRadials(state)
     this.drawMarkLabels(state)
     this.drawNextMarkHighlight(state)
@@ -715,6 +782,92 @@ export class RaceScene {
   }
 
   private drawWindShadows(state: RaceState) {
+    // World-space subtle "wind shadow" a boat casts downwind.
+    // Strength is encoded by slightly increased opacity + cone size (still understated).
+    const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+    const downRad = degToRad(downwindDeg)
+    const dir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
+    const cross = { x: -dir.y, y: dir.x }
+
+    this.windShadowLayer.clear()
+
+    // Use a slightly *lighter* blue sheen so it reads on our already-dark water.
+    // (A pure darkening overlay can become imperceptible.)
+    const color = 0x0b3a57
+    // Keep segments modest; each segment is an additional filled polygon per boat per frame.
+    const segments = 5
+    const startOffset = 10 // keep the darkest part just behind the stern
+
+    const windNorm = clamp01(state.wind.speed / 18)
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+    const poly = new Array<number>(8)
+
+    Object.values(state.boats).forEach((boat) => {
+      // Encode strength mostly via boat speed, with a small contribution from true wind.
+      const speedNorm = clamp01(boat.speed / 12)
+      const strength = clamp01(speedNorm * 0.8 + windNorm * 0.2)
+      if (strength <= 0.005) return
+
+      const isPlayer = boat.id === identity.boatId
+      const playerBoost = isPlayer ? 1.15 : 1
+
+      const length = WAKE_LENGTH * (0.65 + 0.55 * strength) * playerBoost
+      const halfStart = WAKE_HALF_WIDTH_START * (0.6 + 0.35 * strength) * playerBoost
+      const halfEnd = WAKE_HALF_WIDTH_END * (0.6 + 0.5 * strength) * playerBoost
+
+      const baseX = boat.pos.x + dir.x * startOffset
+      const baseY = boat.pos.y + dir.y * startOffset
+
+      const drawCone = (widthScale: number, alphaMax: number, gamma: number) => {
+        for (let i = 0; i < segments; i += 1) {
+          const t0 = i / segments
+          const t1 = (i + 1) / segments
+
+          const c0x = baseX + dir.x * (length * t0)
+          const c0y = baseY + dir.y * (length * t0)
+          const c1x = baseX + dir.x * (length * t1)
+          const c1y = baseY + dir.y * (length * t1)
+
+          const w0 = lerp(halfStart, halfEnd, t0) * widthScale
+          const w1 = lerp(halfStart, halfEnd, t1) * widthScale
+
+          const startLeftX = c0x + cross.x * w0
+          const startLeftY = c0y + cross.y * w0
+          const startRightX = c0x - cross.x * w0
+          const startRightY = c0y - cross.y * w0
+          const endLeftX = c1x + cross.x * w1
+          const endLeftY = c1y + cross.y * w1
+          const endRightX = c1x - cross.x * w1
+          const endRightY = c1y - cross.y * w1
+
+          // Fade out strongly down the cone so it doesn't clutter the course.
+          const fade = Math.pow(1 - t0, gamma)
+          const alpha = alphaMax * fade
+          if (alpha <= 0.001) continue
+
+          this.windShadowLayer.fill({ color, alpha })
+          poly[0] = startLeftX
+          poly[1] = startLeftY
+          poly[2] = endLeftX
+          poly[3] = endLeftY
+          poly[4] = endRightX
+          poly[5] = endRightY
+          poly[6] = startRightX
+          poly[7] = startRightY
+          this.windShadowLayer.poly(poly)
+          this.windShadowLayer.fill()
+        }
+      }
+
+      // Outer: soft presence
+      drawCone(1.25, (0.03 + 0.045 * strength) * playerBoost, 1.2)
+      // Inner: slightly stronger core for "strength" readability
+      drawCone(0.72, (0.04 + 0.08 * strength) * playerBoost, 1.45)
+    })
+  }
+
+  private drawWindShadowsDebug(state: RaceState) {
     const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
     const downRad = degToRad(downwindDeg)
     const dir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
