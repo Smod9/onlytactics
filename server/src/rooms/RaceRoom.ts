@@ -1,8 +1,22 @@
 import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
-import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
-import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState, PlayerInput, RaceRole, ProtestStatus } from '@/types/race'
+import { ReplayRecorder } from '@/replay/record'
+import {
+  createBoatState,
+  createInitialRaceState,
+  createRaceMeta,
+  cloneRaceState,
+} from '@/state/factories'
+import type {
+  ChatMessage,
+  ChatSenderRole,
+  RaceEvent,
+  RaceRole,
+  RaceState,
+  PlayerInput,
+  ProtestStatus,
+} from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { assignLeaderboard } from '@/logic/leaderboard'
@@ -12,6 +26,7 @@ import { SPIN_HOLD_SECONDS } from '@/logic/constants'
 import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
+import { saveRace } from '../db/raceStorage'
 
 const roomDebug = (...args: unknown[]) => {
   if (!appEnv.debugNetLogs) return
@@ -81,18 +96,38 @@ export class RaceRoom extends Room<RaceRoomState> {
   private chatRateMap = new Map<string, number[]>()
   // Track active spins: maps boatId to array of timeout IDs for the spin sequence
   private activeSpins = new Map<string, NodeJS.Timeout[]>()
+  private replayRecorder = new ReplayRecorder()
+  private replaySaved = false
+  private persistingReplay = false
   private lastCountdownLogAtMs = 0
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
     console.info('[RaceRoom] created', { options, roomId: this.roomId })
     roomDebug('onCreate', { options, roomId: this.roomId })
-    const initialState = createInitialRaceState(`colyseus-${this.roomId}`)
+    const initialRaceId = createId(`race-${this.roomId}`)
+    const initialState = createInitialRaceState(initialRaceId)
     this.raceStore = new RaceStore(initialState)
     applyRaceStateToSchema(this.state.race, initialState)
+    this.replayRecorder.start(initialState)
+    this.replaySaved = false
     this.loop = new HostLoop(this.raceStore, undefined, undefined, {
-      onEvents: (events) => this.broadcastEvents(events),
+      onEvents: (events) => {
+        this.broadcastEvents(events)
+        const latestState = this.raceStore?.getState()
+        if (latestState) {
+          this.replayRecorder.recordFrame(latestState, events, true)
+        }
+      },
       onTick: (state) => {
+        this.replayRecorder.recordFrame(state, [])
+        const anyFinished = Object.values(state.boats ?? {}).some((boat) => boat.finished)
+        if (anyFinished && !this.replaySaved) {
+          void this.persistReplay('winner_recorded')
+        }
+        if (state.phase === 'finished' && !this.replaySaved) {
+          void this.persistReplay('race_finished')
+        }
         // Debug: confirm countdown is ticking server-side.
         // Logs at most once per second while countdown is armed.
         if (state.phase === 'prestart' && state.countdownArmed) {
@@ -107,7 +142,6 @@ export class RaceRoom extends Room<RaceRoomState> {
             })
           }
         }
-
         if (state.hostId !== this.hostClientId) {
           roomDebug('loop host sync', {
             loopHostId: state.hostId,
@@ -133,24 +167,24 @@ export class RaceRoom extends Room<RaceRoomState> {
       if (!this.raceStore) return
       const boatId = this.resolveBoatId(client, message.boatId)
       if (!boatId) return
-      
+
       // Handle penalty clear requests
       if (message.clearPenalty) {
         this.handlePenaltyClearRequest(boatId)
         return
       }
-      
+
       // Handle spin requests: queue a 360° spin sequence
       if (message.spin === 'full') {
         this.queueSpin(boatId)
         return
       }
-      
+
       // Ignore other inputs during active spin to prevent interference
       if (this.activeSpins.has(boatId)) {
         return
       }
-      
+
       // Process normal heading/VMG inputs
       const payload = {
         boatId,
@@ -282,7 +316,9 @@ export class RaceRoom extends Room<RaceRoomState> {
 
     // De-dupe: if the same clientId is already connected, evict the previous session.
     const existingSessionId = this.findExistingSessionId(clientId, client.sessionId)
-    const existingWasHost = Boolean(existingSessionId && existingSessionId === this.hostSessionId)
+    const existingWasHost = Boolean(
+      existingSessionId && existingSessionId === this.hostSessionId,
+    )
     if (existingSessionId) {
       console.info('[RaceRoom] evicting duplicate session for clientId', {
         clientId,
@@ -343,12 +379,13 @@ export class RaceRoom extends Room<RaceRoomState> {
 
   onDispose() {
     console.info('[RaceRoom] disposed', { roomId: this.roomId })
+    void this.persistReplay('room_dispose')
     this.loop?.stop()
     // Clean up any active spins when room is disposed
     this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
     this.activeSpins.clear()
   }
-  
+
   /**
    * Queue a 360° spin sequence for a boat.
    * The spin consists of three heading changes: +120°, +240°, then back to origin.
@@ -361,7 +398,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const state = this.raceStore.getState()
     const boat = state.boats[boatId]
     if (!boat) return
-    
+
     // Disable VMG mode and set rightsSuspended to prevent other inputs during spin
     this.mutateState((draft) => {
       const target = draft.boats[boatId]
@@ -370,15 +407,11 @@ export class RaceRoom extends Room<RaceRoomState> {
         target.vmgMode = false
       }
     })
-    
+
     // Calculate the three headings for the spin sequence (120° increments)
     const origin = boat.desiredHeadingDeg ?? boat.headingDeg
-    const headings = [
-      origin + 120,
-      origin + 240,
-      origin,
-    ].map((deg) => normalizeDeg(deg))
-    
+    const headings = [origin + 120, origin + 240, origin].map((deg) => normalizeDeg(deg))
+
     // Schedule each heading change with increasing delays
     let delay = 0
     const timers: NodeJS.Timeout[] = headings.map((heading, index) => {
@@ -394,7 +427,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
     this.activeSpins.set(boatId, timers)
   }
-  
+
   /**
    * Inject a heading change into the race state as part of a spin sequence.
    * This simulates the boat turning during a 360° spin.
@@ -411,7 +444,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     }
     this.raceStore.upsertInput(payload)
   }
-  
+
   /**
    * Finish a spin sequence: clean up timers and restore normal boat state.
    * This is called after the final heading change (back to origin) completes.
@@ -433,7 +466,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     // Clear one penalty if the boat has any; and clear any active protest on that boat.
     this.clearOnePenaltyAfterSpin(boatId)
   }
-  
+
   /**
    * Handle "P" clear requests from the client.
    * If the penalty is protest-derived and a protest exists, this is treated as a waiver:
@@ -741,7 +774,12 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (role !== 'player') {
       return undefined
     }
-    if (preferredId && Object.values(this.raceStore?.getState().boats ?? {}).some((boat) => boat.id === preferredId)) {
+    if (
+      preferredId &&
+      Object.values(this.raceStore?.getState().boats ?? {}).some(
+        (boat) => boat.id === preferredId,
+      )
+    ) {
       this.clientBoatMap.set(client.sessionId, preferredId)
       return preferredId
     }
@@ -871,9 +909,13 @@ export class RaceRoom extends Room<RaceRoomState> {
     const hostBoatId = this.clientBoatMap.get(sessionId)
     const clientId = this.clientIdentityMap.get(sessionId)
     const storeName =
-      hostBoatId && this.raceStore ? this.raceStore.getState().boats[hostBoatId]?.name : undefined
-    const schemaName = hostBoatId ? this.state.race.boats.get(hostBoatId)?.name : undefined
-      return {
+      hostBoatId && this.raceStore
+        ? this.raceStore.getState().boats[hostBoatId]?.name
+        : undefined
+    const schemaName = hostBoatId
+      ? this.state.race.boats.get(hostBoatId)?.name
+      : undefined
+    return {
       sessionId,
       clientId,
       hostBoatId,
@@ -884,7 +926,9 @@ export class RaceRoom extends Room<RaceRoomState> {
   private setHost(sessionId?: string) {
     const previousHost = this.hostSessionId
     this.hostSessionId = sessionId
-    this.hostClientId = sessionId ? this.clientIdentityMap.get(sessionId) ?? sessionId : undefined
+    this.hostClientId = sessionId
+      ? (this.clientIdentityMap.get(sessionId) ?? sessionId)
+      : undefined
     const hostBoatId = sessionId ? this.clientBoatMap.get(sessionId) : undefined
     roomDebug('setHost', {
       previousHost,
@@ -966,16 +1010,45 @@ export class RaceRoom extends Room<RaceRoomState> {
     boat.inMarkZone = false
   }
 
+  private async persistReplay(reason: string, finalStateOverride?: RaceState) {
+    if (this.persistingReplay) return
+    const recording = this.replayRecorder.getRecording()
+    const finalState = finalStateOverride ?? this.raceStore?.getState()
+    if (!recording || !finalState || recording.frames.length <= 1) return
+
+    this.persistingReplay = true
+    try {
+      await saveRace(recording, cloneRaceState(finalState))
+      this.replaySaved = true
+      console.info('[RaceRoom] saved replay', { raceId: recording.meta.raceId, reason })
+    } catch (error) {
+      console.error('[RaceRoom] failed to save replay', {
+        raceId: recording?.meta.raceId,
+        reason,
+        error,
+      })
+    } finally {
+      this.persistingReplay = false
+    }
+  }
+
   private resetRaceState() {
-    const assignment = Array.from(this.clientBoatMap.entries()).map(([sessionId, boatId], idx) => ({
-      boatId,
-      name: this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
-      index: idx,
-    }))
+    const previousState = this.raceStore?.getState()
+    void this.persistReplay('race_reset', previousState)
+    const assignment = Array.from(this.clientBoatMap.entries()).map(
+      ([sessionId, boatId], idx) => ({
+        boatId,
+        name:
+          this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
+        index: idx,
+      }),
+    )
     roomDebug('resetRaceState', {
       assignments: assignment.length,
       ...this.describeHost(this.hostSessionId),
     })
+    this.replayRecorder.reset()
+    this.replaySaved = false
     this.mutateState((draft) => {
       // Refresh course geometry on reset so edits in shared `createInitialRaceState`
       // (marks/gate/start line) take effect without recreating the room.
@@ -988,6 +1061,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       draft.countdownArmed = false
       draft.clockStartMs = null
       draft.t = -appEnv.countdownSeconds
+      draft.meta = createRaceMeta(createId('race'))
       const nextBoats: RaceState['boats'] = {}
       assignment.forEach(({ boatId, name, index }) => {
         nextBoats[boatId] = createBoatState(name, index, boatId)
@@ -1001,7 +1075,6 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
     const nextState = this.raceStore?.getState()
     if (nextState) {
-      this.loop?.reset(nextState)
       const hostBoatId = this.hostSessionId
         ? this.clientBoatMap.get(this.hostSessionId)
         : nextState.hostBoatId
@@ -1010,6 +1083,10 @@ export class RaceRoom extends Room<RaceRoomState> {
         const mutable = this.raceStore.getState()
         mutable.hostBoatId = hostBoatId
         this.loop?.reset(mutable)
+        this.replayRecorder.start(mutable)
+      } else {
+        this.loop?.reset(nextState)
+        this.replayRecorder.start(nextState)
       }
     }
   }
@@ -1030,11 +1107,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const trimmed = text.slice(0, 280)
     const boatId = this.clientBoatMap.get(client.sessionId)
     const senderRole: ChatSenderRole =
-      client.sessionId === this.hostSessionId
-        ? 'host'
-        : boatId
-          ? 'player'
-          : 'spectator'
+      client.sessionId === this.hostSessionId ? 'host' : boatId ? 'player' : 'spectator'
     const senderName =
       this.clientNameMap.get(client.sessionId) ??
       (boatId && this.state.race.boats.get(boatId)?.name) ??
@@ -1049,13 +1122,16 @@ export class RaceRoom extends Room<RaceRoomState> {
       ts: Date.now(),
     }
     this.broadcast('chat', message)
+    this.replayRecorder.addChat(message)
   }
 
   private canSendChat(clientId: string) {
     const windowMs = 10_000
     const limit = 5
     const now = Date.now()
-    const recent = (this.chatRateMap.get(clientId) ?? []).filter((ts) => now - ts < windowMs)
+    const recent = (this.chatRateMap.get(clientId) ?? []).filter(
+      (ts) => now - ts < windowMs,
+    )
     if (recent.length >= limit) {
       this.chatRateMap.set(clientId, recent)
       return false
@@ -1065,4 +1141,3 @@ export class RaceRoom extends Room<RaceRoomState> {
     return true
   }
 }
-
