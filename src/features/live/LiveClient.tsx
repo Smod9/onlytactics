@@ -902,7 +902,7 @@ export const LiveClient = () => {
                   )}
                 {!events.length && <p>No rule events yet.</p>}
               </div>
-              <RosterPanel role={role} />
+              <RosterPanel />
             </div>
           </div>
           <PixiStage
