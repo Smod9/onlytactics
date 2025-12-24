@@ -1,6 +1,6 @@
 import type { RaceState, BoatState, Vec2 } from '@/types/race'
 import type { RaceStore } from '@/state/raceStore'
-import type { ControlUpdate } from '@/net/controllers/types'
+import type { ControlUpdate } from '@/net/controlTypes'
 import { headingFromAwa, angleDiff, normalizeDeg } from '@/logic/physics'
 import { distanceBetween } from '@/utils/geometry'
 

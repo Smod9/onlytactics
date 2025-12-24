@@ -285,12 +285,10 @@ export const LiveClient = () => {
     }
 
     if (nameChanged) {
-      if (appEnv.netTransport === 'colyseus') {
-        network.stop()
-        await network.start()
-      } else {
-        network.announcePresence('online')
-      }
+      // In Colyseus mode, the server uses join options (including name) at connect time.
+      // Restart the connection to ensure the server picks up updated identity.
+      network.stop()
+      await network.start()
     }
   }
 

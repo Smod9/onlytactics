@@ -1,16 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { RaceRole } from '@/types/race'
-import { mqttClient } from '@/net/mqttClient'
-import { hostTopic, presenceWildcard } from '@/net/topics'
-
-type PresenceMessage = {
-  clientId: string
-  status: 'online' | 'offline'
-  name?: string
-  role?: RaceRole
-}
-
-type HostAnnouncement = { clientId: string; updatedAt: number }
+import { raceStore } from './raceStore'
 
 export type RosterEntry = {
   clientId: string
@@ -31,6 +21,7 @@ class RosterStore {
   private entries = new Map<string, RosterEntry>()
 
   private hostId?: string
+  private hostBoatId?: string
 
   private snapshot: Snapshot = { hostId: undefined, entries: [] }
 
@@ -41,28 +32,20 @@ class RosterStore {
 
   getSnapshot = (): Snapshot => this.snapshot
 
-  updatePresence(message?: PresenceMessage) {
-    if (!message) return
-    if (message.status === 'offline') {
-      if (this.entries.delete(message.clientId)) {
-        this.emit()
-      }
-      return
-    }
-    const existing = this.entries.get(message.clientId)
-    const entry: RosterEntry = {
-      clientId: message.clientId,
-      name: message.name ?? existing?.name ?? 'Unknown',
-      role: message.role ?? existing?.role ?? 'unknown',
-      status: 'online',
-      lastSeen: Date.now(),
-    }
-    this.entries.set(message.clientId, entry)
-    this.emit()
-  }
-
-  updateHost(clientId?: string) {
-    this.hostId = clientId
+  updateFromRaceState() {
+    const state = raceStore.getState()
+    this.hostId = state.hostId
+    this.hostBoatId = state.hostBoatId
+    this.entries.clear()
+    Object.entries(state.boats).forEach(([boatId, boat]) => {
+      this.entries.set(boatId, {
+        clientId: boatId,
+        name: boat.name,
+        role: 'player',
+        status: 'online',
+        lastSeen: Date.now(),
+      })
+    })
     this.emit()
   }
 
@@ -71,7 +54,10 @@ class RosterStore {
       .filter((entry) => entry.status === 'online')
       .map((entry) => ({
         ...entry,
-        role: entry.clientId === this.hostId ? 'host' : entry.role,
+        role:
+          entry.clientId === this.hostBoatId || entry.clientId === this.hostId
+            ? 'host'
+            : entry.role,
       }))
     entries.sort((a, b) => {
       if (a.role === 'host') return -1
@@ -91,27 +77,8 @@ let started = false
 export const startRosterWatcher = async () => {
   if (started) return
   started = true
-  await mqttClient.connect()
-  mqttClient.subscribe<PresenceMessage>(presenceWildcard, (payload) => {
-    rosterStore.updatePresence(payload)
-  })
-  mqttClient.subscribe<HostAnnouncement>(hostTopic, (payload) => {
-    rosterStore.updateHost(payload?.clientId)
-  })
-  injectAiEntries()
-}
-
-const injectAiEntries = () => {
-  const aiNames = ['Dennis', 'Terry']
-  aiNames.forEach((name) => {
-    const clientId = `ai-${name.toLowerCase()}`
-    rosterStore.updatePresence({
-      clientId,
-      status: 'online',
-      name: `${name} (AI)`,
-      role: 'player',
-    })
-  })
+  raceStore.subscribe(() => rosterStore.updateFromRaceState())
+  rosterStore.updateFromRaceState()
 }
 
 export const useRoster = () =>
