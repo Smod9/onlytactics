@@ -1,3 +1,10 @@
+## [1.28.1](https://github.com/Smod9/onlytactics/compare/v1.28.0...v1.28.1) (2025-12-24)
+
+
+### Bug Fixes
+
+* **Issue #58:** Resolves ISS [#58](https://github.com/Smod9/onlytactics/issues/58). OCS now uses the capsule boat shape ([66c7633](https://github.com/Smod9/onlytactics/commit/66c7633fbba615747aa0faa58506e8343ff8530c))
+
 # [1.28.0](https://github.com/Smod9/onlytactics/compare/v1.27.0...v1.28.0) (2025-12-24)
 
 
