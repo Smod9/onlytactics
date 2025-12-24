@@ -1,9 +1,4 @@
-import type { RaceRole } from '@/types/race'
 import { useRoster } from '@/state/rosterStore'
-
-type Props = {
-  role: RaceRole
-}
 
 const roleSortKey = (value: string) => {
   if (value === 'judge') return 0
@@ -21,7 +16,7 @@ const roleLabel = (value: string) => {
   return value
 }
 
-export const RosterPanel = ({ role }: Props) => {
+export const RosterPanel = () => {
   const roster = useRoster()
   const extras = roster.extras
     .filter((entry) => entry.role !== 'player')
