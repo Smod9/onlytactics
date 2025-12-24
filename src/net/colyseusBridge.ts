@@ -1,5 +1,6 @@
 import { Client, type Room } from 'colyseus.js'
 import { raceStore } from '@/state/raceStore'
+import { rosterStore } from '@/state/rosterStore'
 import type {
   ChatMessage,
   PlayerInput,
@@ -156,6 +157,19 @@ export class ColyseusBridge {
     room.onMessage('chat', (payload: ChatMessage) => {
       this.chatListeners.forEach((listener) => listener(payload))
     })
+    room.onMessage(
+      'roster',
+      (payload: {
+        entries?: Array<{
+          clientId: string
+          name: string
+          role: RaceRole
+          boatId?: string | null
+        }>
+      }) => {
+        rosterStore.updateFromServerRoster(payload?.entries ?? [])
+      },
+    )
     room.onMessage('events', (payload: RaceEvent[]) => {
       if (Array.isArray(payload) && payload.length) {
         raceStore.appendEvents(payload)
@@ -179,5 +193,12 @@ export class ColyseusBridge {
       console.error('[colyseus] room error', code)
       this.emitStatus('error')
     })
+
+    // Ensure we get the roster even if the server broadcast happened before handlers attached.
+    try {
+      room.send('roster_request', {})
+    } catch {
+      // ignore
+    }
   }
 }

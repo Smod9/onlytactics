@@ -22,6 +22,7 @@ import { ProgressStepper } from './ProgressStepper'
 import type { Protest, RaceRole } from '@/types/race'
 import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
+import { RosterPanel } from './RosterPanel'
 import type { CameraMode } from '@/view/scene/RaceScene'
 import { ZoomIcon } from '@/view/icons'
 import { angleDiff } from '@/logic/physics'
@@ -786,7 +787,7 @@ export const LiveClient = () => {
                   <h3>Leaderboard</h3>
                   {race.leaderboard.length ? (
                     <ol>
-                      {race.leaderboard.slice(0, 6).map((boatId, index) => {
+                      {race.leaderboard.map((boatId, index) => {
                         const boat = race.boats[boatId]
                         if (!boat) return null
                         const protested = Boolean(race.protests?.[boatId])
@@ -901,6 +902,7 @@ export const LiveClient = () => {
                   )}
                 {!events.length && <p>No rule events yet.</p>}
               </div>
+              <RosterPanel role={role} />
             </div>
           </div>
           <PixiStage
