@@ -55,6 +55,7 @@ export const appEnv = {
   // Smaller = zoomed out (shows more around the course). Typical range: ~0.85 - 1.0.
   birdseyeZoomFactor: toNumber(rawEnv.VITE_BIRDSEYE_ZOOM, 0.92),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
+  perfHud: toBool(rawEnv.VITE_PERF_HUD, false),
   debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, true),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),
