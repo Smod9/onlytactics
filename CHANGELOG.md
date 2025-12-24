@@ -1,3 +1,15 @@
+# [1.27.0](https://github.com/Smod9/onlytactics/compare/v1.26.8...v1.27.0) (2025-12-24)
+
+
+### Bug Fixes
+
+* Only refreshes wind field every 3rd race update, makes sprit pole line fixed, also experimenting with slowing puffs down and making them bigger (though im not sure that is a performance thing ([c3afd41](https://github.com/Smod9/onlytactics/commit/c3afd41e1f22d60831d83001e548874d534e3ce3))
+
+
+### Features
+
+* enhance boat rendering and wind shadow effects performance ([fa373b7](https://github.com/Smod9/onlytactics/commit/fa373b75fca2383f1e8b0fbf254783bbf39a02c7))
+
 ## [1.26.8](https://github.com/Smod9/onlytactics/compare/v1.26.7...v1.26.8) (2025-12-23)
 
 
