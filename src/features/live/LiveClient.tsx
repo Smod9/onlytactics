@@ -26,6 +26,7 @@ import type { CameraMode } from '@/view/scene/RaceScene'
 import { ZoomIcon } from '@/view/icons'
 import { angleDiff } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
+import { useFrameDropStats } from '@/state/useFrameDropStats'
 
 const isInteractiveElement = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
@@ -964,9 +965,9 @@ export const LiveClient = () => {
         </div>
       </div>
       {role !== 'spectator' && (
-        <div className="rtt-overlay" aria-label="Input RTT">
-          {myLatency ? `RTT ${myLatency.latencyMs.toFixed(0)}ms` : 'RTT —'}
-        </div>
+        <BottomLeftOverlays
+          rttText={myLatency ? `RTT ${myLatency.latencyMs.toFixed(0)}ms` : 'RTT —'}
+        />
       )}
       <TacticianPopout />
       {showDebug && (
@@ -1092,6 +1093,24 @@ export const LiveClient = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const BottomLeftOverlays = ({ rttText }: { rttText: string }) => {
+  const showPerf = appEnv.debugHud || appEnv.perfHud
+  const { label } = useFrameDropStats({ enabled: showPerf })
+
+  return (
+    <div className="bottom-left-overlays" aria-label="Network and performance overlays">
+      <div className="rtt-overlay" aria-label="Input RTT">
+        {rttText}
+      </div>
+      {showPerf && (
+        <div className="perf-overlay" aria-label="Frame drop percentage">
+          {label}
         </div>
       )}
     </div>
