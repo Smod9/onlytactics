@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import type {
+  ChangeEvent as ReactChangeEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import { chatService } from '@/chat/chatService'
 import { useChatLog } from '@/state/hooks'
 import type { GameNetwork } from '@/net/gameNetwork'
@@ -7,6 +11,17 @@ import { identity } from '@/net/identity'
 
 type Props = {
   network?: GameNetwork
+}
+
+const isInteractiveElement = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return (
+    tag === 'INPUT' ||
+    tag === 'TEXTAREA' ||
+    target.isContentEditable ||
+    target.getAttribute('role') === 'textbox'
+  )
 }
 
 const roleToSender = (role: RaceRole): ChatSenderRole => {
@@ -42,7 +57,20 @@ export const ChatPanel = ({ network }: Props) => {
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.key === 'm' || event.key === 'M' || event.key === 'c' || event.key === 'C') {
+      // Don't steal typing when the user is in another input (e.g. name entry).
+      // We still allow the hotkey when focus is not on an interactive element.
+      if (
+        isInteractiveElement(event.target) &&
+        document.activeElement !== inputRef.current
+      ) {
+        return
+      }
+      if (
+        event.key === 'm' ||
+        event.key === 'M' ||
+        event.key === 'c' ||
+        event.key === 'C'
+      ) {
         const isFocused = document.activeElement === inputRef.current
         if (!isFocused) {
           inputRef.current?.focus()
@@ -64,6 +92,8 @@ export const ChatPanel = ({ network }: Props) => {
 
   const sendMessage = async () => {
     const result = await chatService.send(draft, roleToSender(role), network)
+    // Blur the input to resume game controls
+    inputRef.current?.blur()
     if (result.ok) {
       setDraft('')
       setStatus(null)
@@ -75,6 +105,20 @@ export const ChatPanel = ({ network }: Props) => {
       setStatus('Chat is unavailable right now.')
     }
   }
+
+  const handleEnterKey = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement | HTMLButtonElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        void sendMessage()
+      }
+    },
+    [sendMessage],
+  )
+
+  const handleInputChange = useCallback((event: ReactChangeEvent<HTMLInputElement>) => {
+    setDraft(event.target.value)
+  }, [])
 
   return (
     <div className="chat-panel">
@@ -102,15 +146,10 @@ export const ChatPanel = ({ network }: Props) => {
           ref={inputRef}
           value={draft}
           placeholder="Message..."
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              void sendMessage()
-            }
-          }}
+          onChange={handleInputChange}
+          onKeyDown={handleEnterKey}
         />
-        <button type="button" onClick={() => void sendMessage()}>
+        <button type="button" onClick={sendMessage} onKeyDown={handleEnterKey}>
           Send
         </button>
       </div>
@@ -120,4 +159,3 @@ export const ChatPanel = ({ network }: Props) => {
     </div>
   )
 }
-

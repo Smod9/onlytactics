@@ -17,4 +17,3 @@ export const useInputTelemetry = (): InputTelemetrySnapshot =>
     raceStore.getInputTelemetry,
     raceStore.getInputTelemetry,
   )
-

@@ -13,6 +13,7 @@ import {
   quantizeHeading,
 } from '@/logic/physics'
 import {
+  HARD_TURN_STEP_DEG,
   HEADING_STEP_DEG,
   MAX_DOWNWIND_ANGLE_DEG,
   TACK_LOCK_ENABLED,
@@ -63,18 +64,21 @@ export const useTacticianControls = (
   }, [role])
 
   useEffect(() => {
-    if (!network || role === 'spectator') return
+    if (!network || role === 'spectator' || role === 'judge') return
 
     const handleKey = (event: KeyboardEvent) => {
       if (
         !networkRef.current ||
         roleRef.current === 'spectator' ||
+        roleRef.current === 'judge' ||
         isInteractiveElement(event.target)
       ) {
         return
       }
 
-      const key = event.code ?? event.key
+      // Some browsers (notably iOS Safari / synthetic keyboard events) may provide an empty string
+      // for event.code. Use || instead of ?? so we fall back to event.key in that case.
+      const key = event.code || event.key
       const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP']
       if (appEnv.debugHud) allowed.push('KeyJ')
       if (!allowed.includes(key)) {
@@ -90,6 +94,10 @@ export const useTacticianControls = (
         event.preventDefault()
         return
       }
+
+      // Prevent Safari/iPadOS from treating Arrow keys (especially Shift+Arrow) as text selection.
+      // We already ignore interactive targets above; if we get here we intend to "own" these keys.
+      event.preventDefault()
 
       const state = raceRef.current
       const boat = state.boats[identity.boatId]
@@ -134,12 +142,13 @@ export const useTacticianControls = (
 
       switch (key) {
         case 'Space': {
-          // Toggle VMG mode
-          vmgModeRef.current = !vmgModeRef.current
-          const seq = (seqRef.current += 1)
-          pendingRef.current.set(seq, performance.now())
-          networkRef.current?.updateVmgMode(vmgModeRef.current, seq)
-          event.preventDefault()
+          // Enter VMG mode (idempotent). Exiting VMG is handled by manual steering inputs.
+          if (!vmgModeRef.current) {
+            vmgModeRef.current = true
+            const seq = (seqRef.current += 1)
+            pendingRef.current.set(seq, performance.now())
+            networkRef.current?.updateVmgMode(true, seq)
+          }
           break
         }
         case 'Enter': {
@@ -154,43 +163,36 @@ export const useTacticianControls = (
         }
         case 'ArrowUp': {
           exitVmgMode()
-          event.preventDefault()
-          const desiredAbs = Math.max(absAwa - HEADING_STEP_DEG, 0)
-          const heading = headingFromAwa(
-            state.wind.directionDeg,
-            tackSign * desiredAbs,
-          )
+          const hardModifier = event.shiftKey || event.altKey
+          const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const desiredAbs = Math.max(absAwa - step, 0)
+          const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
           sendHeading(heading)
           break
         }
         case 'ArrowDown': {
           exitVmgMode()
-          event.preventDefault()
-          const desiredAbs = Math.min(absAwa + HEADING_STEP_DEG, MAX_DOWNWIND_ANGLE_DEG)
-          const heading = headingFromAwa(
-            state.wind.directionDeg,
-            tackSign * desiredAbs,
-          )
+          const hardModifier = event.shiftKey || event.altKey
+          const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
+          const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
           sendHeading(heading)
           break
         }
         case 'KeyS': {
           exitVmgMode()
-          event.preventDefault()
           const seq = (seqRef.current += 1)
           pendingRef.current.set(seq, performance.now())
           networkRef.current?.requestSpin(seq)
           break
         }
         case 'KeyP': {
-          event.preventDefault()
           networkRef.current?.clearOnePenalty()
           break
         }
         case 'KeyJ': {
           if (!appEnv.debugHud) break
           // Debug: Jump to next mark
-          event.preventDefault()
           networkRef.current?.debugJumpBoatToNextMark(identity.boatId)
           break
         }
@@ -198,8 +200,8 @@ export const useTacticianControls = (
       }
     }
 
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
+    window.addEventListener('keydown', handleKey, { capture: true })
+    return () => window.removeEventListener('keydown', handleKey, { capture: true })
   }, [network, role])
 
   useEffect(() => {
@@ -216,4 +218,3 @@ export const useTacticianControls = (
     raceStore.recordInputLatency(boat.id, boat.lastInputSeq, latencyMs)
   }, [raceState])
 }
-

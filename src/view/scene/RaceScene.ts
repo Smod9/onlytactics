@@ -1,11 +1,13 @@
 import { Application, Container, Graphics, Text } from 'pixi.js'
 import { appEnv } from '@/config/env'
-import type { BoatState, RaceState, Vec2 } from '@/types/race'
+import type { BoatState, RaceState, Vec2, WindFieldConfig } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
+import { getWindFieldConfig, sampleWindDeltaKts } from '@/logic/windField'
 import {
   BOAT_BOW_OFFSET,
   BOAT_BOW_RADIUS,
+  BOAT_LENGTH,
   BOAT_STERN_OFFSET,
   BOAT_STERN_RADIUS,
   WAKE_HALF_WIDTH_END,
@@ -14,7 +16,12 @@ import {
   WAKE_MAX_SLOWDOWN,
 } from '@/logic/constants'
 import { raceStore } from '@/state/raceStore'
-import { courseLegs, courseMarkAnnotations, radialSets, gateRadials } from '@/config/course'
+import {
+  courseLegs,
+  courseMarkAnnotations,
+  radialSets,
+  gateRadials,
+} from '@/config/course'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
@@ -23,7 +30,12 @@ const normalizeDeg = (deg: number) => {
   return wrapped < 0 ? wrapped + 360 : wrapped
 }
 
-type ScreenMapper = (value: Vec2) => { x: number; y: number }
+// Mark-zone radius in world units.
+// Note: our boat sprite is drawn ~2× the physics/collision `BOAT_LENGTH` (see hull points),
+// so use a multiplier that makes the ring read like ~2 boat lengths on screen.
+const MARK_ZONE_RADIUS = 4 * BOAT_LENGTH
+
+export type CameraMode = 'follow' | 'birdseye'
 
 class BoatView {
   container = new Container()
@@ -49,6 +61,11 @@ class BoatView {
       align: 'center',
     },
   })
+
+  private lastLeewardSign: 1 | -1 = 1
+  private lastNameText = ''
+  private lastNameFill = '#ffffff'
+  private lastProjectionLen = NaN
 
   constructor(private color: number) {
     this.drawBoat()
@@ -85,16 +102,7 @@ class BoatView {
 
     this.hull.clear()
     this.hull.fill({ color: this.color })
-    const hullPoints = [
-      0,
-      -20,
-      10,
-      10,
-      0,
-      16,
-      -10,
-      10,
-    ]
+    const hullPoints = [0, -20, 10, 10, 0, 16, -10, 10]
     this.hull.poly(hullPoints)
     this.hull.fill()
     this.hull.setStrokeStyle({ width: 2, color: 0x00c389 })
@@ -111,48 +119,64 @@ class BoatView {
     this.hull.stroke()
     this.sail.position.set(0, -20)
     this.sail.pivot.set(0, 0)
-    this.drawSailShape(1)
+    // Draw the sail once (starboard/positive-x side) and mirror it via scale per-frame.
+    this.drawSailShape()
+    this.sail.scale.set(1, 1)
   }
 
-  private drawSailShape(leewardSign: 1 | -1) {
+  private drawSailShape() {
     this.sail.clear()
     this.sail.fill({ color: 0xffffff, alpha: 0.4 })
     // Bow tack
     this.sail.moveTo(0, 0)
 
     // Clew (foot angle)
-    this.sail.lineTo(leewardSign * 25, 38)
+    this.sail.lineTo(25, 38)
 
     // Smooth leech curve: control point halfway up, curved inwards
     this.sail.quadraticCurveTo(
-      leewardSign * 32, 4,   // control point
-      leewardSign * 10, 0    // head of the sail, slightly forward
+      32,
+      4, // control point
+      10,
+      0, // head of the sail, slightly forward
     )
 
     this.sail.closePath()
     this.sail.fill()
-
   }
 
-  update(boat: BoatState, mapToScreen: ScreenMapper, scale: number, isPlayer = false) {
-    const { x, y } = mapToScreen(boat.pos)
-    this.container.position.set(x, y)
-    this.container.scale.set(scale)
+  update(boat: BoatState, isPlayer = false) {
+    this.container.position.set(boat.pos.x, boat.pos.y)
     this.container.rotation = degToRad(boat.headingDeg)
     const awa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
     const leewardSign: 1 | -1 = awa >= 0 ? -1 : 1
-    this.drawSailShape(leewardSign)
-    const apparent = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
-    const trimFactor = Math.min(1, apparent / 140)
-    const rotationDeg = leewardSign * (8 + trimFactor * 24)
-    this.sail.rotation = degToRad(rotationDeg)
-    this.nameTag.text = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
-    if (boat.overEarly || boat.fouled || boat.penalties > 0) {
-      this.nameTag.style.fill = '#ff6b6b'
-    } else {
-      this.nameTag.style.fill = '#ffffff'
+    if (leewardSign !== this.lastLeewardSign) {
+      this.sail.scale.x = leewardSign
+      this.lastLeewardSign = leewardSign
     }
-    this.drawProjection(boat, scale, isPlayer)
+    const absAwa = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
+    // NOTE: Our sail geometry starts fairly "eased" at 0° rotation, and rotating it
+    // pulls it closer to centerline (more trimmed in). So: upwind (small AWA) => more
+    // rotation, downwind (large AWA) => less rotation.
+    const easedFactor = Math.min(1, absAwa / 140)
+    const trimmedInFactor = 1 - easedFactor
+    // Keep rotation direction consistent with the original implementation:
+    // rotate the sail toward centerline on each tack.
+    const rotationDeg = leewardSign * (8 + trimmedInFactor * 24)
+    this.sail.rotation = degToRad(rotationDeg)
+
+    const nextNameText = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
+    if (nextNameText !== this.lastNameText) {
+      this.nameTag.text = nextNameText
+      this.lastNameText = nextNameText
+    }
+    const nextFill =
+      boat.overEarly || boat.fouled || boat.penalties > 0 ? '#ff6b6b' : '#ffffff'
+    if (nextFill !== this.lastNameFill) {
+      this.nameTag.style.fill = nextFill
+      this.lastNameFill = nextFill
+    }
+    this.drawProjection(isPlayer)
     this.updateWakeIndicator(boat)
   }
 
@@ -191,10 +215,22 @@ class BoatView {
     }
   }
 
-  private drawProjection(boat: BoatState, scale: number, isPlayer: boolean) {
+  private drawProjection(isPlayer: boolean) {
+    // Only show this guidance line for "our boat".
+    if (!isPlayer) {
+      if (this.lastProjectionLen !== 0) {
+        this.lastProjectionLen = 0
+        this.projection.clear()
+      }
+      return
+    }
+
+    // Fixed in world units: 3x previous length (was 2 * BOAT_LENGTH) => 6 boat lengths.
+    const length = 6 * BOAT_LENGTH
+    if (this.lastProjectionLen === length) return
+    this.lastProjectionLen = length
+
     this.projection.clear()
-    const baseLength = Math.max(40, boat.speed * 6)
-    const length = (isPlayer ? baseLength * 4 : baseLength) / Math.max(scale, 0.0001)
     this.projection
       .setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.3 })
       .moveTo(0, -10)
@@ -205,7 +241,10 @@ class BoatView {
 
 export class RaceScene {
   private waterLayer = new Graphics()
+  private worldLayer = new Container()
+  private windFieldLayer = new Graphics()
   private courseLayer = new Graphics()
+  private contextLayer = new Graphics()
   private overlayLayer = new Container()
   private boatLayer = new Container()
   private hudLayer = new Container()
@@ -237,12 +276,50 @@ export class RaceScene {
   })
 
   private readonly mapScaleBase = 560
-  private readonly boatScaleBase = 850
+  private readonly followZoomFactor = appEnv.followZoomFactor
+  private readonly birdseyeZoomFactor = appEnv.birdseyeZoomFactor
+  private cameraMode: CameraMode = 'follow'
+  private followBoatId: string | null = null
 
   private boats = new Map<string, BoatView>()
+  private lastCourseKey: string | null = null
+  private lastCourseWasDebug = false
+  private windFieldTick = 0
+  private windFieldWasEnabled = false
+  private readonly windFieldBuckets = 6
+  private windFieldPuffRects: number[][] = Array.from(
+    { length: this.windFieldBuckets },
+    () => [],
+  )
+  private windFieldLullRects: number[][] = Array.from(
+    { length: this.windFieldBuckets },
+    () => [],
+  )
+  private readonly windFieldCenter: Vec2 = { x: 0, y: 0 }
 
-  constructor(private app: Application) {
-    this.app.stage.addChild(this.waterLayer, this.courseLayer, this.overlayLayer, this.boatLayer, this.hudLayer)
+  constructor(
+    private app: Application,
+    options?: {
+      cameraMode?: CameraMode
+    },
+  ) {
+    // Render order (bottom -> top):
+    // - windFieldLayer: moving puffs/lulls visualization (world-space)
+    // - courseLayer: static course visuals (kept above wind shadows for readability)
+    // - contextLayer: follow-mode guidance line(s)
+    // - overlayLayer: debug overlays
+    // - boatLayer: boats + name tags, etc.
+    this.worldLayer.addChild(
+      this.windFieldLayer,
+      this.courseLayer,
+      this.contextLayer,
+      this.overlayLayer,
+      this.boatLayer,
+    )
+    this.app.stage.addChild(this.waterLayer, this.worldLayer, this.hudLayer)
+    if (options?.cameraMode) {
+      this.cameraMode = options.cameraMode
+    }
 
     this.countdownLabel.anchor.set(0.5)
     this.countdownTime.anchor.set(0.5)
@@ -261,17 +338,48 @@ export class RaceScene {
       this.timerText,
       this.countdownContainer,
     )
-    this.windText.position.set(20, 100)
-    this.timerText.position.set(20, 64)
+    // Phase/time line removed to reduce clutter; move wind readout up.
+    this.windText.position.set(20, 74)
+    // Wind info now lives in the HTML HUD cluster; keep only the arrow in-canvas.
+    this.windText.visible = false
+    // Wind arrow is now rendered in the HTML HUD cluster for easier layout.
+    this.windArrow.visible = false
+    this.windArrowFill.visible = false
+    this.timerText.visible = false
 
     this.drawWater()
   }
 
   static currentWindDeg = 0
 
+  setCameraMode(mode: CameraMode) {
+    this.cameraMode = mode
+  }
+
+  setFollowBoatId(boatId: string | null) {
+    this.followBoatId = boatId
+  }
+
   update(state: RaceState) {
     RaceScene.currentWindDeg = state.wind.directionDeg
+    this.applyCameraTransform(state)
+    // Wind field is visually "slow moving"; redraw every 3rd update to reduce CPU/GPU churn.
+    const windCfg = getWindFieldConfig(state)
+    if (!windCfg) {
+      if (this.windFieldWasEnabled) {
+        this.windFieldLayer.clear()
+      }
+      this.windFieldWasEnabled = false
+      this.windFieldTick = 0
+    } else {
+      this.windFieldWasEnabled = true
+      if (this.windFieldTick % 3 === 0) {
+        this.drawWindField(state, windCfg)
+      }
+      this.windFieldTick += 1
+    }
     this.drawCourse(state)
+    this.drawFollowContext(state)
     this.drawBoats(state)
     this.drawHud(state)
   }
@@ -283,54 +391,429 @@ export class RaceScene {
   private drawWater() {
     const { width, height } = this.app.canvas
     this.waterLayer.clear()
-    this.waterLayer.clear()
     this.waterLayer.fill({ color: 0x021428 })
     this.waterLayer.rect(0, 0, width, height)
     this.waterLayer.fill()
   }
 
-  private mapToScreen(): ScreenMapper {
+  private getMapScale(): number {
     const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / this.mapScaleBase
-    return (value: Vec2) => ({
-      x: width / 2 + value.x * scale,
-      y: height / 2 + value.y * scale,
+    return Math.min(width, height) / this.mapScaleBase
+  }
+
+  private getCourseBounds(state: RaceState) {
+    const points: Vec2[] = []
+    if (state.marks?.length) points.push(...state.marks)
+    points.push(state.startLine.pin, state.startLine.committee)
+    points.push(state.leewardGate.left, state.leewardGate.right)
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const p of points) {
+      if (!p) continue
+      if (p.x < minX) minX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.x > maxX) maxX = p.x
+      if (p.y > maxY) maxY = p.y
+    }
+
+    if (
+      !Number.isFinite(minX) ||
+      !Number.isFinite(minY) ||
+      !Number.isFinite(maxX) ||
+      !Number.isFinite(maxY)
+    ) {
+      return { minX: -1, minY: -1, maxX: 1, maxY: 1 }
+    }
+
+    return { minX, minY, maxX, maxY }
+  }
+
+  private getCameraTransform(state: RaceState) {
+    const { width, height } = this.app.canvas
+    const baseScale = this.getMapScale()
+    const bounds = this.getCourseBounds(state)
+    const courseCenter = {
+      x: (bounds.minX + bounds.maxX) / 2,
+      y: (bounds.minY + bounds.maxY) / 2,
+    }
+
+    if (this.cameraMode === 'birdseye') {
+      const paddingPx = 96
+      const availableW = Math.max(1, width - paddingPx * 2)
+      const availableH = Math.max(1, height - paddingPx * 2)
+      const worldW = Math.max(1, bounds.maxX - bounds.minX)
+      const worldH = Math.max(1, bounds.maxY - bounds.minY)
+      const fitScale = Math.min(availableW / worldW, availableH / worldH)
+      const computed = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : baseScale
+      // Slightly zoom out in birdseye so pre-start spawn (often just below the line) is still visible.
+      const scale = computed * Math.max(0.1, this.birdseyeZoomFactor)
+      return { scale, centerWorld: courseCenter }
+    }
+
+    // follow
+    const targetId = this.followBoatId ?? identity.boatId
+    const targetBoat = state.boats[targetId]
+    const centerWorld = targetBoat?.pos ?? courseCenter
+    const scale = baseScale * this.followZoomFactor
+    return { scale, centerWorld }
+  }
+
+  /**
+   * Pick the closest boat at a canvas pixel coordinate.
+   * Returns the boatId if within a reasonable radius, otherwise null.
+   */
+  pickBoatAtCanvasPoint(xPx: number, yPx: number, state: RaceState): string | null {
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const { width, height } = this.app.canvas
+    // Inverse of applyCameraTransform:
+    const worldX = centerWorld.x + (xPx - width / 2) / scale
+    const worldY = centerWorld.y + (yPx - height / 2) / scale
+
+    let bestId: string | null = null
+    let bestDist2 = Infinity
+
+    Object.values(state.boats).forEach((boat) => {
+      const dx = boat.pos.x - worldX
+      const dy = boat.pos.y - worldY
+      const d2 = dx * dx + dy * dy
+      if (d2 < bestDist2) {
+        bestDist2 = d2
+        bestId = boat.id
+      }
     })
+
+    if (!bestId || !Number.isFinite(bestDist2)) return null
+    // Threshold in world units. Boat hull is roughly ~40px tall in local coords; use BOAT_LENGTH as baseline.
+    const pickRadius = Math.max(BOAT_LENGTH * 2.2, 28)
+    return bestDist2 <= pickRadius * pickRadius ? bestId : null
+  }
+
+  /**
+   * Convert a canvas pixel coordinate (canvas internal pixel space) to world coordinates.
+   */
+  canvasPointToWorld(
+    xPx: number,
+    yPx: number,
+    state: RaceState,
+  ): { x: number; y: number } {
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const { width, height } = this.app.canvas
+    return {
+      x: centerWorld.x + (xPx - width / 2) / scale,
+      y: centerWorld.y + (yPx - height / 2) / scale,
+    }
+  }
+
+  /**
+   * Convert a boat's world position to canvas pixel coordinates (in canvas internal pixel space).
+   */
+  getBoatCanvasPoint(boatId: string, state: RaceState): { x: number; y: number } | null {
+    const boat = state.boats[boatId]
+    if (!boat) return null
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const { width, height } = this.app.canvas
+    return {
+      x: width / 2 + (boat.pos.x - centerWorld.x) * scale,
+      y: height / 2 + (boat.pos.y - centerWorld.y) * scale,
+    }
+  }
+
+  private applyCameraTransform(state: RaceState) {
+    const { width, height } = this.app.canvas
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    this.worldLayer.scale.set(scale)
+    this.worldLayer.position.set(
+      width / 2 - centerWorld.x * scale,
+      height / 2 - centerWorld.y * scale,
+    )
+  }
+
+  private getVisibleWorldBounds(state: RaceState) {
+    const { width, height } = this.app.canvas
+    const { scale, centerWorld } = this.getCameraTransform(state)
+    const inv = 1 / Math.max(0.0001, scale)
+    const halfW = (width / 2) * inv
+    const halfH = (height / 2) * inv
+    return {
+      minX: centerWorld.x - halfW,
+      maxX: centerWorld.x + halfW,
+      minY: centerWorld.y - halfH,
+      maxY: centerWorld.y + halfH,
+    }
+  }
+
+  private drawWindField(state: RaceState, cfg?: WindFieldConfig) {
+    const resolved = cfg ?? getWindFieldConfig(state)
+    this.windFieldLayer.clear()
+    if (!resolved) return
+
+    const { minX, maxX, minY, maxY } = this.getVisibleWorldBounds(state)
+
+    // Dynamic tile sizing to keep draw calls bounded.
+    const maxTiles = 1800
+    let tile = Math.max(6, resolved.tileSizeWorld)
+    const w = Math.max(1, maxX - minX)
+    const h = Math.max(1, maxY - minY)
+    let nx = Math.ceil(w / tile)
+    let ny = Math.ceil(h / tile)
+    const tileCount = nx * ny
+    if (tileCount > maxTiles) {
+      const factor = Math.sqrt(tileCount / maxTiles)
+      tile *= factor
+      nx = Math.ceil(w / tile)
+      ny = Math.ceil(h / tile)
+    }
+
+    const startX = Math.floor(minX / tile) * tile
+    const endX = Math.ceil(maxX / tile) * tile
+    const startY = Math.floor(minY / tile) * tile
+    const endY = Math.ceil(maxY / tile) * tile
+
+    // Batch rectangles into alpha buckets per sign to reduce fill state switches.
+    const buckets = this.windFieldBuckets
+    const puffRects = this.windFieldPuffRects
+    const lullRects = this.windFieldLullRects
+    for (let b = 0; b < buckets; b += 1) {
+      puffRects[b].length = 0
+      lullRects[b].length = 0
+    }
+    const minNormToDraw = 0.07
+
+    for (let y = startY; y < endY; y += tile) {
+      for (let x = startX; x < endX; x += tile) {
+        const center = this.windFieldCenter
+        center.x = x + tile / 2
+        center.y = y + tile / 2
+        const delta = sampleWindDeltaKts(state, center)
+        if (!delta) continue
+        const norm = Math.abs(delta) / Math.max(0.001, resolved.intensityKts)
+        if (norm < minNormToDraw) continue
+        const b = Math.min(buckets - 1, Math.floor(norm * buckets))
+        const list = delta > 0 ? puffRects[b] : lullRects[b]
+        list.push(x, y, tile, tile)
+      }
+    }
+
+    const puffColor = 0x19d3c5 // teal
+    const lullColor = 0x12345a // deep blue
+    const maxAlpha = 0.24
+
+    for (let b = 0; b < buckets; b += 1) {
+      const alpha = maxAlpha * ((b + 1) / buckets)
+      const puff = puffRects[b]
+      if (puff.length) {
+        this.windFieldLayer.fill({ color: puffColor, alpha })
+        for (let i = 0; i < puff.length; i += 4) {
+          this.windFieldLayer.rect(puff[i], puff[i + 1], puff[i + 2], puff[i + 3])
+        }
+        this.windFieldLayer.fill()
+      }
+      const lull = lullRects[b]
+      if (lull.length) {
+        this.windFieldLayer.fill({ color: lullColor, alpha })
+        for (let i = 0; i < lull.length; i += 4) {
+          this.windFieldLayer.rect(lull[i], lull[i + 1], lull[i + 2], lull[i + 3])
+        }
+        this.windFieldLayer.fill()
+      }
+    }
+  }
+
+  private getCourseKey(state: RaceState): string {
+    const parts: string[] = []
+    const push = (p: Vec2) => {
+      // Course geometry is effectively static; round to avoid accidental redraws from tiny float noise.
+      parts.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`)
+    }
+    state.marks.forEach(push)
+    push(state.startLine.pin)
+    push(state.startLine.committee)
+    push(state.leewardGate.left)
+    push(state.leewardGate.right)
+    return parts.join('|')
   }
 
   private drawCourse(state: RaceState) {
-    const map = this.mapToScreen()
+    const debug = appEnv.debugHud
+    if (!debug) {
+      const prevWasDebug = this.lastCourseWasDebug
+      const key = this.getCourseKey(state)
+      if (!this.lastCourseWasDebug && key === this.lastCourseKey) return
+      this.lastCourseKey = key
+      this.lastCourseWasDebug = false
+
+      // If we previously drew debug overlays, clear them when debug is off.
+      // (Debug overlays live in overlayLayer and won't be refreshed otherwise.)
+      if (prevWasDebug) {
+        this.overlayLayer.removeChildren()
+      }
+
+      this.courseLayer.clear()
+      this.drawStartLine(state)
+      this.drawMarks(state)
+      this.drawLeewardGate(state)
+      return
+    }
+
+    // In debug mode, redraw every tick since we draw stateful annotations/guides.
+    this.lastCourseWasDebug = true
+    this.lastCourseKey = this.getCourseKey(state)
+
     this.courseLayer.clear()
-    this.drawStartLine(state, map)
-    this.drawMarks(state, map)
-    this.drawLeewardGate(state, map)
-    this.drawDebugCrossingGuides(state, map)
-    this.drawDebugAnnotations(state, map)
+    this.drawStartLine(state)
+    this.drawMarks(state)
+    this.drawLeewardGate(state)
+    this.drawDebugCrossingGuides(state)
+    this.drawDebugAnnotations(state)
   }
 
-  private drawMarks(state: RaceState, map: ScreenMapper) {
+  private drawFollowContext(state: RaceState) {
+    this.contextLayer.clear()
+    if (this.cameraMode !== 'follow') return
+
+    const boat = state.boats[identity.boatId]
+    if (!boat || boat.finished) return
+
+    const to = this.getFollowContextTarget(state, boat)
+    if (!to) return
+
+    // Keep the line readable at any zoom by drawing with pixel-consistent dot size/spacing.
+    const scale = this.worldLayer.scale.x || 1
+    const pxToWorld = 1 / Math.max(0.0001, scale)
+    const dotRadiusWorld = 1.35 * pxToWorld
+    const dotSpacingWorld = 11 * pxToWorld
+    const startOffsetWorld = 14 * pxToWorld
+    const endOffsetWorld = 10 * pxToWorld
+
+    // Use a distinct accent color so this doesn't read like zone outlines.
+    this.contextLayer.fill({ color: 0x70d6ff, alpha: 0.42 })
+    this.drawDottedLine(
+      this.contextLayer,
+      boat.pos,
+      to,
+      dotRadiusWorld,
+      dotSpacingWorld,
+      startOffsetWorld,
+      endOffsetWorld,
+    )
+    this.contextLayer.fill()
+  }
+
+  private getFollowContextTarget(state: RaceState, boat: BoatState): Vec2 | null {
+    const marks = state.marks
+    if (!marks.length) return null
+
+    const nextIndex = Math.max(0, boat.nextMarkIndex ?? 0) % marks.length
+
+    // By convention in this project:
+    // - marks[0] is the windward mark
+    // - marks[1]/marks[2] are start line committee/pin
+    // - marks[3]/marks[4] are leeward gate marks
+    if (nextIndex === 1 || nextIndex === 2) {
+      return {
+        x: (state.startLine.pin.x + state.startLine.committee.x) / 2,
+        y: (state.startLine.pin.y + state.startLine.committee.y) / 2,
+      }
+    }
+    if (nextIndex === 3 || nextIndex === 4) {
+      return {
+        x: (state.leewardGate.left.x + state.leewardGate.right.x) / 2,
+        y: (state.leewardGate.left.y + state.leewardGate.right.y) / 2,
+      }
+    }
+
+    return marks[nextIndex] ?? null
+  }
+
+  private drawDottedLine(
+    g: Graphics,
+    from: Vec2,
+    to: Vec2,
+    dotRadius: number,
+    spacing: number,
+    startOffset = 0,
+    endOffset = 0,
+  ) {
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const dist = Math.hypot(dx, dy)
+    if (!Number.isFinite(dist) || dist <= 0.0001) return
+
+    const ux = dx / dist
+    const uy = dy / dist
+    const step = Math.max(0.0001, spacing)
+
+    const start = Math.max(0, startOffset)
+    const end = Math.max(start, dist - Math.max(0, endOffset))
+
+    for (let s = start; s <= end; s += step) {
+      g.circle(from.x + ux * s, from.y + uy * s, dotRadius)
+    }
+  }
+
+  private drawMarks(state: RaceState) {
     this.courseLayer.setStrokeStyle({ width: 2, color: 0x5174b3, alpha: 0.6 })
-    state.marks.forEach((mark) => {
-      const { x, y } = map(mark)
+    // Gate marks (indices 3 and 4) are drawn separately in drawLeewardGate
+    // Pin (index 2) and committee (index 1) don't get zone circles
+    const gateMarkIndices = new Set([3, 4])
+    const startLineMarkIndices = new Set([1, 2])
+    state.marks.forEach((mark, index) => {
+      const x = mark.x
+      const y = mark.y
       this.courseLayer.fill({ color: 0xffff00, alpha: 0.8 })
       this.courseLayer.circle(x, y, 6)
       this.courseLayer.fill()
-      this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
-      this.drawZoneCircle({ x, y }, 60)
+      // Skip zone circles for gate marks and start line marks
+      if (!gateMarkIndices.has(index) && !startLineMarkIndices.has(index)) {
+        this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
+        this.drawZoneCircle({ x, y }, MARK_ZONE_RADIUS)
+      }
     })
   }
 
-  private drawDebugAnnotations(state: RaceState, map: ScreenMapper) {
+  private drawDebugAnnotations(state: RaceState) {
     this.overlayLayer.removeChildren()
     if (!appEnv.debugHud) return
-    this.drawWindShadows(state, map)
-    this.drawMarkRadials(state, map)
-    this.drawMarkLabels(state, map)
-    this.drawNextMarkHighlight(state, map)
-    this.drawCrossingMarkers(state, map)
+    this.drawWindShadowsDebug(state)
+    this.drawMarkRadials(state)
+    this.drawMarkLabels(state)
+    this.drawNextMarkHighlight(state)
+    this.drawCrossingMarkers(state)
+    this.drawCameraDebug(state)
   }
 
-  private drawWindShadows(state: RaceState, map: ScreenMapper) {
+  private drawCameraDebug(state: RaceState) {
+    const boat = state.boats[identity.boatId]
+    if (!boat) return
+
+    // World-space ruler: should scale perfectly with zoom if the camera is working correctly.
+    const rulerLen = 100
+    const origin = { x: boat.pos.x + 30, y: boat.pos.y + 40 }
+
+    const g = new Graphics()
+    g.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.6 })
+    g.moveTo(origin.x, origin.y)
+    g.lineTo(origin.x + rulerLen, origin.y)
+    g.moveTo(origin.x, origin.y - 4)
+    g.lineTo(origin.x, origin.y + 4)
+    g.moveTo(origin.x + rulerLen, origin.y - 4)
+    g.lineTo(origin.x + rulerLen, origin.y + 4)
+    g.stroke()
+
+    const label = new Text({
+      text: `100u | cam=${this.cameraMode} | scale=${this.worldLayer.scale.x.toFixed(2)}`,
+      style: { fill: '#ffffff', fontSize: 12, fontFamily: 'IBM Plex Mono, monospace' },
+    })
+    label.position.set(origin.x, origin.y + 8)
+    label.alpha = 0.75
+
+    this.overlayLayer.addChild(g, label)
+  }
+
+  private drawWindShadowsDebug(state: RaceState) {
     const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
     const downRad = degToRad(downwindDeg)
     const dir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
@@ -347,8 +830,9 @@ export class RaceScene {
           const dx = target.pos.x - source.pos.x
           const dy = target.pos.y - source.pos.y
           const distSq = dx * dx + dy * dy
-          if (distSq === 0 || distSq > (WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2) ** 2) return
-          
+          if (distSq === 0 || distSq > (WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2) ** 2)
+            return
+
           const dist = Math.sqrt(distSq)
           const relUnitX = dx / dist
           const relUnitY = dy / dist
@@ -364,7 +848,7 @@ export class RaceScene {
     // This lets you see where the wake effect would be, even when empty
     Object.values(state.boats).forEach((boat) => {
       const isAffectingOthers = boatsAffectingOthers.has(boat.id)
-      
+
       // Always show in debug mode, or show when actually affecting others
       if (!appEnv.debugHud && !isAffectingOthers) return
 
@@ -399,7 +883,7 @@ export class RaceScene {
       g.setStrokeStyle({ width: 1.5, color: 0xffcf70, alpha: strokeAlpha })
       g.fill({ color: 0xffcf70, alpha: fillAlpha })
 
-      const pts = [startLeft, endLeft, endRight, startRight].map(map)
+      const pts = [startLeft, endLeft, endRight, startRight]
       g.moveTo(pts[0].x, pts[0].y)
       pts.slice(1).forEach((p) => g.lineTo(p.x, p.y))
       g.closePath()
@@ -410,14 +894,14 @@ export class RaceScene {
       if (isAffectingOthers) {
         const coneEdgeLeft = new Graphics()
         coneEdgeLeft.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.3 })
-        coneEdgeLeft.moveTo(map(startCenter).x, map(startCenter).y)
-        coneEdgeLeft.lineTo(map(endLeft).x, map(endLeft).y)
+        coneEdgeLeft.moveTo(startCenter.x, startCenter.y)
+        coneEdgeLeft.lineTo(endLeft.x, endLeft.y)
         coneEdgeLeft.stroke()
 
         const coneEdgeRight = new Graphics()
         coneEdgeRight.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.3 })
-        coneEdgeRight.moveTo(map(startCenter).x, map(startCenter).y)
-        coneEdgeRight.lineTo(map(endRight).x, map(endRight).y)
+        coneEdgeRight.moveTo(startCenter.x, startCenter.y)
+        coneEdgeRight.lineTo(endRight.x, endRight.y)
         coneEdgeRight.stroke()
 
         this.overlayLayer.addChild(g, coneEdgeLeft, coneEdgeRight)
@@ -427,9 +911,9 @@ export class RaceScene {
     })
   }
 
-  private drawMarkRadials(state: RaceState, map: ScreenMapper) {
+  private drawMarkRadials(state: RaceState) {
     const radialLength = 70
-    
+
     // Track which marks are part of gates so we draw them differently
     const gateMarkIndices = new Set<number>()
     courseLegs.forEach((leg) => {
@@ -437,24 +921,26 @@ export class RaceScene {
         leg.gateMarkIndices.forEach((idx) => gateMarkIndices.add(idx))
       }
     })
-    
+
     // Draw gate lines and radials for gate marks
     courseLegs.forEach((leg) => {
       if (leg.kind === 'gate' && leg.gateMarkIndices) {
-        this.drawGateRadials(state, map, leg.gateMarkIndices, radialLength)
+        this.drawGateRadials(state, leg.gateMarkIndices, radialLength)
       }
     })
-    
+
     // Draw regular radials for non-gate marks
     courseMarkAnnotations.forEach((annotation) => {
       // Skip gate marks - they're handled above
       if (gateMarkIndices.has(annotation.markIndex)) return
-      
+
       const mark = state.marks[annotation.markIndex]
       if (!mark) return
-      const { x, y } = map(mark)
+      const x = mark.x
+      const y = mark.y
       const color = annotation.rounding === 'port' ? 0xff6b6b : 0x00ffc3
-      const kind: 'windward' | 'leeward' = annotation.kind === 'leeward' ? 'leeward' : 'windward'
+      const kind: 'windward' | 'leeward' =
+        annotation.kind === 'leeward' ? 'leeward' : 'windward'
       const steps = radialSets[kind][annotation.rounding]
       steps.forEach((step, idx) => {
         const dx = step.axis === 'x' ? step.direction : 0
@@ -476,10 +962,9 @@ export class RaceScene {
       })
     })
   }
-  
+
   private drawGateRadials(
     state: RaceState,
-    map: ScreenMapper,
     gateMarkIndices: [number, number],
     radialLength: number,
   ) {
@@ -487,14 +972,14 @@ export class RaceScene {
     const leftMark = state.marks[leftIdx]
     const rightMark = state.marks[rightIdx]
     if (!leftMark || !rightMark) return
-    
-    const leftScreen = map(leftMark)
-    const rightScreen = map(rightMark)
-    
+
+    const leftScreen = leftMark
+    const rightScreen = rightMark
+
     // Draw the gate line (stage 1) - dashed yellow line between the two marks
     const gateLine = new Graphics()
     gateLine.setStrokeStyle({ width: 3, color: 0xffe066, alpha: 0.8 })
-    
+
     // Draw dashed line
     const segments = 8
     const dx = (rightScreen.x - leftScreen.x) / segments
@@ -504,18 +989,23 @@ export class RaceScene {
       gateLine.lineTo(leftScreen.x + dx * (i + 1), leftScreen.y + dy * (i + 1))
     }
     gateLine.stroke()
-    
+
     // Draw "1" label at midpoint of gate line
     const midX = (leftScreen.x + rightScreen.x) / 2
     const midY = (leftScreen.y + rightScreen.y) / 2
     const gateLabel = new Text({
       text: '1',
-      style: { fill: 0xffe066, fontSize: 13, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 'bold' },
+      style: {
+        fill: 0xffe066,
+        fontSize: 13,
+        fontFamily: 'IBM Plex Mono, monospace',
+        fontWeight: 'bold',
+      },
     })
     gateLabel.anchor.set(0.5)
     gateLabel.position.set(midX, midY - 12)
     this.overlayLayer.addChild(gateLine, gateLabel)
-    
+
     // Draw radials for left gate mark (stages 2, 3)
     const leftSteps = gateRadials.left
     leftSteps.forEach((step, idx) => {
@@ -536,7 +1026,7 @@ export class RaceScene {
       tag.position.set(endX, endY)
       this.overlayLayer.addChild(line, tag)
     })
-    
+
     // Draw radials for right gate mark (stages 2, 3)
     const rightSteps = gateRadials.right
     rightSteps.forEach((step, idx) => {
@@ -559,7 +1049,7 @@ export class RaceScene {
     })
   }
 
-  private drawMarkLabels(state: RaceState, map: ScreenMapper) {
+  private drawMarkLabels(state: RaceState) {
     const legCounts: Record<string, number> = {}
     courseMarkAnnotations.forEach((annotation) => {
       const mark = state.marks[annotation.markIndex]
@@ -582,26 +1072,29 @@ export class RaceScene {
       const suffix = count > 1 ? `.${variant}` : ''
       const textLabel = `M${annotation.sequences.join('/')}${suffix}`
 
-      const { x, y } = map(mark)
-    const label = new Text({
-      text: textLabel,
-      style: {
-        fill: '#ffffff',
-        fontSize: 12,
-        fontFamily: 'IBM Plex Mono, monospace',
-        fontWeight: 'bold',
-      },
-    })
-    label.anchor.set(0.5)
-    label.position.set(x, y - 20)
-    this.overlayLayer.addChild(label)
+      const x = mark.x
+      const y = mark.y
+      const label = new Text({
+        text: textLabel,
+        style: {
+          fill: '#ffffff',
+          fontSize: 12,
+          fontFamily: 'IBM Plex Mono, monospace',
+          fontWeight: 'bold',
+        },
+      })
+      label.anchor.set(0.5)
+      label.position.set(x, y - 20)
+      this.overlayLayer.addChild(label)
     })
   }
 
-  private drawNextMarkHighlight(state: RaceState, map: ScreenMapper) {
+  private drawNextMarkHighlight(state: RaceState) {
     const boat = state.boats[identity.boatId]
     if (!boat) return
-    const currentLeg = courseLegs.find((entry) => entry.markIndices.includes(boat.nextMarkIndex ?? -1))
+    const currentLeg = courseLegs.find((entry) =>
+      entry.markIndices.includes(boat.nextMarkIndex ?? -1),
+    )
     const marksToHighlight =
       currentLeg && currentLeg.sequence
         ? courseLegs
@@ -611,7 +1104,8 @@ export class RaceScene {
     marksToHighlight.forEach((markIndex) => {
       const mark = state.marks[markIndex]
       if (!mark) return
-      const { x, y } = map(mark)
+      const x = mark.x
+      const y = mark.y
       const circle = new Graphics()
       circle.setStrokeStyle({ width: 3, color: 0x00ffc3, alpha: 0.9 })
       circle.circle(x, y, 24)
@@ -620,16 +1114,18 @@ export class RaceScene {
     })
   }
 
-  private drawCrossingMarkers(state: RaceState, map: ScreenMapper) {
+  private drawCrossingMarkers(state: RaceState) {
     if (!appEnv.debugHud) return
-    
+
     // Find the most recent completed rounding (stage = stagesTotal) per boat
     // to filter out old markers
     const completedRoundings = new Map<string, number>() // boatId -> event time
     const allLapEvents = raceStore
       .getRecentEvents()
-      .filter((event) => event.kind === 'rule_hint' && event.message.startsWith('[lap-debug]'))
-    
+      .filter(
+        (event) => event.kind === 'rule_hint' && event.message.startsWith('[lap-debug]'),
+      )
+
     allLapEvents.forEach((event) => {
       // Check if this is a completed rounding (stage equals total)
       const stageMatch = event.message.match(/stage=(\d+)\/(\d+)/)
@@ -645,7 +1141,7 @@ export class RaceScene {
         }
       }
     })
-    
+
     // Only show events that occurred after the last completed rounding for each boat
     const lapEvents = allLapEvents
       .filter((event) => {
@@ -656,19 +1152,24 @@ export class RaceScene {
         return completedAt === undefined || event.t > completedAt
       })
       .slice(-6)
-    
+
     lapEvents.forEach((event) => {
       event.boats?.forEach((boatId) => {
         const boat = state.boats[boatId]
         if (!boat) return
-        const pos = map(boat.pos)
+        const pos = boat.pos
         const marker = new Graphics()
         marker.setStrokeStyle({ width: 2, color: 0x00ffc3, alpha: 0.8 })
         marker.circle(pos.x, pos.y, 16)
         marker.stroke()
         const label = new Text({
           text: event.message.replace('[lap-debug]', '').trim(),
-          style: { fill: '#00ffc3', fontSize: 12, fontFamily: 'IBM Plex Mono, monospace', align: 'left' },
+          style: {
+            fill: '#00ffc3',
+            fontSize: 12,
+            fontFamily: 'IBM Plex Mono, monospace',
+            align: 'left',
+          },
         })
         label.anchor.set(0, 0.5)
         label.position.set(pos.x + 18, pos.y)
@@ -679,33 +1180,35 @@ export class RaceScene {
     })
   }
 
-  private drawStartLine(state: RaceState, map: ScreenMapper) {
-    const pin = map(state.startLine.pin)
-    const committee = map(state.startLine.committee)
-    const dashed = state.t < 0
-
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0xffffff, alpha: dashed ? 0.4 : 0.9 })
-    if (dashed) {
-      this.drawDashedLine(pin, committee, 12, 8)
-    } else {
-      this.courseLayer.moveTo(pin.x, pin.y)
-      this.courseLayer.lineTo(committee.x, committee.y)
-      this.courseLayer.stroke()
-    }
+  private drawStartLine(state: RaceState) {
+    const pin = state.startLine.pin
+    const committee = state.startLine.committee
+    // Always draw the full start line in world space. Dashes can look “short” when zoomed,
+    // so we use opacity (prestart) instead of a dashed pattern.
+    const alpha = state.t < 0 ? 0.4 : 0.9
+    this.courseLayer.setStrokeStyle({ width: 2, color: 0xffffff, alpha })
+    this.courseLayer.moveTo(pin.x, pin.y)
+    this.courseLayer.lineTo(committee.x, committee.y)
+    this.courseLayer.stroke()
 
     // Pin mark
     this.courseLayer.fill({ color: 0xffd166, alpha: 0.9 })
-    this.courseLayer.circle(pin.x, pin.y, 8)
+    this.courseLayer.circle(pin.x, pin.y, 6)
     this.courseLayer.fill()
 
-    // Committee boat shape
-    const angle = Math.atan2(pin.y - committee.y, pin.x - committee.x)
+    // Committee boat shape - more boat-like with bow, hull, and stern
+    const angle = Math.atan2(pin.y - committee.y, pin.x - committee.x) + Math.PI
     const cos = Math.cos(angle)
     const sin = Math.sin(angle)
+    // Boat shape: pointed bow, wider stern
+    const s = 0.75
     const hull = [
-      { x: 0, y: -14 },
-      { x: 18, y: 12 },
-      { x: -18, y: 12 },
+      { x: 0 * s, y: -16 * s }, // Bow point
+      { x: 8 * s, y: -8 * s }, // Bow starboard
+      { x: 20 * s, y: 14 * s }, // Stern starboard
+      { x: 0 * s, y: 18 * s }, // Stern center
+      { x: -20 * s, y: 14 * s }, // Stern port
+      { x: -8 * s, y: -8 * s }, // Bow port
     ].map(({ x, y }) => ({
       x: committee.x + x * cos - y * sin,
       y: committee.y + x * sin + y * cos,
@@ -719,44 +1222,42 @@ export class RaceScene {
       hull[1].y,
       hull[2].x,
       hull[2].y,
+      hull[3].x,
+      hull[3].y,
+      hull[4].x,
+      hull[4].y,
+      hull[5].x,
+      hull[5].y,
     ])
     this.courseLayer.fill()
-  }
-
-  private drawDashedLine(
-    start: { x: number; y: number },
-    end: { x: number; y: number },
-    dashLength: number,
-    gapLength: number,
-  ) {
-    const dx = end.x - start.x
-    const dy = end.y - start.y
-    const length = Math.hypot(dx, dy)
-    const segments = Math.floor(length / (dashLength + gapLength))
-    const unitX = dx / length
-    const unitY = dy / length
-    let dist = 0
-    for (let i = 0; i <= segments; i += 1) {
-      const dashStartDist = dist
-      const dashEndDist = Math.min(dist + dashLength, length)
-      const from = {
-        x: start.x + unitX * dashStartDist,
-        y: start.y + unitY * dashStartDist,
-      }
-      const to = {
-        x: start.x + unitX * dashEndDist,
-        y: start.y + unitY * dashEndDist,
-      }
-      this.courseLayer.moveTo(from.x, from.y)
-      this.courseLayer.lineTo(to.x, to.y)
-      dist += dashLength + gapLength
-    }
+    // Add a mast
+    this.courseLayer.setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.8 })
+    this.courseLayer.moveTo(committee.x, committee.y - 8 * s)
+    this.courseLayer.lineTo(committee.x, committee.y + 8 * s)
     this.courseLayer.stroke()
+
+    if (appEnv.debugHud) {
+      const dx = committee.x - pin.x
+      const dy = committee.y - pin.y
+      const len = Math.hypot(dx, dy)
+      const midX = (committee.x + pin.x) / 2
+      const midY = (committee.y + pin.y) / 2
+      const label = new Text({
+        text: `Start line: ${len.toFixed(1)}u`,
+        style: { fill: '#ffffff', fontSize: 12, fontFamily: 'IBM Plex Mono, monospace' },
+      })
+      label.anchor.set(0.5)
+      label.position.set(midX, midY - 18)
+      label.alpha = 0.7
+      this.overlayLayer.addChild(label)
+    }
   }
 
-  private drawLeewardGate(state: RaceState, map: ScreenMapper) {
-    const left = map(state.leewardGate.left)
-    const right = map(state.leewardGate.right)
+  // (dashed-line helper removed; solid lines scale and read better under zoom)
+
+  private drawLeewardGate(state: RaceState) {
+    const left = state.leewardGate.left
+    const right = state.leewardGate.right
     this.courseLayer.setStrokeStyle({ width: 2, color: 0xff6b6b, alpha: 0.8 })
     this.courseLayer.moveTo(left.x, left.y)
     this.courseLayer.lineTo(right.x, right.y)
@@ -764,27 +1265,27 @@ export class RaceScene {
       this.courseLayer.fill({ color: 0xff6b6b, alpha: 0.9 })
       this.courseLayer.circle(gateMark.x, gateMark.y, 7)
       this.courseLayer.fill()
-      this.drawZoneCircle(gateMark, 48)
+      this.drawZoneCircle(gateMark, MARK_ZONE_RADIUS)
     })
   }
 
-  private drawDebugCrossingGuides(state: RaceState, map: ScreenMapper) {
+  private drawDebugCrossingGuides(state: RaceState) {
     if (!appEnv.debugHud) return
     const guideColor = 0x32e5ff
 
     const windward = state.marks[0]
     if (windward) {
       const span = 400
-      const start = map({ x: windward.x - span, y: windward.y })
-      const end = map({ x: windward.x + span, y: windward.y })
+      const start = { x: windward.x - span, y: windward.y }
+      const end = { x: windward.x + span, y: windward.y }
       this.drawGuideLine(start, end, 1, guideColor)
     }
 
     const gateY = (state.leewardGate.left.y + state.leewardGate.right.y) / 2
     const minX = Math.min(state.leewardGate.left.x, state.leewardGate.right.x)
     const maxX = Math.max(state.leewardGate.left.x, state.leewardGate.right.x)
-    const gateStart = map({ x: minX, y: gateY })
-    const gateEnd = map({ x: maxX, y: gateY })
+    const gateStart = { x: minX, y: gateY }
+    const gateEnd = { x: maxX, y: gateY }
     this.drawGuideLine(gateStart, gateEnd, 1, guideColor)
   }
 
@@ -802,7 +1303,11 @@ export class RaceScene {
     this.drawDirectionArrow(mid, direction, color)
   }
 
-  private drawDirectionArrow(center: { x: number; y: number }, direction: 1 | -1, color: number) {
+  private drawDirectionArrow(
+    center: { x: number; y: number },
+    direction: 1 | -1,
+    color: number,
+  ) {
     const length = 28
     const tip = { x: center.x, y: center.y + direction * length }
     const tail = { x: center.x, y: center.y - direction * length }
@@ -817,7 +1322,8 @@ export class RaceScene {
     this.courseLayer.stroke()
   }
 
-  private drawZoneCircle(center: { x: number; y: number }, radius: number) {
+  private drawZoneCircle(center: { x: number; y: number }, radiusWorld: number) {
+    const radius = radiusWorld
     const segments = 48
     const step = (Math.PI * 2) / segments
     let angle = 0
@@ -837,9 +1343,6 @@ export class RaceScene {
   }
 
   private drawBoats(state: RaceState) {
-    const map = this.mapToScreen()
-    const { width, height } = this.app.canvas
-    const scale = Math.min(width, height) / this.boatScaleBase
     const seen = new Set<string>()
     Object.values(state.boats).forEach((boat) => {
       seen.add(boat.id)
@@ -849,7 +1352,7 @@ export class RaceScene {
         this.boatLayer.addChild(view.container)
       }
       const isPlayer = boat.id === identity.boatId
-      this.boats.get(boat.id)?.update(boat, map, scale, isPlayer)
+      this.boats.get(boat.id)?.update(boat, isPlayer)
     })
 
     // cleanup
@@ -861,13 +1364,21 @@ export class RaceScene {
   }
 
   private drawHud(state: RaceState) {
-    this.timerText.text = `${state.phase.toUpperCase()} | T = ${state.t.toFixed(0)}s`
+    // Phase/time text intentionally hidden (see constructor).
+    this.timerText.text = ''
     const shift = state.wind.directionDeg - state.baselineWindDeg
     const shiftText =
-      Math.abs(shift) < 0.5 ? 'ON' : shift > 0 ? `${shift.toFixed(1)}° R` : `${shift.toFixed(1)}° L`
-    this.windText.text = `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts`
+      Math.abs(shift) < 0.5
+        ? '0'
+        : shift > 0
+          ? `${shift.toFixed(1)}° R`
+          : `${shift.toFixed(1)}° L`
+    // Keep string generation only in debug mode (windText is hidden in normal HUD).
+    this.windText.text = appEnv.debugHud
+      ? `Wind ${state.wind.directionDeg.toFixed(0)}° (${shiftText}) @ ${state.wind.speed.toFixed(1)}kts | cam=${this.cameraMode} x${this.worldLayer.scale.x.toFixed(2)}`
+      : ''
 
-    const center = { x: 80, y: 150 }
+    const center = { x: 80, y: 120 }
     const length = 60
     const heading = degToRad(state.wind.directionDeg + 180)
     const tipX = center.x + length * Math.sin(heading)
@@ -876,23 +1387,18 @@ export class RaceScene {
     const arrowShift = state.wind.directionDeg - state.baselineWindDeg
     const shiftColor = arrowShift > 1 ? 0xff8f70 : arrowShift < -1 ? 0x70d6ff : 0xffffff
 
-    this.windArrow.clear()
-    this.windArrow.setStrokeStyle({ width: 3, color: shiftColor })
-    this.windArrow.moveTo(center.x, center.y)
-    this.windArrow.lineTo(tipX, tipY)
-    this.windArrow.stroke()
+    if (this.windArrow.visible) {
+      this.windArrow.clear()
+      this.windArrow.setStrokeStyle({ width: 3, color: shiftColor })
+      this.windArrow.moveTo(center.x, center.y)
+      this.windArrow.lineTo(tipX, tipY)
+      this.windArrow.stroke()
 
-    this.windArrowFill.clear()
-    this.windArrowFill.fill({ color: shiftColor })
-    this.windArrowFill.poly([
-      tipX,
-      tipY,
-      tipX + 8,
-      tipY - 12,
-      tipX - 8,
-      tipY - 12,
-    ])
-    this.windArrowFill.fill()
+      this.windArrowFill.clear()
+      this.windArrowFill.fill({ color: shiftColor })
+      this.windArrowFill.poly([tipX, tipY, tipX + 8, tipY - 12, tipX - 8, tipY - 12])
+      this.windArrowFill.fill()
+    }
 
     this.drawCountdown(state)
   }
@@ -917,11 +1423,16 @@ export class RaceScene {
     const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`
     const finalWarning = secondsRounded <= 10
 
-    const overlayWidth = Math.min(stageWidth - 32, 640)
+    const overlayWidthRaw = Math.min(stageWidth - 32, 640)
+    // Make the countdown overlay ~25% less wide while keeping it centered.
+    // Clamp so we never exceed the available width on very small screens.
+    const overlayWidth = Math.round(
+      Math.min(overlayWidthRaw, Math.max(220, overlayWidthRaw * 0.75)),
+    )
     const overlayHeight = Math.min(stageHeight * 0.25, 140)
     const overlayX = (stageWidth - overlayWidth) / 2
     const overlayY = Math.max(16, stageHeight * 0.08)
-    const barPadding = 24
+    const barPadding = 18
     const barWidth = Math.max(60, overlayWidth - barPadding * 2)
     const barHeight = 18
     const barX = overlayX + barPadding
@@ -937,7 +1448,13 @@ export class RaceScene {
     this.countdownFill.clear()
     if (percent > 0) {
       this.countdownFill.fill({ color: fillColor, alpha: 0.95 })
-      this.countdownFill.roundRect(barX, barY, barWidth * percent, barHeight, barHeight / 2)
+      this.countdownFill.roundRect(
+        barX,
+        barY,
+        barWidth * percent,
+        barHeight,
+        barHeight / 2,
+      )
       this.countdownFill.fill()
     }
     this.countdownFill.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.2 })
@@ -950,4 +1467,3 @@ export class RaceScene {
     this.countdownTime.text = timeText
   }
 }
-

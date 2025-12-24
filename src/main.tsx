@@ -6,8 +6,11 @@ import { LandingPage } from './LandingPage'
 
 const isGameRoute = window.location.pathname.startsWith('/app')
 
+if (isGameRoute) {
+  document.documentElement.classList.add('game-root')
+  document.body.classList.add('game-root')
+}
+
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    {isGameRoute ? <App /> : <LandingPage />}
-  </StrictMode>,
+  <StrictMode>{isGameRoute ? <App /> : <LandingPage />}</StrictMode>,
 )

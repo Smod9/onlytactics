@@ -78,4 +78,3 @@ export const createAiConfig = (profileId: string): BoatAiConfig => {
 }
 
 export const AI_PRESETS = PRESETS
-

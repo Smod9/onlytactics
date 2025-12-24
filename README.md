@@ -1,6 +1,6 @@
 # Only Tactics Sailing Simulator
 
-This is the browser client for the sailing race rules trainer. It includes the PixiJS scene, MQTT networking, replay tooling, and connects to a shared CloudAMQP (RabbitMQ) broker.
+This is the browser client for the sailing race rules trainer. It includes the PixiJS scene, replay tooling, and connects to a Colyseus server.
 
 ## Why should this exist?
 
@@ -22,11 +22,11 @@ I can't (and won't) maintain this on my own, I've never liked sailing single han
 
 ```bash
 npm install
-cp env.example .env    # adjust values if needed (contains CloudAMQP defaults)
-npm run dev            # starts Vite and connects to the remote broker
+cp env.example .env    # adjust values if needed (contains Colyseus defaults)
+npm run dev            # starts Vite and connects to the configured Colyseus room
 ```
 
-The dev server now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new broker. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
+The dev server now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). Configure your server via `VITE_COLYSEUS_ENDPOINT` + `VITE_COLYSEUS_ROOM_ID` in `.env`.
 
 ## Server + Fly.io Postgres (replays)
 
@@ -102,6 +102,34 @@ With debug HUD enabled (`VITE_DEBUG_HUD=true`):
 - The player's speed/heading overlay shows a "Wake -X%" indicator when affected
 
 This system encourages tactical positioning—staying out of other boats' wakes when possible, and using your wake to slow down competitors when advantageous.
+
+## Puffs & Lulls (Wind Field)
+
+The simulator can add **spatial wind-speed variation** across the course (“puffs” and “lulls”). Boats use the **local wind speed** at their position (wind direction is still global), and the water renders a **square patch** visualization that drifts downwind.
+
+### Runtime toggle (host)
+
+If you are the host, you can toggle the feature at runtime via the header button:
+
+- `Puffs: On/Off`
+
+This sends a Colyseus host command and updates the authoritative race state for everyone immediately.
+
+### Key tuning knobs
+
+These settings are part of `RaceState.windField` and are controlled via env vars.
+
+- **Make puffs bigger**: increase `WIND_FIELD_SIZE_WORLD` (server) or `VITE_WIND_FIELD_SIZE_WORLD` (client).
+- **Make puffs stronger/weaker**: adjust `WIND_FIELD_INTENSITY_KTS` / `VITE_WIND_FIELD_INTENSITY_KTS`.
+- **Make the visual grid finer/coarser**: adjust `WIND_FIELD_TILE_SIZE_WORLD` / `VITE_WIND_FIELD_TILE_SIZE_WORLD`.
+- **More/fewer puffs**: adjust `WIND_FIELD_COUNT` / `VITE_WIND_FIELD_COUNT`.
+
+### Colyseus note (important)
+
+In Colyseus mode, the **server is authoritative**. To ensure puffs stay enabled after the race starts:
+
+- Set server env `WIND_FIELD_ENABLED=true` (or toggle via the host button).
+- Restart the server after env changes (or redeploy).
 
 ## Other scripts
 

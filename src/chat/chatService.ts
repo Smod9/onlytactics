@@ -1,16 +1,14 @@
-import { appEnv } from '@/config/env'
-import { mqttClient } from '@/net/mqttClient'
-import { chatTopic } from '@/net/topics'
 import type { ChatMessage } from '@/types/race'
 import { raceStore } from '@/state/raceStore'
-import { identity } from '@/net/identity'
-import { createId } from '@/utils/ids'
 import type { GameNetwork } from '@/net/gameNetwork'
 
 class RateLimiter {
   private timestamps: number[] = []
 
-  constructor(private limit: number, private windowMs: number) {}
+  constructor(
+    private limit: number,
+    private windowMs: number,
+  ) {}
 
   canSend() {
     const now = Date.now()
@@ -32,16 +30,8 @@ export class ChatService {
 
   async start(network?: GameNetwork) {
     if (this.started) return
-    if (appEnv.netTransport === 'colyseus') {
-      if (!network) return
-      this.unsubscribe = network.onChatMessage((message) => {
-        raceStore.appendChat(message)
-      })
-      this.started = true
-      return
-    }
-    await mqttClient.connect()
-    this.unsubscribe = mqttClient.subscribe<ChatMessage>(chatTopic, (message) => {
+    if (!network) return
+    this.unsubscribe = network.onChatMessage((message) => {
       raceStore.appendChat(message)
     })
     this.started = true
@@ -53,7 +43,11 @@ export class ChatService {
     this.started = false
   }
 
-  async send(text: string, senderRole: ChatMessage['senderRole'], network?: GameNetwork) {
+  async send(
+    text: string,
+    _senderRole: ChatMessage['senderRole'],
+    network?: GameNetwork,
+  ) {
     const trimmed = text.trim()
     if (!trimmed.length) {
       return { ok: false as const, error: 'empty' }
@@ -61,31 +55,15 @@ export class ChatService {
     if (!this.limiter.canSend()) {
       return { ok: false as const, error: 'rate_limit' }
     }
-    if (appEnv.netTransport === 'colyseus') {
-      if (!network) {
-        return { ok: false as const, error: 'network' }
-      }
-      const sent = network.sendChat(trimmed)
-      if (!sent) {
-        return { ok: false as const, error: 'network' }
-      }
-      return { ok: true as const }
+    if (!network) {
+      return { ok: false as const, error: 'network' }
     }
-    await mqttClient.connect()
-    const message: ChatMessage = {
-      messageId: createId('chat'),
-      raceId: raceStore.getState().meta.raceId,
-      senderId: identity.clientId,
-      senderName: identity.clientName ?? appEnv.clientName,
-      senderRole,
-      text: trimmed,
-      ts: Date.now(),
+    const sent = network.sendChat(trimmed)
+    if (!sent) {
+      return { ok: false as const, error: 'network' }
     }
-    mqttClient.publish(chatTopic, message)
-    raceStore.appendChat(message)
     return { ok: true as const }
   }
 }
 
 export const chatService = new ChatService()
-

@@ -5,4 +5,3 @@ export const distanceBetween = (a: Vec2, b: Vec2) => {
   const dy = a.y - b.y
   return Math.hypot(dx, dy)
 }
-

@@ -5,6 +5,24 @@ export type Wind = {
   speed: number
 }
 
+export type WindFieldConfig = {
+  enabled: boolean
+  /** Typical peak delta (kts) of puffs/lulls before clamping. */
+  intensityKts: number
+  /** Number of moving puff/lull blobs in the domain. */
+  count: number
+  /** Typical blob size in world units (roughly half-width). */
+  sizeWorld: number
+  /** Along-wind wrapping length in world units. */
+  domainLengthWorld: number
+  /** Cross-wind extent (centered) in world units. */
+  domainWidthWorld: number
+  /** Multiplier for downwind advection speed relative to wind speed. */
+  advectionFactor: number
+  /** Visual tile size (world units) for square patch rendering. */
+  tileSizeWorld: number
+}
+
 export type StartLine = {
   pin: Vec2
   committee: Vec2
@@ -45,6 +63,7 @@ export type BoatState = {
   finishTime?: number
   distanceToNextMark?: number
   penalties: number
+  protestPenalties: number /** Portion of `penalties` that came specifically from an on-water protest. */
   stallTimer: number
   tackTimer: number
   overEarly: boolean
@@ -70,7 +89,13 @@ export type RaceState = {
   meta: RaceMeta
   wind: Wind
   baselineWindDeg: number
+  windField?: WindFieldConfig
   boats: Record<string, BoatState>
+  /**
+   * Active protests keyed by `protestedBoatId`.
+   * We intentionally keep this 1:1 for now (only one protest per protested boat).
+   */
+  protests: Record<string, Protest>
   marks: Vec2[]
   startLine: StartLine
   leewardGate: Gate
@@ -82,6 +107,8 @@ export type RaceState = {
   lapsToFinish: number
   leaderboard: string[]
   aiEnabled: boolean
+  /** Debug/admin feature: when true, the simulation is frozen (no stepping). */
+  paused?: boolean
 }
 
 export type PlayerInput = {
@@ -139,5 +166,14 @@ export type ReplayRecording = {
   chat: ChatMessage[]
 }
 
-export type RaceRole = 'host' | 'player' | 'spectator'
+export type RaceRole = 'host' | 'player' | 'spectator' | 'judge' | 'god'
 
+export type ProtestStatus = 'active' | 'active_waived'
+
+export type Protest = {
+  protestedBoatId: string
+  protestorBoatId: string
+  /** Race-time (`t`) when the protest was filed. */
+  createdAtT: number
+  status: ProtestStatus
+}

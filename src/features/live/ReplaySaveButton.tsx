@@ -2,9 +2,7 @@ import { useState } from 'react'
 import { persistReplay } from '@/replay/manager'
 
 export const ReplaySaveButton = () => {
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(
-    'idle',
-  )
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   const save = async () => {
     setStatus('saving')
@@ -28,4 +26,3 @@ export const ReplaySaveButton = () => {
     </div>
   )
 }
-

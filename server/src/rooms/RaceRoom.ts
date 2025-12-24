@@ -8,7 +8,15 @@ import {
   createRaceMeta,
   cloneRaceState,
 } from '@/state/factories'
-import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState, PlayerInput } from '@/types/race'
+import type {
+  ChatMessage,
+  ChatSenderRole,
+  RaceEvent,
+  RaceRole,
+  RaceState,
+  PlayerInput,
+  ProtestStatus,
+} from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { assignLeaderboard } from '@/logic/leaderboard'
@@ -42,15 +50,32 @@ type InputMessage = {
   clearPenalty?: boolean
 }
 
+type JoinRoleOption = Exclude<RaceRole, 'host'>
+
+type ProtestCommand =
+  | { kind: 'file'; targetBoatId: string }
+  | { kind: 'revoke'; targetBoatId: string }
+  | { kind: 'judge_clear'; targetBoatId: string }
+
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
   | { kind: 'reset' }
+  | { kind: 'pause'; paused: boolean }
+  | { kind: 'wind_field'; enabled: boolean }
+  | { kind: 'debug_set_pos'; boatId: string; x: number; y: number }
   | { kind: 'debug_lap'; boatId: string }
   | { kind: 'debug_finish'; boatId: string }
   | { kind: 'debug_warp'; boatId: string }
 
 type ChatMessagePayload = {
   text?: string
+}
+
+type RosterEntryPayload = {
+  clientId: string
+  name: string
+  role: RaceRole
+  boatId: string | null
 }
 
 export class RaceRoom extends Room<RaceRoomState> {
@@ -63,6 +88,7 @@ export class RaceRoom extends Room<RaceRoomState> {
   private clientBoatMap = new Map<string, string>()
   private clientIdentityMap = new Map<string, string>()
   private clientNameMap = new Map<string, string>()
+  private clientRoleMap = new Map<string, JoinRoleOption>()
 
   private hostSessionId?: string
   private hostClientId?: string
@@ -73,6 +99,7 @@ export class RaceRoom extends Room<RaceRoomState> {
   private replayRecorder = new ReplayRecorder()
   private replaySaved = false
   private persistingReplay = false
+  private lastCountdownLogAtMs = 0
 
   onCreate(options: Record<string, unknown>) {
     this.setState(new RaceRoomState())
@@ -101,6 +128,20 @@ export class RaceRoom extends Room<RaceRoomState> {
         if (state.phase === 'finished' && !this.replaySaved) {
           void this.persistReplay('race_finished')
         }
+        // Debug: confirm countdown is ticking server-side.
+        // Logs at most once per second while countdown is armed.
+        if (state.phase === 'prestart' && state.countdownArmed) {
+          const now = Date.now()
+          if (now - this.lastCountdownLogAtMs > 1000) {
+            this.lastCountdownLogAtMs = now
+            console.info('[RaceRoom]', 'countdown_tick', {
+              t: Number.isFinite(state.t) ? state.t.toFixed(2) : state.t,
+              phase: state.phase,
+              countdownArmed: state.countdownArmed,
+              clockStartMs: state.clockStartMs ?? null,
+            })
+          }
+        }
         if (state.hostId !== this.hostClientId) {
           roomDebug('loop host sync', {
             loopHostId: state.hostId,
@@ -126,24 +167,24 @@ export class RaceRoom extends Room<RaceRoomState> {
       if (!this.raceStore) return
       const boatId = this.resolveBoatId(client, message.boatId)
       if (!boatId) return
-      
+
       // Handle penalty clear requests
       if (message.clearPenalty) {
-        this.clearPenalty(boatId)
+        this.handlePenaltyClearRequest(boatId)
         return
       }
-      
+
       // Handle spin requests: queue a 360° spin sequence
       if (message.spin === 'full') {
         this.queueSpin(boatId)
         return
       }
-      
+
       // Ignore other inputs during active spin to prevent interference
       if (this.activeSpins.has(boatId)) {
         return
       }
-      
+
       // Process normal heading/VMG inputs
       const payload = {
         boatId,
@@ -158,14 +199,56 @@ export class RaceRoom extends Room<RaceRoomState> {
       this.raceStore.upsertInput(payload)
     })
 
+    this.onMessage<ProtestCommand>('protest_command', (client, command) => {
+      if (!this.raceStore) return
+      if (!command?.targetBoatId) return
+      const targetBoatId = command.targetBoatId
+      const role = this.clientRoleMap.get(client.sessionId) ?? 'player'
+      if (command.kind === 'judge_clear') {
+        if (role !== 'judge') {
+          console.warn('[RaceRoom] ignoring judge_clear from non-judge', {
+            sessionId: client.sessionId,
+            role,
+            command,
+          })
+          return
+        }
+        this.clearProtestAsJudge(targetBoatId)
+        return
+      }
+
+      // file/revoke must come from a player with an assigned boat
+      const protestorBoatId = this.clientBoatMap.get(client.sessionId)
+      if (!protestorBoatId) {
+        console.warn('[RaceRoom] ignoring protest command from non-player', {
+          sessionId: client.sessionId,
+          role,
+          command,
+        })
+        return
+      }
+
+      if (command.kind === 'file') {
+        this.fileProtest(protestorBoatId, targetBoatId)
+      } else if (command.kind === 'revoke') {
+        this.revokeProtest(protestorBoatId, targetBoatId)
+      }
+    })
+
     this.onMessage<HostCommand>('host_command', (client, command) => {
-      if (client.sessionId !== this.hostSessionId) {
+      const role = this.clientRoleMap.get(client.sessionId) ?? 'player'
+      const isHost = client.sessionId === this.hostSessionId
+      const isGod = role === 'god' && appEnv.debugHud
+      const godAllowed = command.kind === 'pause' || command.kind === 'debug_set_pos'
+      if (!isHost && !(isGod && godAllowed)) {
         console.warn('[RaceRoom] ignoring host command from non-host', {
           clientId: client.sessionId,
+          role,
           command,
         })
         roomDebug('host_command ignored', {
           clientId: client.sessionId,
+          role,
           command,
           hostSessionId: this.hostSessionId,
         })
@@ -176,6 +259,12 @@ export class RaceRoom extends Room<RaceRoomState> {
         this.armCountdown(command.seconds ?? appEnv.countdownSeconds)
       } else if (command.kind === 'reset') {
         this.resetRaceState()
+      } else if (command.kind === 'pause') {
+        this.setPaused(command.paused)
+      } else if (command.kind === 'wind_field') {
+        this.setWindFieldEnabled(command.enabled)
+      } else if (command.kind === 'debug_set_pos') {
+        this.debugSetBoatPosition(command.boatId, command.x, command.y)
       } else if (command.kind === 'debug_lap') {
         this.debugAdvanceLap(command.boatId)
       } else if (command.kind === 'debug_finish') {
@@ -188,13 +277,62 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.onMessage<ChatMessagePayload>('chat', (client, payload) => {
       this.handleChat(client, payload)
     })
+
+    // Client may miss the initial roster broadcast during join; allow requesting it explicitly.
+    this.onMessage('roster_request', (client) => {
+      client.send('roster', { entries: this.buildRosterEntries() })
+    })
+  }
+
+  private buildRosterEntries(): RosterEntryPayload[] {
+    const entries: RosterEntryPayload[] = []
+    for (const sessionId of this.clientIdentityMap.keys()) {
+      const clientId = this.clientIdentityMap.get(sessionId) ?? sessionId
+      const name =
+        this.clientNameMap.get(sessionId) ??
+        `Sailor ${(clientId ?? sessionId).slice(0, 4)}`
+      const joinRole = this.clientRoleMap.get(sessionId) ?? 'player'
+      const role: RaceRole = sessionId === this.hostSessionId ? 'host' : joinRole
+      const boatId = this.clientBoatMap.get(sessionId) ?? null
+      entries.push({ clientId, name, role, boatId })
+    }
+    entries.sort((a, b) => {
+      if (a.role === 'host') return -1
+      if (b.role === 'host') return 1
+      if (a.role !== b.role) return a.role.localeCompare(b.role)
+      return a.name.localeCompare(b.name)
+    })
+    return entries
+  }
+
+  private broadcastRoster() {
+    this.broadcast('roster', { entries: this.buildRosterEntries() })
   }
 
   onJoin(client: Client, options?: Record<string, unknown>) {
     const clientId = this.resolveClientIdentity(client, options)
+    const joinRole = this.resolveJoinRole(options)
+    client.send('role_assignment', { role: joinRole })
+
+    // De-dupe: if the same clientId is already connected, evict the previous session.
+    const existingSessionId = this.findExistingSessionId(clientId, client.sessionId)
+    const existingWasHost = Boolean(
+      existingSessionId && existingSessionId === this.hostSessionId,
+    )
+    if (existingSessionId) {
+      console.info('[RaceRoom] evicting duplicate session for clientId', {
+        clientId,
+        previousSessionId: existingSessionId,
+        nextSessionId: client.sessionId,
+        nextRole: joinRole,
+      })
+      this.evictSession(existingSessionId)
+    }
+
     this.clientIdentityMap.set(client.sessionId, clientId)
     const displayName = this.resolvePlayerName(client, options)
     this.clientNameMap.set(client.sessionId, displayName)
+    this.clientRoleMap.set(client.sessionId, joinRole)
     this.state.playerCount += 1
     console.info('[RaceRoom] client joined', {
       clientId: client.sessionId,
@@ -205,10 +343,22 @@ export class RaceRoom extends Room<RaceRoomState> {
       playerCount: this.state.playerCount,
       hostSessionId: this.hostSessionId,
     })
-    this.assignBoatToClient(client, options)
-    if (!this.hostSessionId) {
-      this.setHost(client.sessionId)
+    if (joinRole === 'player') {
+      this.assignBoatToClient(client, options)
+      if (existingWasHost) {
+        this.setHost(client.sessionId)
+      } else if (!this.hostSessionId) {
+        this.setHost(client.sessionId)
+      }
+    } else {
+      // Judges and spectators do not control a boat.
+      client.send('boat_assignment', { boatId: null })
+      // If the previous session was host and the replacement is not a player, drop host selection.
+      if (existingWasHost) {
+        this.setHost(undefined)
+      }
     }
+    this.broadcastRoster()
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -219,6 +369,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       playerCount: this.state.playerCount,
     })
     this.releaseBoat(client)
+    this.broadcastRoster()
     roomDebug('onLeave', {
       clientId: client.sessionId,
       consented,
@@ -234,7 +385,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
     this.activeSpins.clear()
   }
-  
+
   /**
    * Queue a 360° spin sequence for a boat.
    * The spin consists of three heading changes: +120°, +240°, then back to origin.
@@ -247,7 +398,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const state = this.raceStore.getState()
     const boat = state.boats[boatId]
     if (!boat) return
-    
+
     // Disable VMG mode and set rightsSuspended to prevent other inputs during spin
     this.mutateState((draft) => {
       const target = draft.boats[boatId]
@@ -256,15 +407,11 @@ export class RaceRoom extends Room<RaceRoomState> {
         target.vmgMode = false
       }
     })
-    
+
     // Calculate the three headings for the spin sequence (120° increments)
     const origin = boat.desiredHeadingDeg ?? boat.headingDeg
-    const headings = [
-      origin + 120,
-      origin + 240,
-      origin,
-    ].map((deg) => normalizeDeg(deg))
-    
+    const headings = [origin + 120, origin + 240, origin].map((deg) => normalizeDeg(deg))
+
     // Schedule each heading change with increasing delays
     let delay = 0
     const timers: NodeJS.Timeout[] = headings.map((heading, index) => {
@@ -280,7 +427,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
     this.activeSpins.set(boatId, timers)
   }
-  
+
   /**
    * Inject a heading change into the race state as part of a spin sequence.
    * This simulates the boat turning during a 360° spin.
@@ -297,7 +444,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     }
     this.raceStore.upsertInput(payload)
   }
-  
+
   /**
    * Finish a spin sequence: clean up timers and restore normal boat state.
    * This is called after the final heading change (back to origin) completes.
@@ -316,35 +463,54 @@ export class RaceRoom extends Room<RaceRoomState> {
         boat.rightsSuspended = false
       }
     })
-    // Clear one penalty if the boat has any
-    this.clearPenalty(boatId)
+    // Clear one penalty if the boat has any; and clear any active protest on that boat.
+    this.clearOnePenaltyAfterSpin(boatId)
   }
-  
+
   /**
-   * Clear one penalty from a boat after completing a 360° spin.
-   * Creates and broadcasts an event if a penalty was cleared.
+   * Handle "P" clear requests from the client.
+   * If the penalty is protest-derived and a protest exists, this is treated as a waiver:
+   * the penalty clears but the protest remains as `active_waived`.
    */
-  private clearPenalty(boatId: string) {
+  private handlePenaltyClearRequest(boatId: string) {
     if (!this.raceStore) return
     let cleared = false
+    let waived = false
     let boatName: string | undefined
     let remaining = 0
-    
     this.mutateState((draft) => {
       const boat = draft.boats[boatId]
       if (!boat) return
       boatName = boat.name
-      if (boat.penalties > 0) {
-        boat.penalties -= 1
+
+      const protest = (draft.protests ?? {})[boatId]
+      const hasProtest = Boolean(protest)
+      const hasProtestPenalty = (boat.protestPenalties ?? 0) > 0
+
+      if (hasProtest && hasProtestPenalty) {
+        // Waive: clear protest-derived penalty but leave protest active.
+        waived = true
+        boat.protestPenalties = Math.max(0, (boat.protestPenalties ?? 0) - 1)
+        boat.penalties = Math.max(0, (boat.penalties ?? 0) - 1)
+        ;(draft.protests ?? {})[boatId] = {
+          ...protest,
+          status: 'active_waived' satisfies ProtestStatus,
+        }
+        cleared = true
+      } else if ((boat.penalties ?? 0) > 0) {
+        // Fallback: clear any penalty (prefer protestPenalties if they exist).
+        if ((boat.protestPenalties ?? 0) > 0) {
+          boat.protestPenalties = Math.max(0, boat.protestPenalties - 1)
+        }
+        boat.penalties = Math.max(0, boat.penalties - 1)
         cleared = true
       }
-      boat.fouled = boat.penalties > 0
-      remaining = boat.penalties
+      boat.fouled = (boat.penalties ?? 0) > 0
+      remaining = boat.penalties ?? 0
     })
-    
-    // Only create event if a penalty was actually cleared
+
     if (!cleared || !boatName) return
-    
+
     const state = this.raceStore.getState()
     const event: RaceEvent = {
       eventId: createId('event'),
@@ -352,9 +518,190 @@ export class RaceRoom extends Room<RaceRoomState> {
       ruleId: 'other',
       boats: [boatId],
       t: state.t,
-      message: `${boatName} completed a 360° spin and cleared a penalty (${remaining} remaining)`,
+      message: waived
+        ? `${boatName} waived the protest penalty (protest remains)`
+        : `${boatName} cleared a penalty (${remaining} remaining)`,
     }
     this.broadcastEvents([event])
+  }
+
+  /**
+   * Clear one penalty after a spin, and clear any active protest on this boat.
+   */
+  private clearOnePenaltyAfterSpin(boatId: string) {
+    if (!this.raceStore) return
+    let clearedPenalty = false
+    let clearedProtest = false
+    let boatName: string | undefined
+    let remaining = 0
+
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boatName = boat.name
+
+      if ((boat.penalties ?? 0) > 0) {
+        if ((boat.protestPenalties ?? 0) > 0) {
+          boat.protestPenalties = Math.max(0, boat.protestPenalties - 1)
+        }
+        boat.penalties = Math.max(0, boat.penalties - 1)
+        clearedPenalty = true
+      }
+      boat.fouled = (boat.penalties ?? 0) > 0
+      remaining = boat.penalties ?? 0
+
+      if (draft.protests && draft.protests[boatId]) {
+        delete draft.protests[boatId]
+        clearedProtest = true
+      }
+    })
+
+    if (!boatName) return
+
+    const state = this.raceStore.getState()
+    const events: RaceEvent[] = []
+    if (clearedPenalty) {
+      events.push({
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [boatId],
+        t: state.t,
+        message: `${boatName} completed a 360° spin and cleared a penalty (${remaining} remaining)`,
+      })
+    }
+    if (clearedProtest) {
+      events.push({
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [boatId],
+        t: state.t,
+        message: `${boatName} resolved the protest with a 360° spin`,
+      })
+    }
+    this.broadcastEvents(events)
+  }
+
+  private fileProtest(protestorBoatId: string, targetBoatId: string) {
+    if (!this.raceStore) return
+    if (protestorBoatId === targetBoatId) return
+
+    let filed = false
+    let protestorName: string | undefined
+    let targetName: string | undefined
+    this.mutateState((draft) => {
+      draft.protests ??= {}
+      const protestor = draft.boats[protestorBoatId]
+      const target = draft.boats[targetBoatId]
+      if (!protestor || !target) return
+      protestorName = protestor.name
+      targetName = target.name
+      if (draft.protests[targetBoatId]) return
+
+      draft.protests[targetBoatId] = {
+        protestedBoatId: targetBoatId,
+        protestorBoatId,
+        createdAtT: draft.t,
+        status: 'active',
+      }
+      target.penalties = (target.penalties ?? 0) + 1
+      target.protestPenalties = (target.protestPenalties ?? 0) + 1
+      filed = true
+    })
+
+    if (!filed || !protestorName || !targetName) return
+    const state = this.raceStore.getState()
+    this.broadcastEvents([
+      {
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [protestorBoatId, targetBoatId],
+        t: state.t,
+        message: `${protestorName} protested ${targetName} (penalty applied)`,
+      },
+    ])
+  }
+
+  private revokeProtest(protestorBoatId: string, targetBoatId: string) {
+    if (!this.raceStore) return
+    let revoked = false
+    let protestorName: string | undefined
+    let targetName: string | undefined
+    let penaltyRemoved = false
+    this.mutateState((draft) => {
+      const protest = draft.protests?.[targetBoatId]
+      if (!protest) return
+      if (protest.protestorBoatId !== protestorBoatId) return
+      const protestor = draft.boats[protestorBoatId]
+      const target = draft.boats[targetBoatId]
+      if (!protestor || !target) return
+      protestorName = protestor.name
+      targetName = target.name
+
+      delete draft.protests?.[targetBoatId]
+      revoked = true
+
+      if ((target.protestPenalties ?? 0) > 0) {
+        target.protestPenalties = Math.max(0, target.protestPenalties - 1)
+        target.penalties = Math.max(0, (target.penalties ?? 0) - 1)
+        penaltyRemoved = true
+      }
+      target.fouled = (target.penalties ?? 0) > 0
+    })
+
+    if (!revoked || !protestorName || !targetName) return
+    const state = this.raceStore.getState()
+    this.broadcastEvents([
+      {
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [protestorBoatId, targetBoatId],
+        t: state.t,
+        message: penaltyRemoved
+          ? `${protestorName} revoked the protest vs ${targetName} (penalty removed)`
+          : `${protestorName} revoked the protest vs ${targetName}`,
+      },
+    ])
+  }
+
+  private clearProtestAsJudge(targetBoatId: string) {
+    if (!this.raceStore) return
+    let cleared = false
+    let targetName: string | undefined
+    let penaltyRemoved = false
+    this.mutateState((draft) => {
+      const protest = draft.protests?.[targetBoatId]
+      if (!protest) return
+      const target = draft.boats[targetBoatId]
+      if (!target) return
+      targetName = target.name
+      delete draft.protests?.[targetBoatId]
+      cleared = true
+      if ((target.protestPenalties ?? 0) > 0) {
+        target.protestPenalties = Math.max(0, target.protestPenalties - 1)
+        target.penalties = Math.max(0, (target.penalties ?? 0) - 1)
+        penaltyRemoved = true
+      }
+      target.fouled = (target.penalties ?? 0) > 0
+    })
+
+    if (!cleared || !targetName) return
+    const state = this.raceStore.getState()
+    this.broadcastEvents([
+      {
+        eventId: createId('event'),
+        kind: 'rule_hint',
+        ruleId: 'other',
+        boats: [targetBoatId],
+        t: state.t,
+        message: penaltyRemoved
+          ? `Judge cleared the protest vs ${targetName} (penalty removed)`
+          : `Judge cleared the protest vs ${targetName}`,
+      },
+    ])
   }
 
   private assignBoatToClient(client: Client, options?: Record<string, unknown>) {
@@ -402,10 +749,13 @@ export class RaceRoom extends Room<RaceRoomState> {
 
   private releaseBoat(client: Client) {
     const boatId = this.clientBoatMap.get(client.sessionId)
-    if (!boatId) return
-    this.clientBoatMap.delete(client.sessionId)
+    this.clientRoleMap.delete(client.sessionId)
     this.clientIdentityMap.delete(client.sessionId)
     this.clientNameMap.delete(client.sessionId)
+    if (!boatId) {
+      return
+    }
+    this.clientBoatMap.delete(client.sessionId)
     roomDebug('releaseBoat', { clientId: client.sessionId, boatId })
     this.mutateState((draft) => {
       if (draft.boats[boatId]) {
@@ -420,7 +770,16 @@ export class RaceRoom extends Room<RaceRoomState> {
   }
 
   private resolveBoatId(client: Client, preferredId?: string) {
-    if (preferredId && Object.values(this.raceStore?.getState().boats ?? {}).some((boat) => boat.id === preferredId)) {
+    const role = this.clientRoleMap.get(client.sessionId) ?? 'player'
+    if (role !== 'player') {
+      return undefined
+    }
+    if (
+      preferredId &&
+      Object.values(this.raceStore?.getState().boats ?? {}).some(
+        (boat) => boat.id === preferredId,
+      )
+    ) {
       this.clientBoatMap.set(client.sessionId, preferredId)
       return preferredId
     }
@@ -437,6 +796,96 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (name) return name
     const clientId = this.clientIdentityMap.get(client.sessionId) ?? client.sessionId
     return `Sailor ${clientId.slice(0, 4)}`
+  }
+
+  private resolveJoinRole(options?: Record<string, unknown>): JoinRoleOption {
+    const raw = typeof options?.role === 'string' ? options.role.trim() : ''
+    if (raw === 'judge') return 'judge'
+    if (raw === 'spectator') return 'spectator'
+    if (raw === 'god' && appEnv.debugHud) return 'god'
+    // default: join as a controlling player
+    return 'player'
+  }
+
+  private setPaused(paused: boolean) {
+    if (!this.raceStore) return
+    const next = Boolean(paused)
+    this.loop?.setPaused?.(next)
+    this.mutateState((draft) => {
+      draft.paused = next
+      if (next) {
+        // Freeze the race clock while paused.
+        draft.clockStartMs = null
+      } else if (draft.phase === 'running') {
+        // Resume wall clock so that t continues smoothly from the current value.
+        draft.clockStartMs = Date.now() - draft.t * 1000
+      }
+    })
+  }
+
+  private setWindFieldEnabled(enabled: boolean) {
+    if (!this.raceStore) return
+    const next = Boolean(enabled)
+    this.mutateState((draft) => {
+      // Ensure a config object exists (older recordings / mismatched clients could omit it).
+      draft.windField = draft.windField ?? {
+        enabled: next,
+        intensityKts: appEnv.windFieldIntensityKts,
+        count: appEnv.windFieldCount,
+        sizeWorld: appEnv.windFieldSizeWorld,
+        domainLengthWorld: appEnv.windFieldDomainLengthWorld,
+        domainWidthWorld: appEnv.windFieldDomainWidthWorld,
+        advectionFactor: appEnv.windFieldAdvectionFactor,
+        tileSizeWorld: appEnv.windFieldTileSizeWorld,
+      }
+      draft.windField.enabled = next
+    })
+  }
+
+  private debugSetBoatPosition(boatId: string, x: number, y: number) {
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    if (!state.paused) return
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      boat.pos = { x, y }
+      boat.prevPos = { x, y }
+    })
+  }
+
+  private findExistingSessionId(clientId: string, currentSessionId: string) {
+    for (const [sessionId, knownClientId] of this.clientIdentityMap.entries()) {
+      if (sessionId === currentSessionId) continue
+      if (knownClientId === clientId) return sessionId
+    }
+    return undefined
+  }
+
+  private evictSession(sessionId: string) {
+    // Ask the old client to leave.
+    const oldClient = this.clients.find((c) => c.sessionId === sessionId)
+    try {
+      oldClient?.leave(4001, 'replaced')
+    } catch (err) {
+      console.warn('[RaceRoom] failed to leave() old client', { sessionId, err })
+    }
+
+    // Remove any boat controlled by the old session, and clear bookkeeping maps.
+    const boatId = this.clientBoatMap.get(sessionId)
+    this.clientBoatMap.delete(sessionId)
+    this.clientIdentityMap.delete(sessionId)
+    this.clientNameMap.delete(sessionId)
+    this.clientRoleMap.delete(sessionId)
+
+    if (!boatId) return
+    this.mutateState((draft) => {
+      if (draft.boats[boatId]) {
+        delete draft.boats[boatId]
+        draft.leaderboard = draft.leaderboard.filter((id) => id !== boatId)
+      }
+    })
   }
 
   private mutateState(mutator: (draft: RaceState) => void) {
@@ -460,9 +909,13 @@ export class RaceRoom extends Room<RaceRoomState> {
     const hostBoatId = this.clientBoatMap.get(sessionId)
     const clientId = this.clientIdentityMap.get(sessionId)
     const storeName =
-      hostBoatId && this.raceStore ? this.raceStore.getState().boats[hostBoatId]?.name : undefined
-    const schemaName = hostBoatId ? this.state.race.boats.get(hostBoatId)?.name : undefined
-      return {
+      hostBoatId && this.raceStore
+        ? this.raceStore.getState().boats[hostBoatId]?.name
+        : undefined
+    const schemaName = hostBoatId
+      ? this.state.race.boats.get(hostBoatId)?.name
+      : undefined
+    return {
       sessionId,
       clientId,
       hostBoatId,
@@ -473,7 +926,9 @@ export class RaceRoom extends Room<RaceRoomState> {
   private setHost(sessionId?: string) {
     const previousHost = this.hostSessionId
     this.hostSessionId = sessionId
-    this.hostClientId = sessionId ? this.clientIdentityMap.get(sessionId) ?? sessionId : undefined
+    this.hostClientId = sessionId
+      ? (this.clientIdentityMap.get(sessionId) ?? sessionId)
+      : undefined
     const hostBoatId = sessionId ? this.clientBoatMap.get(sessionId) : undefined
     roomDebug('setHost', {
       previousHost,
@@ -489,6 +944,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       }
     })
     this.raceStore?.setHostBoat(hostBoatId)
+    this.broadcastRoster()
   }
 
   private armCountdown(seconds: number) {
@@ -579,11 +1035,14 @@ export class RaceRoom extends Room<RaceRoomState> {
   private resetRaceState() {
     const previousState = this.raceStore?.getState()
     void this.persistReplay('race_reset', previousState)
-    const assignment = Array.from(this.clientBoatMap.entries()).map(([sessionId, boatId], idx) => ({
-      boatId,
-      name: this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
-      index: idx,
-    }))
+    const assignment = Array.from(this.clientBoatMap.entries()).map(
+      ([sessionId, boatId], idx) => ({
+        boatId,
+        name:
+          this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
+        index: idx,
+      }),
+    )
     roomDebug('resetRaceState', {
       assignments: assignment.length,
       ...this.describeHost(this.hostSessionId),
@@ -591,6 +1050,13 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.replayRecorder.reset()
     this.replaySaved = false
     this.mutateState((draft) => {
+      // Refresh course geometry on reset so edits in shared `createInitialRaceState`
+      // (marks/gate/start line) take effect without recreating the room.
+      const fresh = createInitialRaceState(draft.meta.raceId, appEnv.countdownSeconds)
+      draft.marks = fresh.marks
+      draft.startLine = fresh.startLine
+      draft.leewardGate = fresh.leewardGate
+
       draft.phase = 'prestart'
       draft.countdownArmed = false
       draft.clockStartMs = null
@@ -641,11 +1107,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const trimmed = text.slice(0, 280)
     const boatId = this.clientBoatMap.get(client.sessionId)
     const senderRole: ChatSenderRole =
-      client.sessionId === this.hostSessionId
-        ? 'host'
-        : boatId
-          ? 'player'
-          : 'spectator'
+      client.sessionId === this.hostSessionId ? 'host' : boatId ? 'player' : 'spectator'
     const senderName =
       this.clientNameMap.get(client.sessionId) ??
       (boatId && this.state.race.boats.get(boatId)?.name) ??
@@ -667,7 +1129,9 @@ export class RaceRoom extends Room<RaceRoomState> {
     const windowMs = 10_000
     const limit = 5
     const now = Date.now()
-    const recent = (this.chatRateMap.get(clientId) ?? []).filter((ts) => now - ts < windowMs)
+    const recent = (this.chatRateMap.get(clientId) ?? []).filter(
+      (ts) => now - ts < windowMs,
+    )
     if (recent.length >= limit) {
       this.chatRateMap.set(clientId, recent)
       return false
@@ -677,4 +1141,3 @@ export class RaceRoom extends Room<RaceRoomState> {
     return true
   }
 }
-

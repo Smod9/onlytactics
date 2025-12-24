@@ -1,14 +1,14 @@
 /**
  * Sailing Physics Engine
- * 
+ *
  * @author Sebastien Gouin-Davis
  * @copyright 2025 Sebastien Gouin-Davis
  * @license MIT
- * 
+ *
  * This module implements a simplified sailing physics model based on polar diagrams.
  * Note: Despite some variable names using "awa", this implementation uses True Wind Angle (TWA),
  * not Apparent Wind Angle. TWA is the angle between the boat heading and true wind direction.
- * 
+ *
  * TODO: We should rename all the awa variables to twa (true wind angle) and awa (apparent wind angle)!!!!
  *
  * Key concepts:
@@ -16,29 +16,29 @@
  * - VMG (Velocity Made Good): Component of boat speed toward/away from wind
  * - No-go zone: Angles too close to wind where boat cannot sail
  * - Tacking: Turning through the no-go zone with speed penalty
- * 
+ *
  * Main Physics Loop (stepRaceState):
  * 1. Process VMG mode (autopilot)
  *    - computeVmgAngles() - Find optimal upwind/downwind angles
  *    - headingFromAwa() - Convert wind angle to compass heading
- * 
+ *
  * 2. Determine desired heading (from input or VMG autopilot)
  *    - clampDesiredHeading() - Enforce no-go zone and downwind limits
- * 
+ *
  * 3. Update boat heading
  *    - steerTowardsDesired() - Turn boat at TURN_RATE_DEG per second
  *    - applyStallDecay() - Decay stall timer from entering no-go zone
  *    - applyTackTimer() - Decay tack penalty timer
- * 
+ *
  * 4. Calculate target speed from polars
  *    - apparentWindAngle() - Calculate TWA (boat heading vs wind direction)
  *    - lookupPolarRatio() - Interpolate speed ratio from polar table
  *    - polarTargetSpeed() - Compute target speed with wind speed and trim
- * 
+ *
  * 5. Apply speed penalties
  *    - Stall penalty (STALL_SPEED_FACTOR) when in no-go zone
  *    - Tack penalty (TACK_SPEED_PENALTY) during significant turns
- * 
+ *
  * 6. Update boat speed and position
  *    - smoothSpeed() - Interpolate toward target speed
  *    - Update position based on heading vector and speed
@@ -68,6 +68,7 @@ import {
   TURN_RATE_DEG,
 } from './constants'
 import { appEnv } from '@/config/env'
+import { sampleWindSpeed } from '@/logic/windField'
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -114,7 +115,7 @@ export const quantizeHeading = (deg: number) => {
  */
 export const angleDiff = (targetDeg: number, currentDeg: number) => {
   let diff = targetDeg - currentDeg
-  diff = ((diff + 180) % 360 + 360) % 360 - 180
+  diff = ((((diff + 180) % 360) + 360) % 360) - 180
   return diff
 }
 
@@ -142,7 +143,7 @@ const apparentWindAngle = (boatHeadingDeg: number, windDirDeg: number) =>
 /**
  * Polar diagram: defines boat speed as ratio of wind speed at different TWA
  * Based on typical dinghy performance (e.g., Laser, 420)
- * 
+ *
  * Key features:
  * - 0° (head to wind): No speed
  * - 30-45°: Close-hauled, moderate speed
@@ -151,17 +152,23 @@ const apparentWindAngle = (boatHeadingDeg: number, windDirDeg: number) =>
  * - 180°: Running downwind, slower due to reduced apparent wind
  */
 const polarTable = [
-  { awa: 0, ratio: 0 },      // Dead into wind - no speed
-  { awa: 30, ratio: 0.45 },  // Close-hauled lower limit
-  { awa: 45, ratio: 0.65 },  // Typical close-hauled angle
-  { awa: 60, ratio: 0.8 },   // Close reach
-  { awa: 75, ratio: 0.9 },   // Reaching
-  { awa: 90, ratio: 0.95 },  // Beam reach
+  { awa: 0, ratio: 0 }, // Dead into wind - no speed
+  { awa: 20, ratio: 0.2 }, // Luffing hard
+  { awa: 30, ratio: 0.45 }, // Close-hauled lower limit
+  { awa: 45, ratio: 0.65 }, // Typical close-hauled angle
+  { awa: 60, ratio: 0.8 }, // Close reach
+  { awa: 75, ratio: 0.9 }, // Reaching
+  { awa: 90, ratio: 0.95 }, // Beam reach
   { awa: 110, ratio: 1.05 }, // Broad reach - getting fast
-  { awa: 135, ratio: 1.15 }, // Deep broad reach - fastest!
-  { awa: 150, ratio: 1.05 }, // Deep downwind
-  { awa: 170, ratio: 0.95 }, // Almost dead downwind
-  { awa: 180, ratio: 0.9 },  // Dead downwind - slowest downwind point
+  // Downwind shaping:
+  // - We want best downwind VMG to be near ~140° (broad reach), not 160-180°.
+  // - And we want dead-downwind (180°) to be ~30% slower than the VMG-optimal point.
+  { awa: 135, ratio: 1.1 }, // Broad reach (fast)
+  { awa: 140, ratio: 1.15 }, // Target VMG-optimal region
+  { awa: 150, ratio: 1.0 }, // Getting deeper: slower enough that VMG doesn't keep increasing
+  { awa: 160, ratio: 0.9 }, // Deep downwind
+  { awa: 170, ratio: 0.75 }, // Very deep downwind
+  { awa: 180, ratio: 0.5 }, // Dead downwind (~30% slower than 1.15 peak)
 ]
 
 /**
@@ -215,10 +222,10 @@ const smoothSpeed = (current: number, target: number, dt: number) => {
 
 /**
  * Enforce sailing constraints on desired heading
- * 
- * Boats cannot sail directly into the wind (no-go zone) or too far downwind.
- * This function clamps the desired heading to valid sailing angles.
- * 
+ *
+ * Boats cannot sail directly into the wind (no-go zone).
+ * Downwind is allowed up to MAX_DOWNWIND_ANGLE_DEG (typically 180 = dead downwind).
+ *
  * @returns The clamped heading that was actually set
  */
 const clampDesiredHeading = (
@@ -238,7 +245,8 @@ const clampDesiredHeading = (
     return clamped
   }
 
-  // Too far downwind (by the lee) - prevent sailing past dead downwind
+  // Too far downwind (by the lee) - prevent sailing past MAX_DOWNWIND_ANGLE_DEG.
+  // If MAX_DOWNWIND_ANGLE_DEG is 180, this should effectively never clamp.
   if (absDiff > MAX_DOWNWIND_ANGLE_DEG) {
     const sign = diff >= 0 ? 1 : -1
     const clamped = headingFromAwa(windDirDeg, sign * MAX_DOWNWIND_ANGLE_DEG)
@@ -253,19 +261,19 @@ const clampDesiredHeading = (
 
 /**
  * Gradually turn boat toward desired heading at maximum turn rate
- * 
+ *
  * Small heading errors (< ~5°) snap instantly for responsive control.
  * Larger turns (tacks, gybes) happen at TURN_RATE_DEG per second.
  */
 const steerTowardsDesired = (boat: BoatState, dt: number) => {
   const error = angleDiff(boat.desiredHeadingDeg, boat.headingDeg)
-  
+
   // Snap to target for small adjustments (feels more responsive)
   if (Math.abs(error) <= HEADING_STEP_DEG + 0.2) {
     boat.headingDeg = normalizeDeg(boat.desiredHeadingDeg)
     return
   }
-  
+
   // Gradual turn at maximum turn rate
   const maxTurn = TURN_RATE_DEG * dt
   const applied = clamp(error, -maxTurn, maxTurn)
@@ -334,8 +342,7 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
       const cross = dx * crossVec.x + dy * crossVec.y
       const alongNorm = along / WAKE_LENGTH
       const halfWidth =
-        WAKE_HALF_WIDTH_START +
-        (WAKE_HALF_WIDTH_END - WAKE_HALF_WIDTH_START) * alongNorm
+        WAKE_HALF_WIDTH_START + (WAKE_HALF_WIDTH_END - WAKE_HALF_WIDTH_START) * alongNorm
       const lateral = Math.abs(cross)
       // Gaussian falloff for lateral distance
       const lateralFactor = Math.exp(-(lateral * lateral) / (halfWidth * halfWidth))
@@ -361,14 +368,14 @@ export type InputMap = Record<string, PlayerInput>
 
 /**
  * Main physics simulation step - advances race state by dt seconds
- * 
+ *
  * This is the heart of the physics engine. For each boat, it:
  * 1. Processes player input (heading changes, VMG mode)
  * 2. Updates boat heading (steering toward desired heading)
  * 3. Calculates target speed from polar diagram based on TWA
  * 4. Applies penalties (stalling, tacking)
  * 5. Updates boat position based on heading and speed
- * 
+ *
  * @param state - Current race state (modified in place)
  * @param inputs - Map of player inputs by boat ID
  * @param dt - Time step in seconds (typically 1/60 for 60fps)
@@ -376,7 +383,7 @@ export type InputMap = Record<string, PlayerInput>
 export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) => {
   // Advance simulation time
   state.t += dt
-  
+
   // Start race when countdown reaches zero
   if (state.phase === 'prestart' && state.t >= 0) {
     state.phase = 'running'
@@ -387,11 +394,11 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
   // Update each boat
   Object.values(state.boats).forEach((boat) => {
     const input = inputs[boat.id]
-    
+
     // ========================================================================
     // STEP 1: Process VMG Mode (Velocity Made Good autopilot)
     // ========================================================================
-    
+
     // Only update vmgMode when explicitly provided in input (preserve between ticks)
     if (input?.vmgMode !== undefined) {
       boat.vmgMode = input.vmgMode
@@ -399,38 +406,41 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
 
     // If there's a heading input, exit VMG mode (user is taking manual control)
     // But skip this check during spins (rightsSuspended) since spins inject headings
-    const hasHeadingInput = !boat.rightsSuspended && (
-      input?.desiredHeadingDeg !== undefined ||
-      input?.absoluteHeadingDeg !== undefined ||
-      input?.deltaHeadingDeg !== undefined
-    )
+    const hasHeadingInput =
+      !boat.rightsSuspended &&
+      (input?.desiredHeadingDeg !== undefined ||
+        input?.absoluteHeadingDeg !== undefined ||
+        input?.deltaHeadingDeg !== undefined)
     if (hasHeadingInput && boat.vmgMode) {
       boat.vmgMode = false
     }
-    
+
     // ========================================================================
     // STEP 2: Determine desired heading (from input or VMG autopilot)
     // ========================================================================
-    
+
     let desiredHeading: number
-    
+
     // VMG mode: automatically sail at optimal upwind/downwind angles
     if (boat.vmgMode && !boat.rightsSuspended) {
       // Use current desired heading or actual heading to determine tack
       // This ensures we maintain the current tack even as the boat turns
       const currentHeading = boat.desiredHeadingDeg ?? boat.headingDeg
       const headingDiff = angleDiff(currentHeading, state.wind.directionDeg)
-      const tackSign = headingDiff >= 0 ? 1 : -1  // Starboard (+1) or port (-1) tack
+      const tackSign = headingDiff >= 0 ? 1 : -1 // Starboard (+1) or port (-1) tack
       const absAwa = Math.abs(headingDiff)
-      
+
       // Compute optimal VMG angles for current wind speed
       const vmgAngles = computeVmgAngles(state.wind.speed)
-      
+
       // Choose upwind or downwind angle based on which side of beam reach we're on
       const isUpwind = absAwa <= 90
       const targetAwa = isUpwind ? vmgAngles.upwindAwa : vmgAngles.downwindAwa
-      const calculatedHeading = headingFromAwa(state.wind.directionDeg, tackSign * targetAwa)
-      
+      const calculatedHeading = headingFromAwa(
+        state.wind.directionDeg,
+        tackSign * targetAwa,
+      )
+
       // Quantize to ensure heading updates even with small wind changes
       desiredHeading = quantizeHeading(calculatedHeading)
     } else {
@@ -438,11 +448,11 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
       desiredHeading =
         input?.desiredHeadingDeg ?? boat.desiredHeadingDeg ?? boat.headingDeg
     }
-    
+
     // ========================================================================
     // STEP 3: Update boat heading (constrained by sailing limits)
     // ========================================================================
-    
+
     clampDesiredHeading(boat, desiredHeading, state.wind.directionDeg)
     steerTowardsDesired(boat, dt)
     applyStallDecay(boat, dt)
@@ -451,23 +461,25 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     // ========================================================================
     // STEP 4: Calculate target speed from polar diagram
     // ========================================================================
-    
+
     // Calculate TWA (despite variable name "awa")
     const awa = apparentWindAngle(boat.headingDeg, state.wind.directionDeg)
     const wakeFactor = wakeFactors[boat.id] ?? 1
     boat.wakeFactor = wakeFactor
 
-    let targetSpeed = polarTargetSpeed(awa, state.wind.speed, DEFAULT_SHEET) * appEnv.speedMultiplier
-    
+    const localWindSpeed = sampleWindSpeed(state, boat.pos)
+    let targetSpeed =
+      polarTargetSpeed(awa, localWindSpeed, DEFAULT_SHEET) * appEnv.speedMultiplier
+
     // Apply stall penalty (from sailing into no-go zone)
     if (boat.stallTimer > 0) {
       targetSpeed *= STALL_SPEED_FACTOR
     }
-    
+
     // ========================================================================
     // STEP 5: Apply tacking penalties
     // ========================================================================
-    
+
     // Detect significant turns and start tack timer
     const headingError = Math.abs(angleDiff(boat.desiredHeadingDeg, boat.headingDeg))
     if (headingError > TACK_MIN_ANGLE_DEG) {
@@ -476,7 +488,7 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
         boat.tackTimer = TACK_MIN_TIME_SECONDS
       }
     }
-    
+
     // Apply speed penalty while tack timer is active
     if (boat.tackTimer > 0) {
       targetSpeed *= TACK_SPEED_PENALTY
@@ -487,11 +499,11 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     if (appEnv.debugHud && wakeFactor < 0.995) {
       console.debug('[wake]', boat.name, wakeFactor.toFixed(3))
     }
-    
+
     // ========================================================================
     // STEP 6: Update boat speed and position
     // ========================================================================
-    
+
     // Smoothly interpolate toward target speed
     boat.speed = smoothSpeed(boat.speed, targetSpeed, dt)
 
@@ -503,7 +515,7 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     boat.prevPos.x = boat.pos.x
     boat.prevPos.y = boat.pos.y
     boat.pos.x += Math.sin(courseRad) * speedMs * dt
-    boat.pos.y -= Math.cos(courseRad) * speedMs * dt  // Negative because North is up
+    boat.pos.y -= Math.cos(courseRad) * speedMs * dt // Negative because North is up
   })
 }
 
@@ -514,13 +526,10 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
 /**
  * Calculate relative bearing from one boat to another
  * Used for right-of-way rules and tactical display
- * 
+ *
  * @returns Angle in degrees: 0° = dead ahead, 90° = starboard beam, -90° = port beam
  */
-export const computeRelativeBearing = (
-  headingDeg: number,
-  otherHeadingDeg: number,
-) => {
+export const computeRelativeBearing = (headingDeg: number, otherHeadingDeg: number) => {
   return angleDiff(otherHeadingDeg, headingDeg)
 }
 
@@ -533,18 +542,18 @@ export const degreesBetween = (a: number, b: number) =>
 
 /**
  * Compute optimal VMG (Velocity Made Good) angles for current wind speed
- * 
+ *
  * VMG is the component of boat speed directly toward/away from wind.
  * This searches the polar diagram to find angles that maximize VMG.
- * 
+ *
  * Typical results:
  * - Upwind: ~40-50° (close-hauled)
  * - Downwind: ~140-160° (broad reach, NOT dead downwind!)
- * 
+ *
  * Note: Best downwind VMG is usually NOT at 180° because boats go faster
  * on a broad reach, and the extra speed more than compensates for the
  * less direct course.
- * 
+ *
  * @param windSpeed - Current wind speed in knots
  * @returns Optimal upwind and downwind TWA angles
  */
@@ -558,14 +567,14 @@ export const computeVmgAngles = (windSpeed: number) => {
   for (let angle = NO_GO_ANGLE_DEG; angle <= MAX_DOWNWIND_ANGLE_DEG; angle += 1) {
     const speed = polarTargetSpeed(angle, windSpeed, DEFAULT_SHEET)
     const rad = degToRad(angle)
-    
+
     // Upwind VMG: component of speed toward wind (cos of angle from wind)
     const upwindVmg = speed * Math.cos(rad)
     if (angle <= 90 && upwindVmg > bestUpValue) {
       bestUpValue = upwindVmg
       bestUpAngle = angle
     }
-    
+
     // Downwind VMG: component of speed away from wind
     const downwindVmg = speed * Math.cos(Math.PI - rad)
     if (angle >= 60 && downwindVmg > bestDownValue) {
@@ -575,7 +584,7 @@ export const computeVmgAngles = (windSpeed: number) => {
   }
 
   return {
-    upwindAwa: bestUpAngle,    // Typically ~45° (close-hauled)
+    upwindAwa: bestUpAngle, // Typically ~45° (close-hauled)
     downwindAwa: bestDownAngle, // Typically ~135° (broad reach, NOT running!)
   }
 }
@@ -585,4 +594,3 @@ export const computeVmgAngles = (windSpeed: number) => {
  * Note: Despite name, this actually calculates TWA (True Wind Angle), not AWA
  */
 export const apparentWindAngleSigned = apparentWindAngle
-

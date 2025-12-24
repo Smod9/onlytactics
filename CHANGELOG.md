@@ -1,3 +1,214 @@
+# [1.28.0](https://github.com/Smod9/onlytactics/compare/v1.27.0...v1.28.0) (2025-12-24)
+
+
+### Features
+
+* enhance roster management and UI components ([e7623e7](https://github.com/Smod9/onlytactics/commit/e7623e7a28ab217b541137141517b882d24ed69b))
+
+# [1.27.0](https://github.com/Smod9/onlytactics/compare/v1.26.8...v1.27.0) (2025-12-24)
+
+
+### Bug Fixes
+
+* Only refreshes wind field every 3rd race update, makes sprit pole line fixed, also experimenting with slowing puffs down and making them bigger (though im not sure that is a performance thing ([c3afd41](https://github.com/Smod9/onlytactics/commit/c3afd41e1f22d60831d83001e548874d534e3ce3))
+
+
+### Features
+
+* enhance boat rendering and wind shadow effects performance ([fa373b7](https://github.com/Smod9/onlytactics/commit/fa373b75fca2383f1e8b0fbf254783bbf39a02c7))
+
+## [1.26.8](https://github.com/Smod9/onlytactics/compare/v1.26.7...v1.26.8) (2025-12-23)
+
+
+### Bug Fixes
+
+* decreases refresh rate to 100ms or 20hz ([#67](https://github.com/Smod9/onlytactics/issues/67)) ([9173623](https://github.com/Smod9/onlytactics/commit/9173623ab170ca47309d45ba28503c51a66d406a))
+
+## [1.26.7](https://github.com/Smod9/onlytactics/compare/v1.26.6...v1.26.7) (2025-12-22)
+
+
+### Bug Fixes
+
+* Return focus to game after typing message ([#62](https://github.com/Smod9/onlytactics/issues/62)) ([17c9ce1](https://github.com/Smod9/onlytactics/commit/17c9ce13da987a41be28bbd853ee083881c0a49d)), closes [#60](https://github.com/Smod9/onlytactics/issues/60)
+
+## [1.26.6](https://github.com/Smod9/onlytactics/compare/v1.26.5...v1.26.6) (2025-12-22)
+
+
+### Bug Fixes
+
+* Updates keyboard svg ([5aefb5b](https://github.com/Smod9/onlytactics/commit/5aefb5b396cda799ce8f0cdfa487f35f72f6d826))
+
+## [1.26.5](https://github.com/Smod9/onlytactics/compare/v1.26.4...v1.26.5) (2025-12-22)
+
+
+### Bug Fixes
+
+* better help menu and tips ([091dfcf](https://github.com/Smod9/onlytactics/commit/091dfcfaa8c3db96cd7d35828db30e17a2e0da4f))
+* help menu ([898afb9](https://github.com/Smod9/onlytactics/commit/898afb9e36c4ad8d673aadefad56913e493b53a1))
+* improved help menu ([45c788c](https://github.com/Smod9/onlytactics/commit/45c788c09ca9c3a53225ff5d8b6f403387a04dcb))
+* tweaks help tips ([e836229](https://github.com/Smod9/onlytactics/commit/e836229868917470e6331c806efa7f13b4640cac))
+* Updates keyboard svg ([819514c](https://github.com/Smod9/onlytactics/commit/819514ca2dd93cbbb54f5fa94606f8182130d5c6))
+
+## [1.26.4](https://github.com/Smod9/onlytactics/compare/v1.26.3...v1.26.4) (2025-12-21)
+
+
+### Bug Fixes
+
+* boats now mostly spawn on the screen when in birdseye ([129159f](https://github.com/Smod9/onlytactics/commit/129159f5893e082dc1d3834e400592c67fff1058))
+
+## [1.26.3](https://github.com/Smod9/onlytactics/compare/v1.26.2...v1.26.3) (2025-12-21)
+
+
+### Bug Fixes
+
+* makes default number of laps 2 ([7df5000](https://github.com/Smod9/onlytactics/commit/7df5000e42dbbc85320fa7e6399d573035df96ec))
+
+## [1.26.2](https://github.com/Smod9/onlytactics/compare/v1.26.1...v1.26.2) (2025-12-21)
+
+
+### Bug Fixes
+
+* Increases max speed to 16knts (from 12) ([ebe5add](https://github.com/Smod9/onlytactics/commit/ebe5add37e7e64e9fdc7639a28da047cb48bc220))
+
+## [1.26.1](https://github.com/Smod9/onlytactics/compare/v1.26.0...v1.26.1) (2025-12-21)
+
+
+### Bug Fixes
+
+* 2 boat length zone became 4 somehow. 2 again ([d79e0c8](https://github.com/Smod9/onlytactics/commit/d79e0c8ce903f302f7f9c26c0eb735d5ec50deb8))
+* Resolves TACK in HUD ([8c449c4](https://github.com/Smod9/onlytactics/commit/8c449c48be8ec0a7ea5a0714ba300f723f92c7eb))
+
+# [1.26.0](https://github.com/Smod9/onlytactics/compare/v1.25.1...v1.26.0) (2025-12-21)
+
+
+### Features
+
+* **puffs:** Makes it a game time choice to turn puffs on and off. Some menu polish too ([be48d7f](https://github.com/Smod9/onlytactics/commit/be48d7f578c96ad0bd30af9246e792912a436797))
+* **puffs:** Picks up env files ([ea7a044](https://github.com/Smod9/onlytactics/commit/ea7a0446c97ff739a98b551de4d2dc3c1d0e411e))
+* **puffs:** Puffs working, pause game fixed for god mode ([0d811d4](https://github.com/Smod9/onlytactics/commit/0d811d4c49eafdcd469195064305cd0be5ebf6ae))
+* **windField:** Introduce wind field configuration and visualization ([f971d5a](https://github.com/Smod9/onlytactics/commit/f971d5a9329f378071ba78bfc1c96be6cc8ba216))
+
+## [1.25.1](https://github.com/Smod9/onlytactics/compare/v1.25.0...v1.25.1) (2025-12-21)
+
+
+### Bug Fixes
+
+* **trim:** Improve sail rotation calculation based on apparent wind angle ([1b51a8d](https://github.com/Smod9/onlytactics/commit/1b51a8d40c01a4f37de7aaf16596a4c9d24a9f6f))
+
+# [1.25.0](https://github.com/Smod9/onlytactics/compare/v1.24.0...v1.25.0) (2025-12-21)
+
+
+### Features
+
+* Bunch of mostly protest feature related UI polish ([b068ce9](https://github.com/Smod9/onlytactics/commit/b068ce95d4af355b3dc2b5ecb27b1c946a06dd21))
+* Lots of UI cleanup, some related to protests, others menu and such ([4cf263b](https://github.com/Smod9/onlytactics/commit/4cf263b8008858126d9fef1699b5e56a7d9a2253))
+
+# [1.24.0](https://github.com/Smod9/onlytactics/compare/v1.23.3...v1.24.0) (2025-12-20)
+
+
+### Features
+
+* Add protest handling and role management in race state ([75b0980](https://github.com/Smod9/onlytactics/commit/75b09805a4b08463fcf6c3a81913a57b0c3c6a0c))
+* **camera:** Implement follow boat functionality and enhance camera controls ([8672ddc](https://github.com/Smod9/onlytactics/commit/8672ddc1d21971a0e39de4987d9c170c34be289b))
+* **protest:** Basics all working ([4209ef0](https://github.com/Smod9/onlytactics/commit/4209ef0697ba1ac29a0ff2837732b014fd6ed291))
+* **protests:** Basics working. Roles added for spectator and judge ([378690a](https://github.com/Smod9/onlytactics/commit/378690a9489a2b405876978a1a5e56b6ca9f8b86))
+* **protests:** Picks up initial files that were missed ([c1f15ad](https://github.com/Smod9/onlytactics/commit/c1f15ad6f4c4b141cca7fca4390155630fe15881))
+
+## [1.23.3](https://github.com/Smod9/onlytactics/compare/v1.23.2...v1.23.3) (2025-12-19)
+
+
+### Bug Fixes
+
+* Increases race timeout to 25mins ([83fb233](https://github.com/Smod9/onlytactics/commit/83fb2334e6d3d455f3844ee44a2d37c236ff6f88))
+
+## [1.23.2](https://github.com/Smod9/onlytactics/compare/v1.23.1...v1.23.2) (2025-12-18)
+
+
+### Bug Fixes
+
+* Improve keyboard event handling in ChatPanel to prevent interference with user input ([4265dc6](https://github.com/Smod9/onlytactics/commit/4265dc6013c702f26d08fd967ccea8d455c355ca))
+
+## [1.23.1](https://github.com/Smod9/onlytactics/compare/v1.23.0...v1.23.1) (2025-12-18)
+
+
+### Bug Fixes
+
+* Mobile/iPad polish and resolves windshadow chip (PR [#47](https://github.com/Smod9/onlytactics/issues/47)) ([9816fb8](https://github.com/Smod9/onlytactics/commit/9816fb8b4a0786e9f0d578b72044dd5797f36b8f))
+
+# [1.23.0](https://github.com/Smod9/onlytactics/compare/v1.22.1...v1.23.0) (2025-12-18)
+
+
+### Bug Fixes
+
+* Improve keyboard event handling in LiveClient and useTacticianControls ([7d9c257](https://github.com/Smod9/onlytactics/commit/7d9c25784743b13fb72b3759d21a917913f7715a))
+* ipad controls ([b2e39ce](https://github.com/Smod9/onlytactics/commit/b2e39ce9699e46f9db510cb5185d11e4639a5d08))
+
+
+### Features
+
+* Enhance touch control interactions and prevent text selection in Safari ([184a285](https://github.com/Smod9/onlytactics/commit/184a2859cbd31fdea5ec7e4d8e4a21fbf74805cb))
+
+## [1.22.1](https://github.com/Smod9/onlytactics/compare/v1.22.0...v1.22.1) (2025-12-18)
+
+
+### Bug Fixes
+
+* Moves rtt to screen, hides debug panel and updates help menu ([5018aa7](https://github.com/Smod9/onlytactics/commit/5018aa7fbedb9e2be174e90d502c912d8ee5628f))
+
+# [1.22.0](https://github.com/Smod9/onlytactics/compare/v1.21.0...v1.22.0) (2025-12-18)
+
+
+### Bug Fixes
+
+* Update wind shift display to use '0' instead of 'ON' ([56f5e8c](https://github.com/Smod9/onlytactics/commit/56f5e8c8a125884a3c6e9ebcde3359afdeba6c17))
+
+
+### Features
+
+* Enhance HUD layout and touch control interactions ([079c892](https://github.com/Smod9/onlytactics/commit/079c89277c39a540881be664bc938621d74214ef))
+* New instrument gauge, less zoomy zoom and a nice line to the next mark while zoomed ([71def48](https://github.com/Smod9/onlytactics/commit/71def489bd62f998b3828b130cc51e1d4cbc4e51))
+* Update VMG mode functionality and UI elements ([aaad295](https://github.com/Smod9/onlytactics/commit/aaad295024d47ac2cfbf807136a3d0b2ca30fcb3))
+
+# [1.21.0](https://github.com/Smod9/onlytactics/compare/v1.20.0...v1.21.0) (2025-12-18)
+
+
+### Features
+
+* Add follow camera zoom factor configuration ([14876f5](https://github.com/Smod9/onlytactics/commit/14876f593bffee13cc3c55b9ac54ccb187b7760b))
+* Add follow-mode guidance line to RaceScene ([afe4bce](https://github.com/Smod9/onlytactics/commit/afe4bcee8a8c6dcc551e027992e88d7aac739cd2))
+
+# [1.20.0](https://github.com/Smod9/onlytactics/compare/v1.19.1...v1.20.0) (2025-12-17)
+
+
+### Features
+
+* Implement camera mode toggle and enhance race scene rendering ([59635df](https://github.com/Smod9/onlytactics/commit/59635df2735d368f6d192af6b6effb88a5a64822))
+* Polish on zoom and other features ([349bca4](https://github.com/Smod9/onlytactics/commit/349bca48585e3c802d5fde1e9d77102789382c35))
+* zoom working, polish to touch controls associated with that ([a5c13e3](https://github.com/Smod9/onlytactics/commit/a5c13e3856f8b798e9623a891390c462956f4d66))
+
+## [1.19.1](https://github.com/Smod9/onlytactics/compare/v1.19.0...v1.19.1) (2025-12-16)
+
+
+### Bug Fixes
+
+* Improves style of wind shadow indicator ([89206bd](https://github.com/Smod9/onlytactics/commit/89206bd9caf2705803847c7898cd27027a3fb57d))
+
+# [1.19.0](https://github.com/Smod9/onlytactics/compare/v1.18.0...v1.19.0) (2025-12-13)
+
+
+### Features
+
+* Improves starting line, extends the course and polishes the zone(s). ([62ea1f9](https://github.com/Smod9/onlytactics/commit/62ea1f9cceaf96b890747ec4774c8b135c5126b9))
+
+# [1.18.0](https://github.com/Smod9/onlytactics/compare/v1.17.0...v1.18.0) (2025-12-13)
+
+
+### Features
+
+* **capsule_collision:**  Hides circles unless debug enabled. They seem to work ([abfc798](https://github.com/Smod9/onlytactics/commit/abfc798b3e2c095dda448a9513edb961a0d06e0c))
+* **capsule_collision:** POC of drawn capsules optimized for boat size to improve accuracy of collisions ([b955c68](https://github.com/Smod9/onlytactics/commit/b955c68d75668da722f63eac8a5c41b871a6710a))
+* **wind shadow:** (PR [#36](https://github.com/Smod9/onlytactics/issues/36)) Initial implementation of Wind Shadow ([e836c55](https://github.com/Smod9/onlytactics/commit/e836c551ab43a932d2398f1b8b3c96ae138a8394))
+
 # [1.17.0](https://github.com/Smod9/onlytactics/compare/v1.16.0...v1.17.0) (2025-12-08)
 
 

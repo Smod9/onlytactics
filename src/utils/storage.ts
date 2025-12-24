@@ -4,11 +4,7 @@ const getLocalStorage = () =>
 const getSessionStorage = () =>
   typeof window === 'undefined' ? undefined : window.sessionStorage
 
-const safeRead = <T>(
-  storage: Storage | undefined,
-  key: string,
-  fallback: T,
-): T => {
+const safeRead = <T>(storage: Storage | undefined, key: string, fallback: T): T => {
   try {
     if (!storage) return fallback
     const raw = storage.getItem(key)
@@ -41,4 +37,3 @@ export const removeKey = (key: string) => {
   if (!ls) return
   ls.removeItem(key)
 }
-

@@ -21,6 +21,32 @@ export class WindSchema extends Schema {
   speed = 0
 }
 
+export class WindFieldSchema extends Schema {
+  @type('boolean')
+  enabled = false
+
+  @type('number')
+  intensityKts = 0
+
+  @type('number')
+  count = 0
+
+  @type('number')
+  sizeWorld = 0
+
+  @type('number')
+  domainLengthWorld = 0
+
+  @type('number')
+  domainWidthWorld = 0
+
+  @type('number')
+  advectionFactor = 0
+
+  @type('number')
+  tileSizeWorld = 0
+}
+
 export class RaceMetaSchema extends Schema {
   @type('string')
   raceId = ''
@@ -98,6 +124,9 @@ export class BoatStateSchema extends Schema {
   penalties = 0
 
   @type('number')
+  protestPenalties = 0
+
+  @type('number')
   stallTimer = 0
 
   @type('number')
@@ -122,6 +151,20 @@ export class BoatStateSchema extends Schema {
   vmgMode = false
 }
 
+export class ProtestSchema extends Schema {
+  @type('string')
+  protestedBoatId = ''
+
+  @type('string')
+  protestorBoatId = ''
+
+  @type('number')
+  createdAtT = 0
+
+  @type('string')
+  status: 'active' | 'active_waived' = 'active'
+}
+
 export class RaceStateSchema extends Schema {
   @type('number')
   t = 0
@@ -135,8 +178,14 @@ export class RaceStateSchema extends Schema {
   @type('number')
   baselineWindDeg = 0
 
+  @type(WindFieldSchema)
+  windField = new WindFieldSchema()
+
   @type({ map: BoatStateSchema })
   boats = new MapSchema<BoatStateSchema>()
+
+  @type({ map: ProtestSchema })
+  protests = new MapSchema<ProtestSchema>()
 
   @type([Vec2Schema])
   marks = new ArraySchema<Vec2Schema>()
@@ -163,13 +212,16 @@ export class RaceStateSchema extends Schema {
   hostBoatId = ''
 
   @type('number')
-  lapsToFinish = 3
+  lapsToFinish = 2
 
   @type(['string'])
   leaderboard = new ArraySchema<string>()
 
   @type('boolean')
   aiEnabled = true
+
+  @type('boolean')
+  paused = false
 }
 
 export type {

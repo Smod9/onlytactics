@@ -1,6 +1,6 @@
 import type { RaceState, BoatState, Vec2 } from '@/types/race'
 import type { RaceStore } from '@/state/raceStore'
-import type { ControlUpdate } from '@/net/controllers/types'
+import type { ControlUpdate } from '@/net/controlTypes'
 import { headingFromAwa, angleDiff, normalizeDeg } from '@/logic/physics'
 import { distanceBetween } from '@/utils/geometry'
 
@@ -61,7 +61,11 @@ export class AiManager {
       if (state.phase === 'running') {
         runtime.leg = 'upwind'
       } else {
-        this.publishHeading(boat, this.computePrestartHeading(state, boat, profile), runtime)
+        this.publishHeading(
+          boat,
+          this.computePrestartHeading(state, boat, profile),
+          runtime,
+        )
         return
       }
     }
@@ -87,7 +91,12 @@ export class AiManager {
     this.publishHeading(boat, heading, runtime)
   }
 
-  private publishHeading(boat: BoatState, heading: number, runtime: Runtime, force = false) {
+  private publishHeading(
+    boat: BoatState,
+    heading: number,
+    runtime: Runtime,
+    force = false,
+  ) {
     if (!force && runtime.lastHeading !== undefined) {
       const diff = Math.abs(angleDiff(heading, runtime.lastHeading))
       if (diff < 2) {
@@ -267,4 +276,3 @@ export class AiManager {
     return (Math.random() - 0.5) * spread
   }
 }
-

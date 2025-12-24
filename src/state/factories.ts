@@ -18,14 +18,14 @@ export const defaultBoatColors = [
 ]
 
 const defaultStartLine = {
-  pin: { x: -210, y: 120 },
-  committee: { x: 210, y: 110 },
+  pin: { x: -180, y: 120 },
+  committee: { x: 180, y: 125 },
 }
 
 const defaultLeewardGate = {
-  left: { x: -40, y: 63
-   },
-  right: { x: 40, y: 70 },
+  // M2.1 / M2.2 (leeward gate marks) - widened for better gate separation/visibility.
+  left: { x: -95, y: 73 },
+  right: { x: 95, y: 80 },
 }
 
 const structuredCopy = <T>(value: T): T => {
@@ -65,9 +65,11 @@ export const createBoatState = (
   const row = Math.floor(index / columnCount)
   const step = columnCount > 1 ? span / (columnCount - 1) : 0
   const baseX = left + column * step
-  const baseY = lineTop + 120 + row * 40
-  const jitterXRange = columnCount > 1 ? Math.min(step * 0.6, 120) : 120
-  const jitterYRange = 40
+  const baseY = lineTop + 110 + row * 40
+  // Reduce jitter to prevent boats from spawning on top of each other
+  // Jitter should be at most 30% of spacing, and never more than 20 units
+  const jitterXRange = columnCount > 1 ? Math.min(step * 0.3, 20) : 20
+  const jitterYRange = 15 // Reduced from 40 to prevent vertical overlaps
   const jitter = (range: number) => (Math.random() - 0.5) * range
   const spawnX = baseX + jitter(jitterXRange)
   const spawnY = baseY + jitter(jitterYRange)
@@ -84,6 +86,7 @@ export const createBoatState = (
     finishTime: undefined,
     distanceToNextMark: undefined,
     penalties: 0,
+    protestPenalties: 0,
     pos: { x: spawnX, y: spawnY },
     prevPos: { x: spawnX, y: spawnY },
     speed: 0,
@@ -99,14 +102,23 @@ export const createBoatState = (
   }
 }
 
-export const createInitialRaceState = (raceId: string, countdown = appEnv.countdownSeconds): RaceState => {
+export const createInitialRaceState = (
+  raceId: string,
+  countdown = appEnv.countdownSeconds,
+): RaceState => {
   const boatConfigs = appEnv.aiEnabled ? AI_BOAT_CONFIGS : []
   const boats = boatConfigs.map((config, idx) =>
     createBoatState(config.name, idx, config.id, config.aiProfileId),
   )
   const baselineWind = appEnv.baselineWindDeg
+  // Course geometry:
+  // - marks[0] is the windward mark.
+  // - Negative Y is "upwind" on the screen (higher on the canvas).
+  // We previously pushed the windward mark very far upwind (-728). Move it DOWN ~10%
+  // (closer to the start line) to tighten the course a bit.
+  const windwardY = Math.round(-728 * 0.9)
   const defaultMarks: Vec2[] = [
-    { x: 0, y: -220 }, // windward mark
+    { x: 0, y: windwardY }, // windward mark (moved down ~10%)
     defaultStartLine.committee,
     defaultStartLine.pin,
     defaultLeewardGate.left,
@@ -120,6 +132,16 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
       speed: 12,
     },
     baselineWindDeg: baselineWind,
+    windField: {
+      enabled: appEnv.windFieldEnabled,
+      intensityKts: appEnv.windFieldIntensityKts,
+      count: appEnv.windFieldCount,
+      sizeWorld: appEnv.windFieldSizeWorld,
+      domainLengthWorld: appEnv.windFieldDomainLengthWorld,
+      domainWidthWorld: appEnv.windFieldDomainWidthWorld,
+      advectionFactor: appEnv.windFieldAdvectionFactor,
+      tileSizeWorld: appEnv.windFieldTileSizeWorld,
+    },
     marks: structuredCopy(defaultMarks),
     startLine: structuredCopy(defaultStartLine),
     leewardGate: structuredCopy(defaultLeewardGate),
@@ -131,6 +153,8 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
     lapsToFinish: appEnv.lapsToFinish,
     leaderboard: [],
     aiEnabled: appEnv.aiEnabled,
+    paused: false,
+    protests: {},
     boats: boats.reduce<RaceState['boats']>((acc, boat) => {
       acc[boat.id] = boat
       return acc
@@ -139,4 +163,3 @@ export const createInitialRaceState = (raceId: string, countdown = appEnv.countd
 }
 
 export const cloneRaceState = (state: RaceState): RaceState => structuredCopy(state)
-

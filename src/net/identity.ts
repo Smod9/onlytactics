@@ -18,7 +18,12 @@ const ensureSessionId = (
   return fresh
 }
 
-const clientId = ensureSessionId(CLIENT_ID_KEY, () => createId('client'), readJson, writeJson)
+const clientId = ensureSessionId(
+  CLIENT_ID_KEY,
+  () => createId('client'),
+  readJson,
+  writeJson,
+)
 const boatId = ensureSessionId(BOAT_ID_KEY, () => createId('boat'))
 const clientName = readJson<string | null>(CLIENT_NAME_KEY, null)
 
@@ -37,4 +42,3 @@ export const setClientName = (name: string) => {
   identity.clientName = name
   writeJson(CLIENT_NAME_KEY, name)
 }
-

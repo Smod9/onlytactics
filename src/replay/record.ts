@@ -51,4 +51,3 @@ export class ReplayRecorder {
     return t - this.lastFrameTime >= 1
   }
 }
-

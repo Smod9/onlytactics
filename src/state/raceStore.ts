@@ -133,4 +133,3 @@ export class RaceStore {
 }
 
 export const raceStore = new RaceStore(createInitialRaceState(appEnv.raceId))
-
