@@ -45,6 +45,7 @@ export const useTacticianControls = (
   const pendingRef = useRef(new Map<number, number>())
   const lastAckSeqRef = useRef(0)
   const vmgModeRef = useRef(false)
+  const blowSailsHeldRef = useRef(false)
 
   useEffect(() => {
     raceRef.current = raceState
@@ -79,7 +80,7 @@ export const useTacticianControls = (
       // Some browsers (notably iOS Safari / synthetic keyboard events) may provide an empty string
       // for event.code. Use || instead of ?? so we fall back to event.key in that case.
       const key = event.code || event.key
-      const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP']
+      const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP', 'KeyL']
       if (appEnv.debugHud) allowed.push('KeyJ')
       if (!allowed.includes(key)) {
         return
@@ -141,6 +142,16 @@ export const useTacticianControls = (
       }
 
       switch (key) {
+        case 'KeyL': {
+          // Held control: blow sails (depower) while the key is down.
+          if (!blowSailsHeldRef.current) {
+            blowSailsHeldRef.current = true
+            const seq = (seqRef.current += 1)
+            pendingRef.current.set(seq, performance.now())
+            networkRef.current?.setBlowSails(true, seq)
+          }
+          break
+        }
         case 'Space': {
           // Enter VMG mode (idempotent). Exiting VMG is handled by manual steering inputs.
           if (!vmgModeRef.current) {
@@ -200,8 +211,47 @@ export const useTacticianControls = (
       }
     }
 
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (
+        !networkRef.current ||
+        roleRef.current === 'spectator' ||
+        roleRef.current === 'judge' ||
+        isInteractiveElement(event.target)
+      ) {
+        return
+      }
+
+      const key = event.code || event.key
+      if (key !== 'KeyL') return
+      event.preventDefault()
+
+      if (blowSailsHeldRef.current) {
+        blowSailsHeldRef.current = false
+        const seq = (seqRef.current += 1)
+        pendingRef.current.set(seq, performance.now())
+        networkRef.current?.setBlowSails(false, seq)
+      }
+    }
+
+    const releaseBlowSails = () => {
+      if (!networkRef.current) return
+      if (!blowSailsHeldRef.current) return
+      blowSailsHeldRef.current = false
+      const seq = (seqRef.current += 1)
+      pendingRef.current.set(seq, performance.now())
+      networkRef.current.setBlowSails(false, seq)
+    }
+
     window.addEventListener('keydown', handleKey, { capture: true })
-    return () => window.removeEventListener('keydown', handleKey, { capture: true })
+    window.addEventListener('keyup', handleKeyUp, { capture: true })
+    window.addEventListener('blur', releaseBlowSails)
+    document.addEventListener('visibilitychange', releaseBlowSails)
+    return () => {
+      window.removeEventListener('keydown', handleKey, { capture: true })
+      window.removeEventListener('keyup', handleKeyUp, { capture: true })
+      window.removeEventListener('blur', releaseBlowSails)
+      document.removeEventListener('visibilitychange', releaseBlowSails)
+    }
   }, [network, role])
 
   useEffect(() => {

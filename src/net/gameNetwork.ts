@@ -168,6 +168,15 @@ export class GameNetwork {
     })
   }
 
+  setBlowSails(blowSails: boolean, seq: number) {
+    this.colyseusBridge?.sendInput({
+      boatId: identity.boatId,
+      seq,
+      blowSails,
+      tClient: Date.now(),
+    })
+  }
+
   clearOnePenalty() {
     netLog('clearOnePenalty()')
     this.colyseusBridge?.sendInput({
