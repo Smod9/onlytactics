@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/Smod9/onlytactics/compare/v1.27.0...v1.28.0) (2025-12-24)
+
+
+### Features
+
+* enhance roster management and UI components ([e7623e7](https://github.com/Smod9/onlytactics/commit/e7623e7a28ab217b541137141517b882d24ed69b))
+
 # [1.27.0](https://github.com/Smod9/onlytactics/compare/v1.26.8...v1.27.0) (2025-12-24)
 
 
