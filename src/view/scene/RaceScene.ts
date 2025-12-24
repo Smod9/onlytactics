@@ -10,6 +10,8 @@ import {
   BOAT_LENGTH,
   BOAT_STERN_OFFSET,
   BOAT_STERN_RADIUS,
+  NO_GO_ANGLE_DEG,
+  STALL_DURATION_S,
   WAKE_HALF_WIDTH_END,
   WAKE_HALF_WIDTH_START,
   WAKE_LENGTH,
@@ -162,8 +164,36 @@ class BoatView {
     const trimmedInFactor = 1 - easedFactor
     // Keep rotation direction consistent with the original implementation:
     // rotate the sail toward centerline on each tack.
-    const rotationDeg = leewardSign * (8 + trimmedInFactor * 24)
+    const isBlown = Boolean(boat.blowSails)
+    // Ease the sail a bit more at very deep downwind angles.
+    // Previously our minimum trim-in was ~8° even at 180°; make that ~50% more eased (~4°)
+    // by ramping the minimum between 140° → 180°.
+    const deepDownwindT = clamp01((absAwa - 140) / 40)
+    const minRotationDeg = 8 + (4 - 8) * deepDownwindT
+    const baseRotationDeg = leewardSign * (minRotationDeg + trimmedInFactor * 24)
+
+    // Unified "luffing" animation intensity:
+    // - 100% when blown (player holding L)
+    // - Otherwise ramps up only when you're near the no-go zone (true luffing / stalled),
+    //   not during normal upwind sailing (e.g. VMG ~45°).
+    const LUFF_BUFFER_DEG = 12
+    const luffThresholdDeg = NO_GO_ANGLE_DEG + LUFF_BUFFER_DEG
+    const nearNoGoIntensity = clamp01((luffThresholdDeg - absAwa) / LUFF_BUFFER_DEG)
+    const stallIntensity = clamp01(boat.stallTimer / STALL_DURATION_S)
+    const luffIntensity = isBlown ? 1 : Math.max(nearNoGoIntensity, stallIntensity)
+
+    // Luffing visuals:
+    // - If blown: sail is fully eased out (0°) + wiggle.
+    // - If merely luffing: keep sail TRIMMED, but wiggle/flap around that trimmed angle.
+    // Suppress wiggle in VMG mode unless the user is actively blowing sails (L held).
+    const wiggleAllowed = !boat.vmgMode || isBlown
+    const wiggleDeg = wiggleAllowed
+      ? Math.sin(performance.now() / 70) * 6 * luffIntensity
+      : 0
+    const rotationDeg = isBlown ? leewardSign * wiggleDeg : baseRotationDeg + leewardSign * wiggleDeg
     this.sail.rotation = degToRad(rotationDeg)
+    // Keep sail fully opaque when just luffing; only de-emphasize when fully blown.
+    this.sail.alpha = isBlown ? 0.75 : 1
 
     const nextNameText = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
     if (nextNameText !== this.lastNameText) {

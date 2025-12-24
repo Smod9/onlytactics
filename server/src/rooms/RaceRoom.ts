@@ -32,6 +32,7 @@ type InputMessage = {
   deltaHeadingDeg?: number
   spin?: 'full'
   vmgMode?: boolean
+  blowSails?: boolean
   clearPenalty?: boolean
 }
 
@@ -160,6 +161,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         deltaHeadingDeg: message.deltaHeadingDeg,
         spin: message.spin,
         vmgMode: message.vmgMode,
+        blowSails: message.blowSails,
         tClient: Date.now(),
       }
       this.raceStore.upsertInput(payload)
@@ -368,6 +370,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       if (target) {
         target.rightsSuspended = true
         target.vmgMode = false
+        target.blowSails = false
       }
     })
     
