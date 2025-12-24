@@ -36,16 +36,12 @@ export const appEnv = {
   raceId: rawEnv.VITE_RACE_ID ?? 'debug-race',
   clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'host') as ClientRole,
   clientName: rawEnv.VITE_CLIENT_NAME ?? 'Debug Host',
-  netTransport: (rawEnv.VITE_NET_TRANSPORT ?? 'colyseus') as 'mqtt' | 'colyseus',
   colyseusEndpoint: normalizeWsUrl(
     rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint,
   ),
   colyseusRoomId: rawEnv.VITE_COLYSEUS_ROOM_ID ?? 'onlytactics-dev',
   speedMultiplier: toNumber(rawEnv.VITE_SPEED_MULTIPLIER, 1),
   tickRateHz: toNumber(rawEnv.VITE_TICK_RATE, 10),
-  hostFailoverMs: toNumber(rawEnv.VITE_HOST_FAILOVER_MS, 4000),
-  hostHeartbeatMs: toNumber(rawEnv.VITE_HOST_HEARTBEAT_MS, 5000),
-  hostPublishIntervalMs: toNumber(rawEnv.VITE_HOST_PUBLISH_INTERVAL_MS, 50),
   clientIdleTimeoutMs: toNumber(rawEnv.VITE_CLIENT_IDLE_TIMEOUT_MS, 5 * 60 * 1000),
   // "Laps" here correspond to the number of windward roundings (W steps) in the loop.
   // Example: lapsToFinish=2 => Start -> W -> Gate -> W -> Finish

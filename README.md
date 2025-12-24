@@ -1,6 +1,6 @@
 # Only Tactics Sailing Simulator
 
-This is the browser client for the sailing race rules trainer. It includes the PixiJS scene, MQTT networking, replay tooling, and connects to a shared CloudAMQP (RabbitMQ) broker.
+This is the browser client for the sailing race rules trainer. It includes the PixiJS scene, replay tooling, and connects to a Colyseus server.
 
 ## Why should this exist?
 
@@ -22,11 +22,11 @@ I can't (and won't) maintain this on my own, I've never liked sailing single han
 
 ```bash
 npm install
-cp env.example .env    # adjust values if needed (contains CloudAMQP defaults)
-npm run dev            # starts Vite and connects to the remote broker
+cp env.example .env    # adjust values if needed (contains Colyseus defaults)
+npm run dev            # starts Vite and connects to the configured Colyseus room
 ```
 
-The dev server now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). MQTT credentials are currently hardcoded inside `src/net/mqttClient.ts` while we stabilize the new broker. If you need to point at a different broker, edit the constants at the top of that file and restart `npm run dev`. The remaining variables in `.env` still control race metadata, debug HUD, etc.
+The dev server now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). Configure your server via `VITE_COLYSEUS_ENDPOINT` + `VITE_COLYSEUS_ROOM_ID` in `.env`.
 
 ## Tactician controls
 
