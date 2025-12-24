@@ -13,17 +13,19 @@ export type RosterEntry = {
 type Snapshot = {
   hostId?: string
   entries: RosterEntry[]
+  extras: RosterEntry[]
 }
 
 class RosterStore {
   private listeners = new Set<() => void>()
 
-  private entries = new Map<string, RosterEntry>()
+  private playerEntries = new Map<string, RosterEntry>()
+  private extraEntries = new Map<string, RosterEntry>()
 
   private hostId?: string
   private hostBoatId?: string
 
-  private snapshot: Snapshot = { hostId: undefined, entries: [] }
+  private snapshot: Snapshot = { hostId: undefined, entries: [], extras: [] }
 
   subscribe = (listener: () => void) => {
     this.listeners.add(listener)
@@ -36,9 +38,9 @@ class RosterStore {
     const state = raceStore.getState()
     this.hostId = state.hostId
     this.hostBoatId = state.hostBoatId
-    this.entries.clear()
+    this.playerEntries.clear()
     Object.entries(state.boats).forEach(([boatId, boat]) => {
-      this.entries.set(boatId, {
+      this.playerEntries.set(boatId, {
         clientId: boatId,
         name: boat.name,
         role: 'player',
@@ -49,8 +51,28 @@ class RosterStore {
     this.emit()
   }
 
+  updateFromServerRoster(
+    entries: Array<{ clientId: string; name: string; role: RaceRole; boatId?: string | null }>,
+  ) {
+    const now = Date.now()
+    this.extraEntries.clear()
+    for (const entry of entries) {
+      // Only keep non-boat roles as "extras"; boats are already represented in `raceStore.boats`.
+      if (entry.role === 'spectator' || entry.role === 'judge' || entry.role === 'god') {
+        this.extraEntries.set(entry.clientId, {
+          clientId: entry.clientId,
+          name: entry.name,
+          role: entry.role,
+          status: 'online',
+          lastSeen: now,
+        })
+      }
+    }
+    this.emit()
+  }
+
   private emit() {
-    const entries = Array.from(this.entries.values())
+    const entries = Array.from(this.playerEntries.values())
       .filter((entry) => entry.status === 'online')
       .map((entry) => ({
         ...entry,
@@ -65,7 +87,11 @@ class RosterStore {
       if (a.status !== b.status) return a.status === 'online' ? -1 : 1
       return a.name.localeCompare(b.name)
     })
-    this.snapshot = { hostId: this.hostId, entries }
+    const extras = Array.from(this.extraEntries.values())
+      .filter((entry) => entry.status === 'online')
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name))
+    this.snapshot = { hostId: this.hostId, entries, extras }
     this.listeners.forEach((listener) => listener())
   }
 }

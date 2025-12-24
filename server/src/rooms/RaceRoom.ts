@@ -56,6 +56,13 @@ type ChatMessagePayload = {
   text?: string
 }
 
+type RosterEntryPayload = {
+  clientId: string
+  name: string
+  role: RaceRole
+  boatId: string | null
+}
+
 export class RaceRoom extends Room<RaceRoomState> {
   maxClients = 32
 
@@ -236,6 +243,36 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.onMessage<ChatMessagePayload>('chat', (client, payload) => {
       this.handleChat(client, payload)
     })
+
+    // Client may miss the initial roster broadcast during join; allow requesting it explicitly.
+    this.onMessage('roster_request', (client) => {
+      client.send('roster', { entries: this.buildRosterEntries() })
+    })
+  }
+
+  private buildRosterEntries(): RosterEntryPayload[] {
+    const entries: RosterEntryPayload[] = []
+    for (const sessionId of this.clientIdentityMap.keys()) {
+      const clientId = this.clientIdentityMap.get(sessionId) ?? sessionId
+      const name =
+        this.clientNameMap.get(sessionId) ??
+        `Sailor ${(clientId ?? sessionId).slice(0, 4)}`
+      const joinRole = this.clientRoleMap.get(sessionId) ?? 'player'
+      const role: RaceRole = sessionId === this.hostSessionId ? 'host' : joinRole
+      const boatId = this.clientBoatMap.get(sessionId) ?? null
+      entries.push({ clientId, name, role, boatId })
+    }
+    entries.sort((a, b) => {
+      if (a.role === 'host') return -1
+      if (b.role === 'host') return 1
+      if (a.role !== b.role) return a.role.localeCompare(b.role)
+      return a.name.localeCompare(b.name)
+    })
+    return entries
+  }
+
+  private broadcastRoster() {
+    this.broadcast('roster', { entries: this.buildRosterEntries() })
   }
 
   onJoin(client: Client, options?: Record<string, unknown>) {
@@ -285,6 +322,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         this.setHost(undefined)
       }
     }
+    this.broadcastRoster()
   }
 
   onLeave(client: Client, consented: boolean) {
@@ -295,6 +333,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       playerCount: this.state.playerCount,
     })
     this.releaseBoat(client)
+    this.broadcastRoster()
     roomDebug('onLeave', {
       clientId: client.sessionId,
       consented,
@@ -861,6 +900,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       }
     })
     this.raceStore?.setHostBoat(hostBoatId)
+    this.broadcastRoster()
   }
 
   private armCountdown(seconds: number) {

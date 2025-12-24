@@ -1129,9 +1129,45 @@ button {
 }
 
 .roster-panel h3 {
+  /* Match Leaderboard header styling */
   font-size: 0.85rem;
-  color: #9fb7ff;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb7ff;
+  margin: 0;
+}
+
+.roster-panel > summary.roster-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+.roster-panel > summary.roster-summary::-webkit-details-marker {
+  display: none;
+}
+
+.roster-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-summary-role {
+  /* Match the subtle "meta" look used in HUD panels */
+  font-size: 0.8rem;
+  letter-spacing: normal;
+  text-transform: none;
+  color: #b7c2ff;
+  white-space: nowrap;
+}
+
+.roster-body {
+  margin-top: 0.4rem;
 }
 
 .roster-panel ul {
