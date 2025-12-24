@@ -67,7 +67,7 @@ export class HostLoop {
   private courseSideSign?: number
   private penaltyHistory = new Map<string, number>()
   private raceStartWallClockMs: number | null = null
-  private spinTimers = new Map<string, NodeJS.Timeout[]>()
+  private spinTimers = new Map<string, Array<ReturnType<typeof setTimeout>>>()
   private spinningBoats = new Set<string>()
   private pendingSpinClears = new Set<string>()
   private spinSeq = 0
@@ -1128,7 +1128,7 @@ export class HostLoop {
     this.spinningBoats.add(boatId)
     const origin = boat.desiredHeadingDeg ?? boat.headingDeg ?? 0
     const headings = [origin + 120, origin + 240, origin].map((deg) => normalizeDeg(deg))
-    const timers: NodeJS.Timeout[] = []
+    const timers: Array<ReturnType<typeof setTimeout>> = []
     let delay = 0
     headings.forEach((heading, index) => {
       const timer = setTimeout(() => {

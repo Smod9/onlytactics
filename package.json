@@ -16,7 +16,6 @@
   "dependencies": {
     "colyseus.js": "^0.16.22",
     "idb": "^8.0.3",
-    "mqtt": "^5.14.1",
     "pixi.js": "^8.14.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
