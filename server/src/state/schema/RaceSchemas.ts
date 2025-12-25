@@ -102,6 +102,9 @@ export class BoatStateSchema extends Schema {
   @type('number')
   wakeFactor = 1
 
+  @type('boolean')
+  blowSails = false
+
   @type('number')
   lap = 0
 

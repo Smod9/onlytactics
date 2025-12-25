@@ -9,6 +9,10 @@ export const HELP_TIPS: HelpTip[] = [
     text: "🏎️ Smash 'space' after tacking to go into VMG mode. This is great for staying fast upwind/downwind.",
   },
   {
+    id: 'blow-sails',
+    text: "🪂 Hold 'L' to blow the sails (depower) and slow down without changing course.",
+  },
+  {
     id: 'sharp-turns',
     text: "↪️ Hold 'shift' key while turning to make harder turns. This is great for getting out of trouble.",
   },

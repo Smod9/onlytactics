@@ -56,6 +56,11 @@ export type BoatState = {
   desiredHeadingDeg: number
   speed: number
   wakeFactor?: number
+  /**
+   * When true, sails are "blown" (fully eased/depowered) to slow down without changing course.
+   * This is intended as a momentary/held control.
+   */
+  blowSails?: boolean
   lap: number
   nextMarkIndex: number
   inMarkZone: boolean
@@ -120,6 +125,11 @@ export type PlayerInput = {
   deltaHeadingDeg?: number
   spin?: 'full'
   vmgMode?: boolean
+  /**
+   * Held control: when true, temporarily depower sails to slow down.
+   * When false, return to normal trim.
+   */
+  blowSails?: boolean
   clearPenalty?: boolean
 }
 

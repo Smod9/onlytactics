@@ -55,7 +55,6 @@ import {
   MAX_DOWNWIND_ANGLE_DEG,
   NO_GO_ANGLE_DEG,
   STALL_DURATION_S,
-  STALL_SPEED_FACTOR,
   TACK_MIN_ANGLE_DEG,
   TACK_MIN_TIME_SECONDS,
   TACK_SPEED_PENALTY,
@@ -404,6 +403,12 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
       boat.vmgMode = input.vmgMode
     }
 
+    // Only update blowSails when explicitly provided in input (preserve between ticks).
+    // This is a held control: keydown sets true, keyup sets false.
+    if (input?.blowSails !== undefined) {
+      boat.blowSails = input.blowSails
+    }
+
     // If there's a heading input, exit VMG mode (user is taking manual control)
     // But skip this check during spins (rightsSuspended) since spins inject headings
     const hasHeadingInput =
@@ -471,9 +476,16 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     let targetSpeed =
       polarTargetSpeed(awa, localWindSpeed, DEFAULT_SHEET) * appEnv.speedMultiplier
 
-    // Apply stall penalty (from sailing into no-go zone)
-    if (boat.stallTimer > 0) {
-      targetSpeed *= STALL_SPEED_FACTOR
+    // Slow-down / depower handling:
+    // - Blowing sails (held control) should reduce speed to ~10% of TWS.
+    // - Near the maximum upwind angle (NO_GO boundary), speed should also be ~10% of TWS
+    //   (this keeps "parking" and prestart control consistent and avoids being too fast at max upwind).
+    const absAwa = Math.abs(awa)
+    const slowCap = localWindSpeed * 0.1 * appEnv.speedMultiplier
+    const nearMaxUpwind = absAwa <= NO_GO_ANGLE_DEG + 1
+    const shouldSlow = boat.blowSails || boat.stallTimer > 0 || nearMaxUpwind
+    if (shouldSlow) {
+      targetSpeed = Math.min(targetSpeed, slowCap)
     }
 
     // ========================================================================

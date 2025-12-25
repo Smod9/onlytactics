@@ -79,6 +79,7 @@ export const createBoatState = (
     color: defaultBoatColors[index % defaultBoatColors.length],
     headingDeg: 0,
     desiredHeadingDeg: 0,
+    blowSails: false,
     lap: 0,
     nextMarkIndex: 0,
     inMarkZone: false,
