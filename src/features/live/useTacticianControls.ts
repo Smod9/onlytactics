@@ -46,6 +46,7 @@ export const useTacticianControls = (
   const lastAckSeqRef = useRef(0)
   const vmgModeRef = useRef(false)
   const blowSailsHeldRef = useRef(false)
+  const hardTurnHeldRef = useRef(false)
 
   useEffect(() => {
     raceRef.current = raceState
@@ -80,7 +81,17 @@ export const useTacticianControls = (
       // Some browsers (notably iOS Safari / synthetic keyboard events) may provide an empty string
       // for event.code. Use || instead of ?? so we fall back to event.key in that case.
       const key = event.code || event.key
-      const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP', 'KeyL']
+      const allowed = [
+        'Space',
+        'Enter',
+        'ArrowUp',
+        'ArrowDown',
+        'KeyS',
+        'KeyP',
+        'KeyL',
+        'ShiftLeft',
+        'ShiftRight',
+      ]
       if (appEnv.debugHud) allowed.push('KeyJ')
       if (!allowed.includes(key)) {
         return
@@ -142,6 +153,21 @@ export const useTacticianControls = (
       }
 
       switch (key) {
+        case 'ShiftLeft': {
+          // Track left shift separately so "hard turns" only apply to the left-hand Shift key.
+          hardTurnHeldRef.current = true
+          break
+        }
+        case 'ShiftRight': {
+          // Map right-hand Shift to "blow sails" (same as holding L).
+          if (!blowSailsHeldRef.current) {
+            blowSailsHeldRef.current = true
+            const seq = (seqRef.current += 1)
+            pendingRef.current.set(seq, performance.now())
+            networkRef.current?.setBlowSails(true, seq)
+          }
+          break
+        }
         case 'KeyL': {
           // Held control: blow sails (depower) while the key is down.
           if (!blowSailsHeldRef.current) {
@@ -174,7 +200,7 @@ export const useTacticianControls = (
         }
         case 'ArrowUp': {
           exitVmgMode()
-          const hardModifier = event.shiftKey || event.altKey
+          const hardModifier = hardTurnHeldRef.current || event.altKey
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.max(absAwa - step, 0)
           const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
@@ -183,7 +209,7 @@ export const useTacticianControls = (
         }
         case 'ArrowDown': {
           exitVmgMode()
-          const hardModifier = event.shiftKey || event.altKey
+          const hardModifier = hardTurnHeldRef.current || event.altKey
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
           const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
@@ -222,7 +248,13 @@ export const useTacticianControls = (
       }
 
       const key = event.code || event.key
-      if (key !== 'KeyL') return
+      if (key === 'ShiftLeft') {
+        event.preventDefault()
+        hardTurnHeldRef.current = false
+        return
+      }
+
+      if (key !== 'KeyL' && key !== 'ShiftRight') return
       event.preventDefault()
 
       if (blowSailsHeldRef.current) {
@@ -233,8 +265,9 @@ export const useTacticianControls = (
       }
     }
 
-    const releaseBlowSails = () => {
+    const releaseHeldInputs = () => {
       if (!networkRef.current) return
+      hardTurnHeldRef.current = false
       if (!blowSailsHeldRef.current) return
       blowSailsHeldRef.current = false
       const seq = (seqRef.current += 1)
@@ -244,13 +277,13 @@ export const useTacticianControls = (
 
     window.addEventListener('keydown', handleKey, { capture: true })
     window.addEventListener('keyup', handleKeyUp, { capture: true })
-    window.addEventListener('blur', releaseBlowSails)
-    document.addEventListener('visibilitychange', releaseBlowSails)
+    window.addEventListener('blur', releaseHeldInputs)
+    document.addEventListener('visibilitychange', releaseHeldInputs)
     return () => {
       window.removeEventListener('keydown', handleKey, { capture: true })
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
-      window.removeEventListener('blur', releaseBlowSails)
-      document.removeEventListener('visibilitychange', releaseBlowSails)
+      window.removeEventListener('blur', releaseHeldInputs)
+      document.removeEventListener('visibilitychange', releaseHeldInputs)
     }
   }, [network, role])
 

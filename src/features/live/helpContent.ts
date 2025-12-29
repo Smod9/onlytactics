@@ -10,11 +10,11 @@ export const HELP_TIPS: HelpTip[] = [
   },
   {
     id: 'blow-sails',
-    text: "🪂 Hold 'L' to blow the sails (depower) and slow down without changing course.",
+    text: "🪂 Hold 'L' or Right Shift to blow the sails (depower) and slow down without changing course.",
   },
   {
     id: 'sharp-turns',
-    text: "↪️ Hold 'shift' key while turning to make harder turns. This is great for getting out of trouble.",
+    text: "↪️ Hold Left Shift (or Alt) while turning to make harder turns. This is great for getting out of trouble.",
   },
   {
     id: 'slow-mode',
