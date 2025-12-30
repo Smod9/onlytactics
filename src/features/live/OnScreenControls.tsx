@@ -110,8 +110,10 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       button.key,
       wantsHardTurn
         ? {
-            shiftKey: Boolean(modifiers?.shiftKey) || hardTurnHeld,
-            altKey: Boolean(modifiers?.altKey),
+            // Use Alt to request hard-turn behavior. We reserve Left Shift as the
+            // physical-key modifier and map Right Shift to "blow sails".
+            shiftKey: Boolean(modifiers?.shiftKey),
+            altKey: Boolean(modifiers?.altKey) || hardTurnHeld,
           }
         : modifiers,
     )
