@@ -1,3 +1,10 @@
+## [1.29.1](https://github.com/Smod9/onlytactics/compare/v1.29.0...v1.29.1) (2025-12-30)
+
+
+### Bug Fixes
+
+* Makes the left shift clear the right shift since at least safari (maybe others) spoof an extra key down weirdly - which was making the blown sails state stick ([a3e541c](https://github.com/Smod9/onlytactics/commit/a3e541c99c0d346bf68964e67b6dc266ed3128d8))
+
 # [1.29.0](https://github.com/Smod9/onlytactics/compare/v1.28.1...v1.29.0) (2025-12-30)
 
 
