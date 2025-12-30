@@ -1,3 +1,11 @@
+# [1.29.0](https://github.com/Smod9/onlytactics/compare/v1.28.1...v1.29.0) (2025-12-30)
+
+
+### Features
+
+* Adds ability to blow the sails and displays luffing sail ([f480139](https://github.com/Smod9/onlytactics/commit/f480139f7cd579298b6962546b81034d016f4142))
+* Adds right shift key as alternate for blowing sails, only left shift key now turns hard ([2fbeb95](https://github.com/Smod9/onlytactics/commit/2fbeb951bc0d7b14f8f459b396c36c401c713102))
+
 ## [1.28.1](https://github.com/Smod9/onlytactics/compare/v1.28.0...v1.28.1) (2025-12-24)
 
 
