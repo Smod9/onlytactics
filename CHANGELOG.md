@@ -1,3 +1,10 @@
+## [1.29.3](https://github.com/Smod9/onlytactics/compare/v1.29.2...v1.29.3) (2026-01-02)
+
+
+### Bug Fixes
+
+* increase bow radius from 4 to 4.5 to make collision more likely. ([055d7d7](https://github.com/Smod9/onlytactics/commit/055d7d72454c728a5a86352d079e9fdc0061985c))
+
 ## [1.29.2](https://github.com/Smod9/onlytactics/compare/v1.29.1...v1.29.2) (2026-01-02)
 
 
