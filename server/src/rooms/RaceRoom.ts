@@ -47,6 +47,7 @@ type InputMessage = {
   deltaHeadingDeg?: number
   spin?: 'full'
   vmgMode?: boolean
+  blowSails?: boolean
   clearPenalty?: boolean
 }
 
@@ -194,6 +195,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         deltaHeadingDeg: message.deltaHeadingDeg,
         spin: message.spin,
         vmgMode: message.vmgMode,
+        blowSails: message.blowSails,
         tClient: Date.now(),
       }
       this.raceStore.upsertInput(payload)
@@ -319,6 +321,9 @@ export class RaceRoom extends Room<RaceRoomState> {
     const existingWasHost = Boolean(
       existingSessionId && existingSessionId === this.hostSessionId,
     )
+    const existingBoatId = existingSessionId
+      ? this.clientBoatMap.get(existingSessionId)
+      : undefined
     if (existingSessionId) {
       console.info('[RaceRoom] evicting duplicate session for clientId', {
         clientId,
@@ -326,7 +331,8 @@ export class RaceRoom extends Room<RaceRoomState> {
         nextSessionId: client.sessionId,
         nextRole: joinRole,
       })
-      this.evictSession(existingSessionId)
+      // Preserve the previous boat so a hard refresh can seamlessly resume control.
+      this.evictSession(existingSessionId, { preserveBoat: true })
     }
 
     this.clientIdentityMap.set(client.sessionId, clientId)
@@ -344,7 +350,12 @@ export class RaceRoom extends Room<RaceRoomState> {
       hostSessionId: this.hostSessionId,
     })
     if (joinRole === 'player') {
-      this.assignBoatToClient(client, options)
+      // If we're replacing our own previous session, try to re-attach the same boat.
+      if (existingBoatId && this.raceStore?.getState().boats?.[existingBoatId]) {
+        this.reattachBoatToClient(client, existingBoatId, options)
+      } else {
+        this.assignBoatToClient(client, options)
+      }
       if (existingWasHost) {
         this.setHost(client.sessionId)
       } else if (!this.hostSessionId) {
@@ -361,7 +372,19 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.broadcastRoster()
   }
 
-  onLeave(client: Client, consented: boolean) {
+  async onLeave(client: Client, consented: boolean) {
+    // If a client disconnects unexpectedly, allow a brief reconnection window.
+    // This prevents "freeze -> refresh -> new boat" churn for transient network drops.
+    if (!consented) {
+      try {
+        await this.allowReconnection(client, 30)
+        roomDebug('onLeave:reconnected', { clientId: client.sessionId })
+        return
+      } catch {
+        // fall through to cleanup
+      }
+    }
+
     this.state.playerCount = Math.max(0, this.state.playerCount - 1)
     console.info('[RaceRoom] client left', {
       clientId: client.sessionId,
@@ -405,6 +428,7 @@ export class RaceRoom extends Room<RaceRoomState> {
       if (target) {
         target.rightsSuspended = true
         target.vmgMode = false
+        target.blowSails = false
       }
     })
 
@@ -747,6 +771,37 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
   }
 
+  private reattachBoatToClient(
+    client: Client,
+    boatId: string,
+    options?: Record<string, unknown>,
+  ) {
+    this.mutateState((draft) => {
+      const boat = draft.boats[boatId]
+      if (!boat) return
+      const displayName = this.resolvePlayerName(client, options)
+      boat.ai = undefined
+      boat.name = displayName
+
+      this.clientBoatMap.set(client.sessionId, boatId)
+      if (!draft.leaderboard.includes(boatId)) {
+        draft.leaderboard.push(boatId)
+      }
+      if (client.sessionId === this.hostSessionId) {
+        draft.hostBoatId = boatId
+        this.raceStore?.setHostBoat(boatId)
+      }
+      this.clientNameMap.set(client.sessionId, displayName)
+    })
+
+    client.send('boat_assignment', { boatId })
+    roomDebug('reattachBoatToClient', {
+      clientId: client.sessionId,
+      boatId,
+      hostSessionId: this.hostSessionId,
+    })
+  }
+
   private releaseBoat(client: Client) {
     const boatId = this.clientBoatMap.get(client.sessionId)
     this.clientRoleMap.delete(client.sessionId)
@@ -863,7 +918,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     return undefined
   }
 
-  private evictSession(sessionId: string) {
+  private evictSession(sessionId: string, opts?: { preserveBoat?: boolean }) {
     // Ask the old client to leave.
     const oldClient = this.clients.find((c) => c.sessionId === sessionId)
     try {
@@ -880,6 +935,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.clientRoleMap.delete(sessionId)
 
     if (!boatId) return
+    if (opts?.preserveBoat) return
     this.mutateState((draft) => {
       if (draft.boats[boatId]) {
         delete draft.boats[boatId]

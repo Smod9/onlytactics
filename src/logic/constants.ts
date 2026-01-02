@@ -18,7 +18,7 @@ export const TACK_SPEED_PENALTY = 0.7 //Speed Multiplier:lower = slower, 1.0 = n
 export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be considered a tack and apply speed penalty
 
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
-export const BOAT_BOW_RADIUS = 4
+export const BOAT_BOW_RADIUS = 4.5
 export const BOAT_STERN_RADIUS = 9
 export const BOAT_BOW_OFFSET = 12 // forward offset from boat center (scene units)
 export const BOAT_STERN_OFFSET = -6 // aft offset from boat center

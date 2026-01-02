@@ -902,7 +902,7 @@ button {
 
 .on-screen-cluster.right.extras {
   right: 0.75rem;
-  bottom: 12rem;
+  bottom: 14rem;
 }
 
 .on-screen-cluster.right {
@@ -914,7 +914,7 @@ button {
 }
 
 .on-screen-button {
-  padding: 0.35rem 0.45rem;
+  padding: 0.35rem 0.4rem;
   border-radius: 0.6rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(15, 20, 36, 0.85);
@@ -926,7 +926,7 @@ button {
   justify-content: center;
   font-size: 0.78rem;
   font-weight: 600;
-  min-width: 120px;
+  min-width: 112px;
   transition:
     transform 0.06s ease,
     box-shadow 0.12s ease,
@@ -940,7 +940,7 @@ button {
 }
 
 .on-screen-button.wide {
-  min-width: 170px;
+  min-width: 158px;
 }
 .on-screen-button:active {
   transform: translateY(1px) scale(0.985);
@@ -2418,11 +2418,11 @@ kbd {
   }
 
   .on-screen-button {
-    min-width: 110px;
+    min-width: 104px;
   }
 
   .on-screen-button.wide {
-    min-width: 150px;
+    min-width: 140px;
   }
 
   .on-screen-cluster.left {
@@ -2435,7 +2435,7 @@ kbd {
 
   .on-screen-cluster.right.extras {
     right: 0.4rem;
-    bottom: 12rem;
+    bottom: 14rem;
   }
 
   .on-screen-cluster.left.extras {

@@ -728,11 +728,29 @@ export const LiveClient = () => {
                 </div>
               )}
             </div>
-            {canShowBoatInfo && wakeActive && (
-              <div className="wake-overlay" aria-label="Wake slowdown">
-                <div className="wake-indicator">Wind Shadow -{wakeSlowPercent}%</div>
-              </div>
-            )}
+            {(() => {
+              const boat = canShowBoatInfo ? playerBoat : undefined
+              const showSailStatus = Boolean(
+                boat && (boat.blowSails || boat.stallTimer > 0.05),
+              )
+              const shouldShow = canShowBoatInfo && (wakeActive || showSailStatus)
+              if (!shouldShow) return null
+
+              const parts: string[] = []
+              if (wakeActive) parts.push(`Wind Shadow -${wakeSlowPercent}%`)
+              if (boat?.blowSails) parts.push('Blowing Sails')
+              else if (boat && boat.stallTimer > 0.05) parts.push('Luffing')
+
+              return (
+                <div
+                  className="wake-overlay"
+                  aria-label="Slowdown status"
+                  title="Slowdown status"
+                >
+                  <div className="wake-indicator">{parts.join(' • ')}</div>
+                </div>
+              )
+            })()}
           </div>
 
           <div className="hud-stack">

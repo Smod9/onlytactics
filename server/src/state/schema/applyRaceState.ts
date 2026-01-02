@@ -20,6 +20,7 @@ const upsertBoat = (target: BoatStateSchema, source: BoatState) => {
   assignVec(target.pos, source.pos)
   target.speed = source.speed
   target.wakeFactor = source.wakeFactor ?? 1
+  target.blowSails = Boolean(source.blowSails)
   target.lap = source.lap ?? 0
   target.nextMarkIndex = source.nextMarkIndex ?? 0
   target.inMarkZone = source.inMarkZone ?? false

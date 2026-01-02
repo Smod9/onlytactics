@@ -8,9 +8,91 @@ import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
 import { SPIN_HOLD_SECONDS } from '@/logic/constants'
+import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import { courseLegs, radialSets, gateRadials } from '@/config/course'
 import { distanceBetween } from '@/utils/geometry'
 import { assignLeaderboard } from '@/logic/leaderboard'
+
+const circleSignedDistanceToLine = (
+  circleCenter: { x: number; y: number },
+  committee: { x: number; y: number },
+  pin: { x: number; y: number },
+  courseSideSign: number,
+) => {
+  const lineVec = { x: pin.x - committee.x, y: pin.y - committee.y }
+  const rel = { x: circleCenter.x - committee.x, y: circleCenter.y - committee.y }
+  const len = Math.sqrt(lineVec.x * lineVec.x + lineVec.y * lineVec.y)
+  if (len === 0) return { signedDistanceCourse: 0, t: 0, lineLen: 0 }
+  const cross = lineVec.x * rel.y - lineVec.y * rel.x
+  const signedDistanceCourse = (cross * courseSideSign) / len // + = course side
+  const len2 = len * len
+  const t = (rel.x * lineVec.x + rel.y * lineVec.y) / len2
+  return { signedDistanceCourse, t, lineLen: len }
+}
+
+const circleBetweenMarks = (
+  circleCenter: { x: number; y: number },
+  radius: number,
+  committee: { x: number; y: number },
+  pin: { x: number; y: number },
+  courseSideSign: number,
+) => {
+  const { t, lineLen } = circleSignedDistanceToLine(
+    circleCenter,
+    committee,
+    pin,
+    courseSideSign,
+  )
+  if (lineLen === 0) return false
+  const margin = radius / lineLen
+  return t >= -margin && t <= 1 + margin
+}
+
+const boatOverStartLine = (
+  boat: BoatState,
+  pos: { x: number; y: number },
+  committee: { x: number; y: number },
+  pin: { x: number; y: number },
+  courseSideSign: number,
+) => {
+  const circles = boatCapsuleCircles(boat, pos)
+  return circles.some(({ x, y, r }) => {
+    const { signedDistanceCourse } = circleSignedDistanceToLine(
+      { x, y },
+      committee,
+      pin,
+      courseSideSign,
+    )
+    const overlapsCourseSide = signedDistanceCourse > -r
+    return (
+      overlapsCourseSide &&
+      circleBetweenMarks({ x, y }, r, committee, pin, courseSideSign)
+    )
+  })
+}
+
+const boatOverFinishSide = (
+  boat: BoatState,
+  pos: { x: number; y: number },
+  committee: { x: number; y: number },
+  pin: { x: number; y: number },
+  courseSideSign: number,
+) => {
+  const circles = boatCapsuleCircles(boat, pos)
+  return circles.some(({ x, y, r }) => {
+    const { signedDistanceCourse } = circleSignedDistanceToLine(
+      { x, y },
+      committee,
+      pin,
+      courseSideSign,
+    )
+    const overlapsFinishSide = signedDistanceCourse < r
+    return (
+      overlapsFinishSide &&
+      circleBetweenMarks({ x, y }, r, committee, pin, courseSideSign)
+    )
+  })
+}
 
 const lapDebug = (...args: unknown[]) => {
   if (!appEnv.debugHud) return
@@ -389,28 +471,9 @@ export class HostLoop {
     const cross = lineVec.x * windVec.y - lineVec.y * windVec.x
     const courseSideSign = cross >= 0 ? 1 : -1
 
-    // Calculate position relative to committee
-    const prevRel = { x: prevPos.x - committee.x, y: prevPos.y - committee.y }
-    const currRel = { x: boat.pos.x - committee.x, y: boat.pos.y - committee.y }
-
-    // Cross product to determine which side of line
-    const prevCross = lineVec.x * prevRel.y - lineVec.y * prevRel.x
-    const currCross = lineVec.x * currRel.y - lineVec.y * currRel.x
-
-    const prevOnCourseSide = prevCross * courseSideSign > 0
-    const currOnCourseSide = currCross * courseSideSign > 0
-
-    // Crossed if we went from pre-start side TO course side
-    const crossedLine = !prevOnCourseSide && currOnCourseSide
-
-    // Also check that we're between the marks
-    const lineLen = Math.sqrt(lineVec.x * lineVec.x + lineVec.y * lineVec.y)
-    if (lineLen === 0) return false
-
-    const t = (currRel.x * lineVec.x + currRel.y * lineVec.y) / (lineLen * lineLen)
-    const betweenMarks = t >= -0.1 && t <= 1.1
-
-    return crossedLine && betweenMarks
+    const prevOver = boatOverStartLine(boat, prevPos, committee, pin, courseSideSign)
+    const currOver = boatOverStartLine(boat, boat.pos, committee, pin, courseSideSign)
+    return !prevOver && currOver
   }
 
   /**
@@ -488,28 +551,9 @@ export class HostLoop {
     const cross = lineVec.x * windVec.y - lineVec.y * windVec.x
     const courseSideSign = cross >= 0 ? 1 : -1
 
-    // Calculate position relative to committee
-    const prevRel = { x: prevPos.x - committee.x, y: prevPos.y - committee.y }
-    const currRel = { x: boat.pos.x - committee.x, y: boat.pos.y - committee.y }
-
-    // Cross product to determine which side of line
-    const prevCross = lineVec.x * prevRel.y - lineVec.y * prevRel.x
-    const currCross = lineVec.x * currRel.y - lineVec.y * currRel.x
-
-    const prevOnCourseSide = prevCross * courseSideSign > 0
-    const currOnCourseSide = currCross * courseSideSign > 0
-
-    // Crossed if we went from course side to non-course side
-    const crossedLine = prevOnCourseSide && !currOnCourseSide
-
-    // Also check that we're between the marks (using projection)
-    const lineLen = Math.sqrt(lineVec.x * lineVec.x + lineVec.y * lineVec.y)
-    if (lineLen === 0) return false
-
-    const t = (currRel.x * lineVec.x + currRel.y * lineVec.y) / (lineLen * lineLen)
-    const betweenMarks = t >= -0.1 && t <= 1.1 // Small margin
-
-    return crossedLine && betweenMarks
+    const prevOver = boatOverFinishSide(boat, prevPos, committee, pin, courseSideSign)
+    const currOver = boatOverFinishSide(boat, boat.pos, committee, pin, courseSideSign)
+    return !prevOver && currOver
   }
 
   /**
@@ -1018,14 +1062,19 @@ export class HostLoop {
 
     if (state.boats) {
       Object.values(state.boats).forEach((boat) => {
-        const rel = {
-          x: boat.pos.x - committee.x,
-          y: boat.pos.y - committee.y,
-        }
-        const cross = lineVec.x * rel.y - lineVec.y * rel.x
-        const onCourseSide = cross * (this.courseSideSign ?? 1) > 0
+        // Performance: once the race has started, only boats that are currently OCS
+        // need start-line evaluation (to detect when they clear and can start properly).
+        if (!beforeStart && !boat.overEarly) return
 
-        if (boat.overEarly && !onCourseSide) {
+        const over = boatOverStartLine(
+          boat,
+          boat.pos,
+          committee,
+          pin,
+          this.courseSideSign ?? 1,
+        )
+
+        if (boat.overEarly && !over) {
           boat.overEarly = false
           this.ocsBoats.delete(boat.id)
           events.push({
@@ -1038,7 +1087,7 @@ export class HostLoop {
           })
         }
 
-        if (beforeStart && onCourseSide) {
+        if (beforeStart && over) {
           if (!boat.overEarly) {
             boat.overEarly = true
             this.ocsBoats.add(boat.id)

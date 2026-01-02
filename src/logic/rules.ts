@@ -1,10 +1,5 @@
 import type { BoatState, RaceState, RuleId } from '@/types/race'
-import {
-  BOAT_BOW_OFFSET,
-  BOAT_BOW_RADIUS,
-  BOAT_STERN_OFFSET,
-  BOAT_STERN_RADIUS,
-} from './constants'
+import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import { createId } from '@/utils/ids'
 import type { RaceEvent } from '@/types/race'
 
@@ -26,21 +21,7 @@ const degToRad = (deg: number) => (deg * Math.PI) / 180
 
 type Circle = { x: number; y: number; r: number }
 
-const boatCircles = (boat: BoatState): Circle[] => {
-  const rad = degToRad(boat.headingDeg)
-  const dir = { x: Math.sin(rad), y: -Math.cos(rad) } // matches scene coords
-  const bow: Circle = {
-    x: boat.pos.x + dir.x * BOAT_BOW_OFFSET,
-    y: boat.pos.y + dir.y * BOAT_BOW_OFFSET,
-    r: BOAT_BOW_RADIUS,
-  }
-  const stern: Circle = {
-    x: boat.pos.x + dir.x * BOAT_STERN_OFFSET,
-    y: boat.pos.y + dir.y * BOAT_STERN_OFFSET,
-    r: BOAT_STERN_RADIUS,
-  }
-  return [bow, stern]
-}
+const boatCircles = (boat: BoatState): Circle[] => boatCapsuleCircles(boat)
 
 const circlesOverlap = (a: Circle, b: Circle) => {
   const dx = a.x - b.x

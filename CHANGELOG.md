@@ -1,3 +1,53 @@
+## [1.29.5](https://github.com/Smod9/onlytactics/compare/v1.29.4...v1.29.5) (2026-01-02)
+
+
+### Bug Fixes
+
+* Allows client reconnect within 30s grace period. Refreshing the page is now safe in a game. ([7e6ed8c](https://github.com/Smod9/onlytactics/commit/7e6ed8cfbb517defc8499ad463dee469fffd75ba))
+
+## [1.29.4](https://github.com/Smod9/onlytactics/compare/v1.29.3...v1.29.4) (2026-01-02)
+
+
+### Bug Fixes
+
+* Should resolve stuck button alert for windows users by removing the right shift key option for luffing as no one was using that anyway ([6853b8a](https://github.com/Smod9/onlytactics/commit/6853b8aeed25790918246b81ee708f113cbabbc2))
+
+## [1.29.3](https://github.com/Smod9/onlytactics/compare/v1.29.2...v1.29.3) (2026-01-02)
+
+
+### Bug Fixes
+
+* increase bow radius from 4 to 4.5 to make collision more likely. ([055d7d7](https://github.com/Smod9/onlytactics/commit/055d7d72454c728a5a86352d079e9fdc0061985c))
+
+## [1.29.2](https://github.com/Smod9/onlytactics/compare/v1.29.1...v1.29.2) (2026-01-02)
+
+
+### Bug Fixes
+
+* Luff button added for ipad. Buttons also slightly smaller on ipad now. ([916a8ae](https://github.com/Smod9/onlytactics/commit/916a8ae562ab820e8ab07953322c8243843b1880))
+
+## [1.29.1](https://github.com/Smod9/onlytactics/compare/v1.29.0...v1.29.1) (2025-12-30)
+
+
+### Bug Fixes
+
+* Makes the left shift clear the right shift since at least safari (maybe others) spoof an extra key down weirdly - which was making the blown sails state stick ([a3e541c](https://github.com/Smod9/onlytactics/commit/a3e541c99c0d346bf68964e67b6dc266ed3128d8))
+
+# [1.29.0](https://github.com/Smod9/onlytactics/compare/v1.28.1...v1.29.0) (2025-12-30)
+
+
+### Features
+
+* Adds ability to blow the sails and displays luffing sail ([f480139](https://github.com/Smod9/onlytactics/commit/f480139f7cd579298b6962546b81034d016f4142))
+* Adds right shift key as alternate for blowing sails, only left shift key now turns hard ([2fbeb95](https://github.com/Smod9/onlytactics/commit/2fbeb951bc0d7b14f8f459b396c36c401c713102))
+
+## [1.28.1](https://github.com/Smod9/onlytactics/compare/v1.28.0...v1.28.1) (2025-12-24)
+
+
+### Bug Fixes
+
+* **Issue #58:** Resolves ISS [#58](https://github.com/Smod9/onlytactics/issues/58). OCS now uses the capsule boat shape ([66c7633](https://github.com/Smod9/onlytactics/commit/66c7633fbba615747aa0faa58506e8343ff8530c))
+
 # [1.28.0](https://github.com/Smod9/onlytactics/compare/v1.27.0...v1.28.0) (2025-12-24)
 
 
