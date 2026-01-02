@@ -9,9 +9,14 @@ type KeyModifiers = {
   altKey?: boolean
 }
 
-const dispatchKey = (code: string, keyOverride?: string, modifiers?: KeyModifiers) => {
+const dispatchKeyEvent = (
+  type: 'keydown' | 'keyup',
+  code: string,
+  keyOverride?: string,
+  modifiers?: KeyModifiers,
+) => {
   if (typeof window === 'undefined') return
-  const event = new KeyboardEvent('keydown', {
+  const event = new KeyboardEvent(type, {
     code,
     key: keyOverride ?? code,
     bubbles: true,
@@ -20,6 +25,12 @@ const dispatchKey = (code: string, keyOverride?: string, modifiers?: KeyModifier
   })
   window.dispatchEvent(event)
 }
+
+const dispatchKeyDown = (code: string, keyOverride?: string, modifiers?: KeyModifiers) =>
+  dispatchKeyEvent('keydown', code, keyOverride, modifiers)
+
+const dispatchKeyUp = (code: string, keyOverride?: string, modifiers?: KeyModifiers) =>
+  dispatchKeyEvent('keyup', code, keyOverride, modifiers)
 
 const prefersTouchControls = () => {
   if (typeof navigator === 'undefined') return false
@@ -105,7 +116,7 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     const wantsHardTurn =
       isArrow &&
       (hardTurnHeld || Boolean(modifiers?.shiftKey) || Boolean(modifiers?.altKey))
-    dispatchKey(
+    dispatchKeyDown(
       button.code,
       button.key,
       wantsHardTurn
@@ -226,6 +237,27 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
   ]
 
   const starboardCluster: TouchButton[] = [
+    {
+      id: 'luff',
+      label: 'Luff',
+      subLabel: 'L (Hold)',
+      classes: 'wide',
+      title: 'Hold to luff / blow sails (L)',
+      onPointerDown: (event) => {
+        // Held input: KeyL down starts "blow sails"; KeyL up releases.
+        if (event.pointerType === 'touch') event.preventDefault()
+        dispatchKeyDown('KeyL', 'l', { shiftKey: event.shiftKey, altKey: event.altKey })
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId)
+        } catch {
+          // Ignore if not supported
+        }
+      },
+      onPointerUp: () => dispatchKeyUp('KeyL', 'l'),
+      onPointerCancel: () => dispatchKeyUp('KeyL', 'l'),
+      onPointerLeave: () => dispatchKeyUp('KeyL', 'l'),
+      onContextMenu: (event) => event.preventDefault(),
+    },
     {
       id: 'tackGybe',
       label: 'Tack/Gybe',
