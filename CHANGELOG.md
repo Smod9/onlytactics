@@ -1,3 +1,10 @@
+## [1.29.5](https://github.com/Smod9/onlytactics/compare/v1.29.4...v1.29.5) (2026-01-02)
+
+
+### Bug Fixes
+
+* Allows client reconnect within 30s grace period. Refreshing the page is now safe in a game. ([7e6ed8c](https://github.com/Smod9/onlytactics/commit/7e6ed8cfbb517defc8499ad463dee469fffd75ba))
+
 ## [1.29.4](https://github.com/Smod9/onlytactics/compare/v1.29.3...v1.29.4) (2026-01-02)
 
 
