@@ -1,3 +1,10 @@
+## [1.29.2](https://github.com/Smod9/onlytactics/compare/v1.29.1...v1.29.2) (2026-01-02)
+
+
+### Bug Fixes
+
+* Luff button added for ipad. Buttons also slightly smaller on ipad now. ([916a8ae](https://github.com/Smod9/onlytactics/commit/916a8ae562ab820e8ab07953322c8243843b1880))
+
 ## [1.29.1](https://github.com/Smod9/onlytactics/compare/v1.29.0...v1.29.1) (2025-12-30)
 
 
