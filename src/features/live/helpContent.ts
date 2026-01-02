@@ -10,7 +10,7 @@ export const HELP_TIPS: HelpTip[] = [
   },
   {
     id: 'blow-sails',
-    text: "🪂 Hold 'L' or Right Shift to blow the sails (depower) and slow down without changing course.",
+    text: "🪂 Hold 'L' to blow the sails (depower) and slow down without changing course.",
   },
   {
     id: 'sharp-turns',

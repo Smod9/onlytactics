@@ -47,7 +47,6 @@ export const useTacticianControls = (
   const vmgModeRef = useRef(false)
   const blowSailsHeldRef = useRef(false)
   const blowSailsByLHeldRef = useRef(false)
-  const blowSailsByRightShiftHeldRef = useRef(false)
   const hardTurnHeldRef = useRef(false)
 
   useEffect(() => {
@@ -76,7 +75,6 @@ export const useTacticianControls = (
       if (event.code) return event.code
       if (event.key === 'Shift') {
         if (event.location === KeyboardEvent.DOM_KEY_LOCATION_LEFT) return 'ShiftLeft'
-        if (event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT) return 'ShiftRight'
         // If location is unavailable (0 / standard), fall back to plain "Shift".
       }
       return event.key
@@ -84,25 +82,20 @@ export const useTacticianControls = (
 
     const debugInputLog = (label: string, data?: Record<string, unknown>) => {
       if (!appEnv.debugHud) return
-      // eslint-disable-next-line no-console
+
       console.debug(`[inputs] ${label}`, {
         ...data,
         held: {
           hardTurnLeftShift: hardTurnHeldRef.current,
           blowByL: blowSailsByLHeldRef.current,
-          blowByRightShift: blowSailsByRightShiftHeldRef.current,
           blowSailsSent: blowSailsHeldRef.current,
         },
       })
     }
 
     const syncBlowSails = (event?: KeyboardEvent) => {
-      // Priority rule: Left Shift is reserved for "hard turns". While it is held, do NOT allow
-      // Right Shift to engage "blow sails" (Safari can misreport ShiftRight transitions when
-      // ShiftLeft is held, which can otherwise leave us stuck blowing).
-      const desired =
-        blowSailsByLHeldRef.current ||
-        (blowSailsByRightShiftHeldRef.current && !hardTurnHeldRef.current)
+      // Held control: blow sails (depower) while L is down.
+      const desired = blowSailsByLHeldRef.current
       if (desired === blowSailsHeldRef.current) return
 
       debugInputLog('syncBlowSails:transition', {
@@ -124,7 +117,6 @@ export const useTacticianControls = (
       if (shiftKey) return
       debugInputLog('nonKeyboard:shiftReleased', { shiftKey })
       hardTurnHeldRef.current = false
-      blowSailsByRightShiftHeldRef.current = false
       syncBlowSails()
     }
 
@@ -153,7 +145,6 @@ export const useTacticianControls = (
         'KeyP',
         'KeyL',
         'ShiftLeft',
-        'ShiftRight',
         'Shift',
       ]
       if (appEnv.debugHud) allowed.push('KeyJ')
@@ -168,7 +159,11 @@ export const useTacticianControls = (
 
       const now = performance.now()
       if (TACK_LOCK_ENABLED && lockUntilRef.current > now) {
-        debugInputLog('keydown:blockedByTackLock', { key, lockUntil: lockUntilRef.current, now })
+        debugInputLog('keydown:blockedByTackLock', {
+          key,
+          lockUntil: lockUntilRef.current,
+          now,
+        })
         event.preventDefault()
         return
       }
@@ -222,17 +217,7 @@ export const useTacticianControls = (
         case 'ShiftLeft': {
           // Track left shift separately so "hard turns" only apply to the left-hand Shift key.
           hardTurnHeldRef.current = true
-          // Force-clear any right-shift-derived blow state (Safari overlap can get this "stuck").
-          blowSailsByRightShiftHeldRef.current = false
-          syncBlowSails(event)
           debugInputLog('shiftLeft:down')
-          break
-        }
-        case 'ShiftRight': {
-          // Map right-hand Shift to "blow sails" (same as holding L).
-          blowSailsByRightShiftHeldRef.current = true
-          debugInputLog('shiftRight:down')
-          syncBlowSails(event)
           break
         }
         case 'KeyL': {
@@ -320,46 +305,25 @@ export const useTacticianControls = (
         meta: { shiftKey: event.shiftKey, altKey: event.altKey },
       })
       if (key === 'Shift') {
-        // Defensive fallback: some platforms report Shift keyup without left/right identity,
-        // especially when both Shift keys are involved. Ensure we never get stuck "blowing sails".
+        // Defensive fallback: some platforms report Shift keyup without left/right identity.
         event.preventDefault()
-        blowSailsByRightShiftHeldRef.current = false
         // If no shift is currently held, also clear hard-turn state.
         if (!event.shiftKey) {
           hardTurnHeldRef.current = false
         }
         debugInputLog('shift:keyupFallback', { shiftKey: event.shiftKey })
-        syncBlowSails(event)
         return
       }
       if (key === 'ShiftLeft') {
         event.preventDefault()
         hardTurnHeldRef.current = false
-        // Safari workaround: if we ever see a ShiftLeft keyup, also clear any right-shift-derived
-        // "held" state. Safari can emit a phantom ShiftRight keydown when releasing ShiftRight
-        // while ShiftLeft is held; without this, the phantom can re-enable blow sails after
-        // ShiftLeft is released.
-        blowSailsByRightShiftHeldRef.current = false
         debugInputLog('shiftLeft:up')
-        syncBlowSails(event)
         return
       }
 
       if (key === 'KeyL') {
         blowSailsByLHeldRef.current = false
         debugInputLog('keyL:up')
-        syncBlowSails(event)
-        return
-      }
-
-      if (key === 'ShiftRight') {
-        blowSailsByRightShiftHeldRef.current = false
-        // Safari workaround: if we see a ShiftRight keyup and Safari reports Shift is no longer
-        // held at all, clear left-shift hard-turn state too (to avoid any stuck modifier state).
-        if (!event.shiftKey) {
-          hardTurnHeldRef.current = false
-        }
-        debugInputLog('shiftRight:up')
         syncBlowSails(event)
         return
       }
@@ -370,7 +334,6 @@ export const useTacticianControls = (
       debugInputLog('releaseHeldInputs')
       hardTurnHeldRef.current = false
       blowSailsByLHeldRef.current = false
-      blowSailsByRightShiftHeldRef.current = false
       if (!blowSailsHeldRef.current) return
       blowSailsHeldRef.current = false
       const seq = (seqRef.current += 1)
@@ -378,7 +341,9 @@ export const useTacticianControls = (
       networkRef.current.setBlowSails(false, seq)
     }
 
-    const handlePointerSignal = (event: PointerEvent | MouseEvent | WheelEvent | TouchEvent) => {
+    const handlePointerSignal = (
+      event: PointerEvent | MouseEvent | WheelEvent | TouchEvent,
+    ) => {
       // TouchEvent doesn't have shiftKey; for those, we can't learn anything.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const maybeShiftKey = (event as any).shiftKey
