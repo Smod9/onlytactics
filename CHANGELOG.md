@@ -1,3 +1,10 @@
+## [1.29.4](https://github.com/Smod9/onlytactics/compare/v1.29.3...v1.29.4) (2026-01-02)
+
+
+### Bug Fixes
+
+* Should resolve stuck button alert for windows users by removing the right shift key option for luffing as no one was using that anyway ([6853b8a](https://github.com/Smod9/onlytactics/commit/6853b8aeed25790918246b81ee708f113cbabbc2))
+
 ## [1.29.3](https://github.com/Smod9/onlytactics/compare/v1.29.2...v1.29.3) (2026-01-02)
 
 
