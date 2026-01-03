@@ -103,6 +103,39 @@ export const LiveClient = () => {
     void startRosterWatcher()
   }, [])
 
+  // Throttle leaderboard speed updates to avoid noisy UI churn.
+  // We update roughly once per 10 sim/store updates (tracked by `race.t` changes),
+  // but also refresh immediately for newly-seen boats.
+  const raceRef = useRef(race)
+  raceRef.current = race
+  const leaderboardSpeedsRef = useRef<Record<string, string>>({})
+  const [leaderboardSpeeds, setLeaderboardSpeeds] = useState<Record<string, string>>({})
+  const leaderboardTickRef = useRef(0)
+  const lastRaceTRef = useRef<number | null>(null)
+  useEffect(() => {
+    const snapshot = raceRef.current
+    if (lastRaceTRef.current === snapshot.t) return
+    lastRaceTRef.current = snapshot.t
+    leaderboardTickRef.current += 1
+
+    const existing = leaderboardSpeedsRef.current
+    const hasMissing = snapshot.leaderboard.some((boatId) => {
+      if (existing[boatId]) return false
+      return Boolean(snapshot.boats[boatId])
+    })
+
+    if (!hasMissing && leaderboardTickRef.current % 10 !== 0) return
+
+    const next: Record<string, string> = { ...existing }
+    snapshot.leaderboard.forEach((boatId) => {
+      const boat = snapshot.boats[boatId]
+      if (!boat) return
+      next[boatId] = `${boat.speed.toFixed(2)} kts`
+    })
+    leaderboardSpeedsRef.current = next
+    setLeaderboardSpeeds(next)
+  }, [race.t])
+
   const skipDevCleanupRef = useRef(import.meta.env.DEV)
 
   useEffect(() => {
@@ -837,6 +870,8 @@ export const LiveClient = () => {
                           statusText = 'Finish'
                         }
 
+                        const speedText = leaderboardSpeeds[boatId] ?? '—'
+
                         return (
                           <li key={boatId}>
                             <span className="leaderboard-position">{index + 1}.</span>
@@ -850,7 +885,10 @@ export const LiveClient = () => {
                               <span className="leaderboard-name-text">{boat.name}</span>
                               {isHost && ' (RC)'}
                             </span>
-                            <span className="leaderboard-meta">{statusText}</span>
+                            <span className="leaderboard-meta">
+                              <span className="leaderboard-meta-top">{statusText}</span>
+                              <span className="leaderboard-meta-bottom">{speedText}</span>
+                            </span>
                           </li>
                         )
                       })}
