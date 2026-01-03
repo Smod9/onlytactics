@@ -1437,6 +1437,21 @@ button {
   font-size: 0.8rem;
   color: #b7c2ff;
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+  line-height: 1.05;
+}
+
+.leaderboard-meta-top {
+  white-space: nowrap;
+}
+
+.leaderboard-meta-bottom {
+  white-space: nowrap;
+  font-size: 0.75rem;
+  opacity: 0.9;
 }
 
 .progress-stepper {
