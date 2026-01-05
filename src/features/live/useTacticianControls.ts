@@ -47,7 +47,6 @@ export const useTacticianControls = (
   const vmgModeRef = useRef(false)
   const blowSailsHeldRef = useRef(false)
   const blowSailsByLHeldRef = useRef(false)
-  const hardTurnHeldRef = useRef(false)
 
   useEffect(() => {
     raceRef.current = raceState
@@ -69,16 +68,10 @@ export const useTacticianControls = (
   useEffect(() => {
     if (!network || role === 'spectator' || role === 'judge') return
 
-    const normalizeKey = (event: KeyboardEvent) => {
+    const normalizeKey = (event: KeyboardEvent) =>
       // Some browsers (notably iOS Safari / synthetic keyboard events) may provide an empty string
-      // for event.code. Use a best-effort normalization so left/right modifiers still work.
-      if (event.code) return event.code
-      if (event.key === 'Shift') {
-        if (event.location === KeyboardEvent.DOM_KEY_LOCATION_LEFT) return 'ShiftLeft'
-        // If location is unavailable (0 / standard), fall back to plain "Shift".
-      }
-      return event.key
-    }
+      // for event.code. Use a best-effort fallback for those cases.
+      event.code || event.key
 
     const debugInputLog = (label: string, data?: Record<string, unknown>) => {
       if (!appEnv.debugHud) return
@@ -86,7 +79,6 @@ export const useTacticianControls = (
       console.debug(`[inputs] ${label}`, {
         ...data,
         held: {
-          hardTurnLeftShift: hardTurnHeldRef.current,
           blowByL: blowSailsByLHeldRef.current,
           blowSailsSent: blowSailsHeldRef.current,
         },
@@ -108,16 +100,6 @@ export const useTacticianControls = (
       pendingRef.current.set(seq, performance.now())
       networkRef.current?.setBlowSails(desired, seq)
       event?.preventDefault()
-    }
-
-    const syncShiftReleasedFromNonKeyboardEvent = (shiftKey: boolean) => {
-      // Safari can occasionally drop the keyup for modifier keys when both L/R Shift are involved.
-      // As a safety net, if *any* user event reports that Shift is not currently held, clear
-      // our shift-derived held flags and resync.
-      if (shiftKey) return
-      debugInputLog('nonKeyboard:shiftReleased', { shiftKey })
-      hardTurnHeldRef.current = false
-      syncBlowSails()
     }
 
     const handleKey = (event: KeyboardEvent) => {
@@ -144,8 +126,6 @@ export const useTacticianControls = (
         'KeyS',
         'KeyP',
         'KeyL',
-        'ShiftLeft',
-        'Shift',
       ]
       if (appEnv.debugHud) allowed.push('KeyJ')
       if (!allowed.includes(key)) {
@@ -214,12 +194,6 @@ export const useTacticianControls = (
       }
 
       switch (key) {
-        case 'ShiftLeft': {
-          // Track left shift separately so "hard turns" only apply to the left-hand Shift key.
-          hardTurnHeldRef.current = true
-          debugInputLog('shiftLeft:down')
-          break
-        }
         case 'KeyL': {
           // Held control: blow sails (depower) while the key is down.
           blowSailsByLHeldRef.current = true
@@ -249,7 +223,7 @@ export const useTacticianControls = (
         }
         case 'ArrowUp': {
           exitVmgMode()
-          const hardModifier = hardTurnHeldRef.current || event.altKey
+          const hardModifier = event.shiftKey || event.altKey
           debugInputLog('arrowUp', { hardModifier })
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.max(absAwa - step, 0)
@@ -259,7 +233,7 @@ export const useTacticianControls = (
         }
         case 'ArrowDown': {
           exitVmgMode()
-          const hardModifier = hardTurnHeldRef.current || event.altKey
+          const hardModifier = event.shiftKey || event.altKey
           debugInputLog('arrowDown', { hardModifier })
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
@@ -304,22 +278,6 @@ export const useTacticianControls = (
         raw: { code: event.code, key: event.key, location: event.location },
         meta: { shiftKey: event.shiftKey, altKey: event.altKey },
       })
-      if (key === 'Shift') {
-        // Defensive fallback: some platforms report Shift keyup without left/right identity.
-        event.preventDefault()
-        // If no shift is currently held, also clear hard-turn state.
-        if (!event.shiftKey) {
-          hardTurnHeldRef.current = false
-        }
-        debugInputLog('shift:keyupFallback', { shiftKey: event.shiftKey })
-        return
-      }
-      if (key === 'ShiftLeft') {
-        event.preventDefault()
-        hardTurnHeldRef.current = false
-        debugInputLog('shiftLeft:up')
-        return
-      }
 
       if (key === 'KeyL') {
         blowSailsByLHeldRef.current = false
@@ -332,7 +290,6 @@ export const useTacticianControls = (
     const releaseHeldInputs = () => {
       if (!networkRef.current) return
       debugInputLog('releaseHeldInputs')
-      hardTurnHeldRef.current = false
       blowSailsByLHeldRef.current = false
       if (!blowSailsHeldRef.current) return
       blowSailsHeldRef.current = false
@@ -341,43 +298,15 @@ export const useTacticianControls = (
       networkRef.current.setBlowSails(false, seq)
     }
 
-    const handlePointerSignal = (
-      event: PointerEvent | MouseEvent | WheelEvent | TouchEvent,
-    ) => {
-      // TouchEvent doesn't have shiftKey; for those, we can't learn anything.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const maybeShiftKey = (event as any).shiftKey
-      if (typeof maybeShiftKey !== 'boolean') return
-      debugInputLog('nonKeyboard:event', {
-        type: event.type,
-        shiftKey: maybeShiftKey,
-      })
-      syncShiftReleasedFromNonKeyboardEvent(maybeShiftKey)
-    }
-
     window.addEventListener('keydown', handleKey, { capture: true })
     window.addEventListener('keyup', handleKeyUp, { capture: true })
     window.addEventListener('blur', releaseHeldInputs)
     document.addEventListener('visibilitychange', releaseHeldInputs)
-    window.addEventListener('pointermove', handlePointerSignal, { capture: true })
-    window.addEventListener('pointerdown', handlePointerSignal, { capture: true })
-    window.addEventListener('mousemove', handlePointerSignal, { capture: true })
-    window.addEventListener('mousedown', handlePointerSignal, { capture: true })
-    window.addEventListener('wheel', handlePointerSignal, { capture: true })
-    window.addEventListener('touchstart', handlePointerSignal, { capture: true })
-    window.addEventListener('touchmove', handlePointerSignal, { capture: true })
     return () => {
       window.removeEventListener('keydown', handleKey, { capture: true })
       window.removeEventListener('keyup', handleKeyUp, { capture: true })
       window.removeEventListener('blur', releaseHeldInputs)
       document.removeEventListener('visibilitychange', releaseHeldInputs)
-      window.removeEventListener('pointermove', handlePointerSignal, { capture: true })
-      window.removeEventListener('pointerdown', handlePointerSignal, { capture: true })
-      window.removeEventListener('mousemove', handlePointerSignal, { capture: true })
-      window.removeEventListener('mousedown', handlePointerSignal, { capture: true })
-      window.removeEventListener('wheel', handlePointerSignal, { capture: true })
-      window.removeEventListener('touchstart', handlePointerSignal, { capture: true })
-      window.removeEventListener('touchmove', handlePointerSignal, { capture: true })
     }
   }, [network, role])
 
