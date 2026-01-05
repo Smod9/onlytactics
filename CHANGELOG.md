@@ -1,3 +1,10 @@
+## [1.29.6](https://github.com/Smod9/onlytactics/compare/v1.29.5...v1.29.6) (2026-01-05)
+
+
+### Bug Fixes
+
+* Puts right shift key back for hard turns and removes baggage from when i tried to split them out. ([27cdb4a](https://github.com/Smod9/onlytactics/commit/27cdb4a42e0f66d79c69b3b1dd731aa341406aa5))
+
 ## [1.29.5](https://github.com/Smod9/onlytactics/compare/v1.29.4...v1.29.5) (2026-01-02)
 
 
