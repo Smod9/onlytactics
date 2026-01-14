@@ -84,7 +84,7 @@ export const LandingPage = () => {
           <div className="landing-actions">
             <a
               className="cta"
-              href="/app"
+              href="/lobby"
               aria-label="Launch the Only Tactics game client"
               onClick={handleLaunch}
             >

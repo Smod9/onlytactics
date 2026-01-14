@@ -64,7 +64,15 @@ export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const telemetry = useInputTelemetry()
-  const [network] = useState(() => new GameNetwork())
+  
+  // Get roomId from URL query parameter
+  const roomId = useMemo(() => {
+    if (typeof window === 'undefined') return undefined
+    const params = new URLSearchParams(window.location.search)
+    return params.get('roomId') ?? undefined
+  }, [])
+  
+  const [network] = useState(() => new GameNetwork(roomId))
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [joinRole, setJoinRole] = useState<NonHostRole>('player')
@@ -376,22 +384,34 @@ export const LiveClient = () => {
 
           {/* Always keep the user menu at the far right of the header controls. */}
           {!needsName && (
-            <button
-              type="button"
-              className="header-name"
-              onClick={openUserModal}
-              title="Menu"
-              aria-label="Open menu"
-              style={{ marginLeft: 'auto' }}
-            >
-              <span aria-hidden="true" style={{ opacity: 0.9 }}>
-                👤
-              </span>
-              <span className="header-name-text">Menu</span>
-              <span aria-hidden="true" style={{ opacity: 0.75 }}>
-                ▾
-              </span>
-            </button>
+            <>
+              <button
+                type="button"
+                className="start-sequence"
+                onClick={() => {
+                  window.location.href = '/lobby'
+                }}
+                title="Back to Lobby"
+              >
+                Back to Lobby
+              </button>
+              <button
+                type="button"
+                className="header-name"
+                onClick={openUserModal}
+                title="Menu"
+                aria-label="Open menu"
+                style={{ marginLeft: 'auto' }}
+              >
+                <span aria-hidden="true" style={{ opacity: 0.9 }}>
+                  👤
+                </span>
+                <span className="header-name-text">Menu</span>
+                <span aria-hidden="true" style={{ opacity: 0.75 }}>
+                  ▾
+                </span>
+              </button>
+            </>
           )}
         </div>,
         headerCtaEl,
