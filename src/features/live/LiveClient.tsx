@@ -1072,7 +1072,7 @@ export const LiveClient = () => {
                 </a>
                 <a
                   className="icon-link"
-                  href="https://discord.gg/eEstr6ZH"
+                  href="https://discord.gg/gYPkWPhg"
                   target="_blank"
                   rel="noreferrer"
                   title="Join our Discord community"

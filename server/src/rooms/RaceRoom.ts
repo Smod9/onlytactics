@@ -88,6 +88,8 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.setState(new RaceRoomState())
     console.info('[RaceRoom] created', { options, roomId: this.roomId })
     roomDebug('onCreate', { options, roomId: this.roomId })
+    // Set patch rate to match configured publish interval
+    this.setPatchRate(appEnv.hostPublishIntervalMs)
     const initialState = createInitialRaceState(`colyseus-${this.roomId}`)
     this.raceStore = new RaceStore(initialState)
     applyRaceStateToSchema(this.state.race, initialState)
