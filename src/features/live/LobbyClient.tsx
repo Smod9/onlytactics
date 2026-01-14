@@ -7,9 +7,11 @@ export const LobbyClient = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [roomEmoji, setRoomEmoji] = useState('⛵')
   const [roomName, setRoomName] = useState('')
   const [roomDescription, setRoomDescription] = useState('')
   const [creating, setCreating] = useState(false)
+  const emojiOptions = ['⛵', '🌊', '🏁', '🧭', '⚓', '🌬️', '⛵️', '🏝️']
 
   const refreshRooms = async () => {
     try {
@@ -43,8 +45,9 @@ export const LobbyClient = () => {
     setCreating(true)
     setError(null)
     try {
+      const displayName = `${roomEmoji} ${trimmedName}`.trim()
       const request: CreateRoomRequest = {
-        roomName: trimmedName,
+        roomName: displayName,
         description: roomDescription.trim() || undefined,
         createdBy: identity.clientId,
       }
@@ -140,14 +143,37 @@ export const LobbyClient = () => {
           <div className="username-card" style={{ maxWidth: '500px', width: '90%' }}>
             <h2>Create New Room</h2>
             <form className="username-form" onSubmit={handleCreateRoom}>
-              <input
-                value={roomName}
-                onChange={(event) => setRoomName(event.target.value)}
-                placeholder="Room Name"
-                maxLength={50}
-                autoFocus
-                disabled={creating}
-              />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  value={roomEmoji}
+                  onChange={(event) => setRoomEmoji(event.target.value)}
+                  aria-label="Select room emoji"
+                  disabled={creating}
+                  style={{
+                    padding: '0.5rem',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    color: 'inherit',
+                    borderRadius: '4px',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {emojiOptions.map((emoji) => (
+                    <option key={emoji} value={emoji}>
+                      {emoji}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={roomName}
+                  onChange={(event) => setRoomName(event.target.value)}
+                  placeholder="Room Name"
+                  maxLength={50}
+                  autoFocus
+                  disabled={creating}
+                  style={{ flex: 1 }}
+                />
+              </div>
               <textarea
                 value={roomDescription}
                 onChange={(event) => setRoomDescription(event.target.value)}
@@ -171,6 +197,7 @@ export const LobbyClient = () => {
                   className="username-form-cancel"
                   onClick={() => {
                     setShowCreateModal(false)
+                    setRoomEmoji('⛵')
                     setRoomName('')
                     setRoomDescription('')
                     setError(null)

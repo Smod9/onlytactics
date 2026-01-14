@@ -1,4 +1,4 @@
-import { Server as ColyseusServer } from 'colyseus'
+import { Server as ColyseusServer, matchMaker } from 'colyseus'
 import express from 'express'
 import { createServer } from 'http'
 import { performance } from 'node:perf_hooks'
@@ -21,6 +21,25 @@ const attachGlobalPolyfills = () => {
 attachGlobalPolyfills()
 
 const expressApp = express()
+
+// Basic CORS handling for local dev + deployments that serve the client separately.
+expressApp.use((req, res, next) => {
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : ''
+  const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+  res.setHeader('Access-Control-Max-Age', '86400')
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+    return
+  }
+  next()
+})
 
 // Enable JSON body parsing for POST requests
 expressApp.use(express.json())
@@ -48,21 +67,28 @@ gameServer.define('race_room', RaceRoom)
 // Room API endpoints (must be after gameServer is created)
 expressApp.get('/api/rooms', async (_req, res) => {
   try {
-    const rooms = await gameServer.matchMaker.query({ name: 'race_room' })
+    const rooms = await matchMaker.query({ name: 'race_room' })
     const roomList = await Promise.all(
       rooms.map(async (roomInfo) => {
         try {
-          const room = gameServer.matchMaker.getRoomById(roomInfo.roomId)
+          const room = matchMaker.getRoomById(roomInfo.roomId)
           const raceRoom = room as unknown as InstanceType<typeof RaceRoom> | undefined
+          const metadata =
+            (roomInfo.metadata as Partial<{
+              roomName: string
+              description: string
+              createdAt: number
+              createdBy: string
+            }>) ?? {}
           return {
             roomId: roomInfo.roomId,
-            roomName: raceRoom?.metadataRoomName ?? 'Unnamed Race',
-            description: raceRoom?.description ?? '',
+            roomName: raceRoom?.metadataRoomName ?? metadata.roomName ?? 'Race',
+            description: raceRoom?.description ?? metadata.description ?? '',
             playerCount: roomInfo.clients,
             maxClients: roomInfo.maxClients,
             status: raceRoom?.getStatus?.() ?? 'waiting',
             hostName: raceRoom?.getHostName?.() ?? undefined,
-            createdAt: raceRoom?.createdAt ?? Date.now(),
+            createdAt: raceRoom?.createdAt ?? metadata.createdAt ?? Date.now(),
           }
         } catch (err) {
           console.warn('[API] error getting room details', roomInfo.roomId, err)
@@ -89,11 +115,11 @@ expressApp.post('/api/rooms', async (req, res) => {
   try {
     const { roomName, description, createdBy } = req.body
     const options: Record<string, unknown> = {
-      roomName: typeof roomName === 'string' ? roomName.trim() : 'Unnamed Race',
-      description: typeof description === 'string' ? description.trim() : '',
+      roomName: typeof roomName === 'string' ? roomName.trim() : undefined,
+      description: typeof description === 'string' ? description.trim() : undefined,
       createdBy: typeof createdBy === 'string' ? createdBy : undefined,
     }
-    const room = await gameServer.matchMaker.createRoom('race_room', options)
+    const room = await matchMaker.createRoom('race_room', options)
     res.json({ roomId: room.roomId })
   } catch (error) {
     console.error('[API] error creating room', error)
@@ -104,23 +130,30 @@ expressApp.post('/api/rooms', async (req, res) => {
 expressApp.get('/api/rooms/:roomId', async (req, res) => {
   try {
     const { roomId } = req.params
-    const roomInfo = await gameServer.matchMaker.query({ roomId })
+    const roomInfo = await matchMaker.query({ roomId })
     if (roomInfo.length === 0) {
       res.status(404).json({ error: 'Room not found' })
       return
     }
     const roomData = roomInfo[0]
-    const room = gameServer.matchMaker.getRoomById(roomId)
+    const room = matchMaker.getRoomById(roomId)
     const raceRoom = room as unknown as InstanceType<typeof RaceRoom> | undefined
+    const metadata =
+      (roomData.metadata as Partial<{
+        roomName: string
+        description: string
+        createdAt: number
+        createdBy: string
+      }>) ?? {}
     res.json({
       roomId: roomData.roomId,
-      roomName: raceRoom?.metadataRoomName ?? 'Unnamed Race',
-      description: raceRoom?.description ?? '',
+      roomName: raceRoom?.metadataRoomName ?? metadata.roomName ?? 'Race',
+      description: raceRoom?.description ?? metadata.description ?? '',
       playerCount: roomData.clients,
       maxClients: roomData.maxClients,
       status: raceRoom?.getStatus?.() ?? 'waiting',
       hostName: raceRoom?.getHostName?.() ?? undefined,
-      createdAt: raceRoom?.createdAt ?? Date.now(),
+      createdAt: raceRoom?.createdAt ?? metadata.createdAt ?? Date.now(),
     })
   } catch (error) {
     console.error('[API] error getting room', error)

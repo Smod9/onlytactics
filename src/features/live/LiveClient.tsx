@@ -11,6 +11,7 @@ import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
 import { useInputTelemetry, useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
+import { roomService } from '@/net/roomService'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
@@ -90,6 +91,7 @@ export const LiveClient = () => {
   const [userNameDraft, setUserNameDraft] = useState(identity.clientName ?? '')
   const [userRoleDraft, setUserRoleDraft] = useState<NonHostRole>('player')
   const [userSettingsError, setUserSettingsError] = useState<string | null>(null)
+  const [roomDisplayName, setRoomDisplayName] = useState<string | null>(null)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(
     null,
@@ -110,6 +112,22 @@ export const LiveClient = () => {
   useEffect(() => {
     void startRosterWatcher()
   }, [])
+
+  useEffect(() => {
+    if (!roomId) return
+    let active = true
+    roomService
+      .getRoomDetails(roomId)
+      .then((room) => {
+        if (active) setRoomDisplayName(room.roomName)
+      })
+      .catch((err) => {
+        console.warn('[LiveClient] failed to load room details', err)
+      })
+    return () => {
+      active = false
+    }
+  }, [roomId])
 
   // Throttle leaderboard speed updates to avoid noisy UI churn.
   // We update roughly once per 10 sim/store updates (tracked by `race.t` changes),
@@ -341,6 +359,22 @@ export const LiveClient = () => {
           className="header-controls"
           style={{ display: 'flex', gap: 10, alignItems: 'center' }}
         >
+          {roomDisplayName && (
+            <div
+              className="room-name-pill"
+              style={{
+                fontSize: 13,
+                opacity: 0.8,
+                padding: '0.3rem 0.6rem',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.06)',
+              }}
+              title="Room name"
+            >
+              {roomDisplayName}
+            </div>
+          )}
           <div style={{ display: 'none' }}>
             <ReplaySaveButton />
           </div>

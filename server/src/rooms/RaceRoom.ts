@@ -108,14 +108,20 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.setState(new RaceRoomState())
 
     // Initialize room metadata from options
-    this.metadataRoomName =
-      typeof options.roomName === 'string'
-        ? options.roomName.trim() || 'Unnamed Race'
-        : 'Unnamed Race'
-    this.description =
-      typeof options.description === 'string' ? options.description.trim() : ''
+    const fallbackName = `Race ${this.roomId.slice(0, 4).toUpperCase()}`
+    const normalizedName = this.normalizeRoomName(options.roomName)
+    this.metadataRoomName = normalizedName ?? fallbackName
+    this.description = this.normalizeRoomDescription(options.description)
     this.createdAt = Date.now()
     this.createdBy = typeof options.createdBy === 'string' ? options.createdBy : undefined
+
+    // Expose metadata to matchMaker listings if needed.
+    this.setMetadata({
+      roomName: this.metadataRoomName,
+      description: this.description,
+      createdAt: this.createdAt,
+      createdBy: this.createdBy ?? '',
+    })
 
     console.info('[RaceRoom] created', {
       options,
@@ -289,6 +295,25 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.onMessage('roster_request', (client) => {
       client.send('roster', { entries: this.buildRosterEntries() })
     })
+  }
+
+  private normalizeRoomName(value: unknown) {
+    if (typeof value !== 'string') return undefined
+    const cleaned = value
+      .replace(/[\u0000-\u001f\u007f]+/g, '')
+      .trim()
+      .replace(/\s+/g, ' ')
+    if (!cleaned) return undefined
+    return cleaned.slice(0, 40)
+  }
+
+  private normalizeRoomDescription(value: unknown) {
+    if (typeof value !== 'string') return ''
+    const cleaned = value
+      .replace(/[\u0000-\u001f\u007f]+/g, '')
+      .trim()
+      .replace(/\s+/g, ' ')
+    return cleaned.slice(0, 160)
   }
 
   private buildRosterEntries(): RosterEntryPayload[] {
