@@ -430,14 +430,6 @@ export const LiveClient = () => {
               <button
                 type="button"
                 className="start-sequence"
-                onClick={() => network.setWindFieldEnabled(!race.windField?.enabled)}
-                title="Toggle puffs/lulls (wind field)"
-              >
-                Puffs: {race.windField?.enabled ? 'On' : 'Off'}
-              </button>
-              <button
-                type="button"
-                className="start-sequence"
                 onClick={() => network.setAiEnabled(!race.aiEnabled)}
                 style={{ display: 'none' }}
               >
@@ -949,6 +941,12 @@ export const LiveClient = () => {
                               : finished && index === 2
                                 ? '🥉'
                                 : ''
+                        const pickle =
+                          finished &&
+                          race.leaderboard.length > 1 &&
+                          index === race.leaderboard.length - 1
+                            ? '🥒'
+                            : ''
 
                         let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
                         if (finished) {
@@ -967,6 +965,7 @@ export const LiveClient = () => {
                             <span className="leaderboard-name">
                               <span className="leaderboard-badges" aria-hidden="true">
                                 <span className="leaderboard-badge">{medal || ''}</span>
+                                <span className="leaderboard-badge">{pickle || ''}</span>
                                 <span className="leaderboard-badge">
                                   {protested ? '🚩' : ''}
                                 </span>
