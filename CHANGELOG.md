@@ -1,3 +1,11 @@
+## [1.29.7](https://github.com/Smod9/onlytactics/compare/v1.29.6...v1.29.7) (2026-01-14)
+
+
+### Bug Fixes
+
+* Changes where patch rate is set on the server ([e397427](https://github.com/Smod9/onlytactics/commit/e3974274011438524b24a751eb9866feb321132f))
+* Increases tick rate on server side to 33ms (30hz) from 10hz. hopefully we can go even faster and but also hopefully at the scale of 10 boats, this resolves our issues. ([ba0d7f1](https://github.com/Smod9/onlytactics/commit/ba0d7f1ced7283c2731fd0cb75172d65d71a0845))
+
 ## [1.29.6](https://github.com/Smod9/onlytactics/compare/v1.29.5...v1.29.6) (2026-01-05)
 
 
