@@ -58,12 +58,20 @@ import {
   TACK_MIN_ANGLE_DEG,
   TACK_MIN_TIME_SECONDS,
   TACK_SPEED_PENALTY,
-  WAKE_CONE_HALF_ANGLE_DEG,
   WAKE_HALF_WIDTH_END,
   WAKE_HALF_WIDTH_START,
+  WAKE_BIAS_DEG,
+  WAKE_CORE_HALF_ANGLE_DEG,
+  WAKE_CORE_MAX_SLOWDOWN,
+  WAKE_CORE_STRENGTH,
+  WAKE_LEEWARD_WIDTH_MULT,
+  WAKE_WINDWARD_WIDTH_MULT,
   WAKE_LENGTH,
   WAKE_MAX_SLOWDOWN,
   WAKE_MIN_STRENGTH,
+  WAKE_TURB_HALF_ANGLE_DEG,
+  WAKE_TURB_MAX_SLOWDOWN,
+  WAKE_TURB_STRENGTH,
   TURN_RATE_DEG,
 } from './constants'
 import { appEnv } from '@/config/env'
@@ -86,6 +94,13 @@ export const radToDeg = (rad: number) => (rad * 180) / Math.PI
 const dirToUnit = (deg: number) => {
   const rad = degToRad(deg)
   return { x: Math.sin(rad), y: -Math.cos(rad) }
+}
+
+const rotateVec = (vec: { x: number; y: number }, deg: number) => {
+  const rad = degToRad(deg)
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  return { x: vec.x * cos - vec.y * sin, y: vec.x * sin + vec.y * cos }
 }
 
 /**
@@ -306,14 +321,28 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
   const factors: Record<string, number> = {}
 
   const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
-  const downwindVec = dirToUnit(downwindDeg)
-  const crossVec = { x: -downwindVec.y, y: downwindVec.x }
-  const maxRadius = WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2
+  const baseDownwindVec = dirToUnit(downwindDeg)
+  const maxHalfWidth = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
+  const maxRadius = WAKE_LENGTH + maxHalfWidth * 2
   const maxRadiusSq = maxRadius * maxRadius
-  const coneCos = Math.cos(degToRad(WAKE_CONE_HALF_ANGLE_DEG))
+  const turbConeCos = Math.cos(degToRad(WAKE_TURB_HALF_ANGLE_DEG))
+  const coreToTurbRatio =
+    Math.tan(degToRad(WAKE_CORE_HALF_ANGLE_DEG)) /
+    Math.tan(degToRad(WAKE_TURB_HALF_ANGLE_DEG))
+  const leewardWidthStart = WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT
+  const leewardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
+  const windwardWidthStart = WAKE_HALF_WIDTH_START * WAKE_WINDWARD_WIDTH_MULT
+  const windwardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_WINDWARD_WIDTH_MULT
+  const leewardSideByBoatId: Record<string, 1 | -1> = {}
 
   boats.forEach((boat) => {
     factors[boat.id] = boat.wakeFactor ?? 1
+    const awa = angleDiff(boat.headingDeg, state.wind.directionDeg)
+    const headingVec = dirToUnit(boat.headingDeg)
+    const leewardVec =
+      awa >= 0 ? { x: -headingVec.y, y: headingVec.x } : { x: headingVec.y, y: -headingVec.x }
+    const leewardCross = baseDownwindVec.x * leewardVec.y - baseDownwindVec.y * leewardVec.x
+    leewardSideByBoatId[boat.id] = leewardCross >= 0 ? 1 : -1
   })
 
   for (let ti = 0; ti < boats.length; ti += 1) {
@@ -323,6 +352,9 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
     for (let si = 0; si < boats.length; si += 1) {
       if (si === ti) continue
       const source = boats[si]
+      const biasDeg = leewardSideByBoatId[source.id] * WAKE_BIAS_DEG
+      const downwindVec = rotateVec(baseDownwindVec, biasDeg)
+      const crossVec = { x: -downwindVec.y, y: downwindVec.x }
       const dx = target.pos.x - source.pos.x
       const dy = target.pos.y - source.pos.y
       const distSq = dx * dx + dy * dy
@@ -333,21 +365,31 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
       const relUnitX = dx / dist
       const relUnitY = dy / dist
       const align = relUnitX * downwindVec.x + relUnitY * downwindVec.y
-      if (align <= 0 || align < coneCos) continue
+      if (align <= 0 || align < turbConeCos) continue
 
       const along = dx * downwindVec.x + dy * downwindVec.y
       if (along <= 0 || along > WAKE_LENGTH) continue
 
       const cross = dx * crossVec.x + dy * crossVec.y
       const alongNorm = along / WAKE_LENGTH
-      const halfWidth =
-        WAKE_HALF_WIDTH_START + (WAKE_HALF_WIDTH_END - WAKE_HALF_WIDTH_START) * alongNorm
+      const sideSign: 1 | -1 = cross >= 0 ? 1 : -1
+      const isLeewardSide = sideSign === leewardSideByBoatId[source.id]
+      const turbHalfWidthStart = isLeewardSide ? leewardWidthStart : windwardWidthStart
+      const turbHalfWidthEnd = isLeewardSide ? leewardWidthEnd : windwardWidthEnd
+      const turbHalfWidth =
+        turbHalfWidthStart + (turbHalfWidthEnd - turbHalfWidthStart) * alongNorm
+      const coreHalfWidth = turbHalfWidth * coreToTurbRatio
       const lateral = Math.abs(cross)
       // Gaussian falloff for lateral distance
-      const lateralFactor = Math.exp(-(lateral * lateral) / (halfWidth * halfWidth))
+      const coreLateral = Math.exp(-(lateral * lateral) / (coreHalfWidth * coreHalfWidth))
+      const turbLateral = Math.exp(-(lateral * lateral) / (turbHalfWidth * turbHalfWidth))
       // Linear falloff along the wake (stronger near the boat, weaker farther away)
       const alongFactor = 1 - alongNorm
-      const contribution = WAKE_MAX_SLOWDOWN * alongFactor * lateralFactor
+      const coreContribution =
+        WAKE_CORE_MAX_SLOWDOWN * WAKE_CORE_STRENGTH * alongFactor * coreLateral
+      const turbContribution =
+        WAKE_TURB_MAX_SLOWDOWN * WAKE_TURB_STRENGTH * alongFactor * turbLateral
+      const contribution = coreContribution + turbContribution
       if (contribution < WAKE_MIN_STRENGTH) continue
       slowdown = Math.min(WAKE_MAX_SLOWDOWN, slowdown + contribution)
     }

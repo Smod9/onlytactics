@@ -12,10 +12,15 @@ import {
   BOAT_STERN_RADIUS,
   NO_GO_ANGLE_DEG,
   STALL_DURATION_S,
+  WAKE_BIAS_DEG,
+  WAKE_CORE_HALF_ANGLE_DEG,
   WAKE_HALF_WIDTH_END,
   WAKE_HALF_WIDTH_START,
+  WAKE_LEEWARD_WIDTH_MULT,
+  WAKE_WINDWARD_WIDTH_MULT,
   WAKE_LENGTH,
   WAKE_MAX_SLOWDOWN,
+  WAKE_TURB_HALF_ANGLE_DEG,
 } from '@/logic/constants'
 import { raceStore } from '@/state/raceStore'
 import {
@@ -30,6 +35,12 @@ const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
 const normalizeDeg = (deg: number) => {
   const wrapped = deg % 360
   return wrapped < 0 ? wrapped + 360 : wrapped
+}
+const rotateVec = (vec: Vec2, deg: number) => {
+  const rad = degToRad(deg)
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  return { x: vec.x * cos - vec.y * sin, y: vec.x * sin + vec.y * cos }
 }
 
 // Mark-zone radius in world units.
@@ -190,7 +201,9 @@ class BoatView {
     const wiggleDeg = wiggleAllowed
       ? Math.sin(performance.now() / 70) * 6 * luffIntensity
       : 0
-    const rotationDeg = isBlown ? leewardSign * wiggleDeg : baseRotationDeg + leewardSign * wiggleDeg
+    const rotationDeg = isBlown
+      ? leewardSign * wiggleDeg
+      : baseRotationDeg + leewardSign * wiggleDeg
     this.sail.rotation = degToRad(rotationDeg)
     // Keep sail fully opaque when just luffing; only de-emphasize when fully blown.
     this.sail.alpha = isBlown ? 0.75 : 1
@@ -273,6 +286,7 @@ export class RaceScene {
   private waterLayer = new Graphics()
   private worldLayer = new Container()
   private windFieldLayer = new Graphics()
+  private windShadowLayer = new Graphics()
   private courseLayer = new Graphics()
   private contextLayer = new Graphics()
   private overlayLayer = new Container()
@@ -316,6 +330,8 @@ export class RaceScene {
   private lastCourseWasDebug = false
   private windFieldTick = 0
   private windFieldWasEnabled = false
+  private windShadowLeewardBlend = 0
+  private windShadowLastMs = 0
   private readonly windFieldBuckets = 6
   private windFieldPuffRects: number[][] = Array.from(
     { length: this.windFieldBuckets },
@@ -335,12 +351,14 @@ export class RaceScene {
   ) {
     // Render order (bottom -> top):
     // - windFieldLayer: moving puffs/lulls visualization (world-space)
+    // - windShadowLayer: player wind shadow visualization (world-space)
     // - courseLayer: static course visuals (kept above wind shadows for readability)
     // - contextLayer: follow-mode guidance line(s)
     // - overlayLayer: debug overlays
     // - boatLayer: boats + name tags, etc.
     this.worldLayer.addChild(
       this.windFieldLayer,
+      this.windShadowLayer,
       this.courseLayer,
       this.contextLayer,
       this.overlayLayer,
@@ -408,6 +426,7 @@ export class RaceScene {
       }
       this.windFieldTick += 1
     }
+    this.drawPlayerWindShadow(state)
     this.drawCourse(state)
     this.drawFollowContext(state)
     this.drawBoats(state)
@@ -843,11 +862,149 @@ export class RaceScene {
     this.overlayLayer.addChild(g, label)
   }
 
+  private getLeewardSideSign(
+    boatHeadingDeg: number,
+    windDirDeg: number,
+    downwindVec: Vec2,
+  ): 1 | -1 {
+    const awa = angleDiff(boatHeadingDeg, windDirDeg)
+    const headingRad = degToRad(boatHeadingDeg)
+    const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
+    const leewardVec =
+      awa >= 0
+        ? { x: -headingVec.y, y: headingVec.x }
+        : { x: headingVec.y, y: -headingVec.x }
+    const leewardCross = downwindVec.x * leewardVec.y - downwindVec.y * leewardVec.x
+    return leewardCross >= 0 ? 1 : -1
+  }
+
+  private drawPlayerWindShadow(state: RaceState) {
+    this.windShadowLayer.clear()
+    const boat = state.boats[identity.boatId]
+    if (!boat) return
+
+    const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+    const downRad = degToRad(downwindDeg)
+    const baseDir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
+
+    const leewardSideSign = this.getLeewardSideSign(
+      boat.headingDeg,
+      state.wind.directionDeg,
+      baseDir,
+    )
+    const nowMs = performance.now()
+    const dt = this.windShadowLastMs > 0 ? (nowMs - this.windShadowLastMs) / 1000 : 0
+    this.windShadowLastMs = nowMs
+    const blendT = clamp01(dt * 6)
+    this.windShadowLeewardBlend +=
+      (leewardSideSign - this.windShadowLeewardBlend) * blendT
+    const leewardWeight = (this.windShadowLeewardBlend + 1) / 2
+    const biasDeg = this.windShadowLeewardBlend * WAKE_BIAS_DEG
+    const dir = rotateVec(baseDir, biasDeg)
+    const cross = { x: -dir.y, y: dir.x }
+    const coreToTurbRatio =
+      Math.tan(degToRad(WAKE_CORE_HALF_ANGLE_DEG)) /
+      Math.tan(degToRad(WAKE_TURB_HALF_ANGLE_DEG))
+
+    const leewardWidthStart = WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT
+    const leewardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
+    const windwardWidthStart = WAKE_HALF_WIDTH_START * WAKE_WINDWARD_WIDTH_MULT
+    const windwardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_WINDWARD_WIDTH_MULT
+    const leftWidthStart =
+      windwardWidthStart + (leewardWidthStart - windwardWidthStart) * leewardWeight
+    const rightWidthStart =
+      windwardWidthStart + (leewardWidthStart - windwardWidthStart) * (1 - leewardWeight)
+    const leftWidthEnd =
+      windwardWidthEnd + (leewardWidthEnd - windwardWidthEnd) * leewardWeight
+    const rightWidthEnd =
+      windwardWidthEnd + (leewardWidthEnd - windwardWidthEnd) * (1 - leewardWeight)
+
+    const drawZone = (widthScale: number, baseAlpha: number) => {
+      const slices = 14
+      const featherScales = [1, 1.18, 1.32]
+      const featherAlpha = [1, 0.45, 0.25]
+      for (let i = 0; i < slices; i += 1) {
+        const t0 = i / slices
+        const t1 = (i + 1) / slices
+        const startCenter = {
+          x: boat.pos.x + dir.x * WAKE_LENGTH * t0,
+          y: boat.pos.y + dir.y * WAKE_LENGTH * t0,
+        }
+        const endCenter = {
+          x: boat.pos.x + dir.x * WAKE_LENGTH * t1,
+          y: boat.pos.y + dir.y * WAKE_LENGTH * t1,
+        }
+        const fade = Math.pow(1 - t0, 1.6)
+        for (let s = 0; s < featherScales.length; s += 1) {
+          const scale = widthScale * featherScales[s]
+          const leftW0 = (leftWidthStart + (leftWidthEnd - leftWidthStart) * t0) * scale
+          const leftW1 = (leftWidthStart + (leftWidthEnd - leftWidthStart) * t1) * scale
+          const rightW0 =
+            (rightWidthStart + (rightWidthEnd - rightWidthStart) * t0) * scale
+          const rightW1 =
+            (rightWidthStart + (rightWidthEnd - rightWidthStart) * t1) * scale
+
+          const startLeft = {
+            x: startCenter.x + cross.x * leftW0,
+            y: startCenter.y + cross.y * leftW0,
+          }
+          const startRight = {
+            x: startCenter.x - cross.x * rightW0,
+            y: startCenter.y - cross.y * rightW0,
+          }
+          const endLeft = {
+            x: endCenter.x + cross.x * leftW1,
+            y: endCenter.y + cross.y * leftW1,
+          }
+          const endRight = {
+            x: endCenter.x - cross.x * rightW1,
+            y: endCenter.y - cross.y * rightW1,
+          }
+
+          const alpha = baseAlpha * featherAlpha[s] * fade + 0.01
+          this.windShadowLayer.fill({ color: 0x6aaeff, alpha })
+          this.windShadowLayer.moveTo(startLeft.x, startLeft.y)
+          this.windShadowLayer.lineTo(endLeft.x, endLeft.y)
+          this.windShadowLayer.lineTo(endRight.x, endRight.y)
+          this.windShadowLayer.lineTo(startRight.x, startRight.y)
+          this.windShadowLayer.closePath()
+          this.windShadowLayer.fill()
+        }
+      }
+    }
+
+    drawZone(1, 0.12)
+    drawZone(coreToTurbRatio, 0.2)
+  }
+
   private drawWindShadowsDebug(state: RaceState) {
     const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
     const downRad = degToRad(downwindDeg)
-    const dir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
-    const cross = { x: -dir.y, y: dir.x }
+    const baseDir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
+    const maxHalfWidth = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
+    const leewardWidthStart = WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT
+    const leewardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
+    const windwardWidthStart = WAKE_HALF_WIDTH_START * WAKE_WINDWARD_WIDTH_MULT
+    const windwardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_WINDWARD_WIDTH_MULT
+    const coreToTurbRatio =
+      Math.tan(degToRad(WAKE_CORE_HALF_ANGLE_DEG)) /
+      Math.tan(degToRad(WAKE_TURB_HALF_ANGLE_DEG))
+
+    const wakeDirs = new Map<
+      string,
+      { dir: Vec2; cross: Vec2; leewardSideSign: 1 | -1 }
+    >()
+    Object.values(state.boats).forEach((boat) => {
+      const leewardSideSign = this.getLeewardSideSign(
+        boat.headingDeg,
+        state.wind.directionDeg,
+        baseDir,
+      )
+      const biasDeg = leewardSideSign * WAKE_BIAS_DEG
+      const dir = rotateVec(baseDir, biasDeg)
+      const cross = { x: -dir.y, y: dir.x }
+      wakeDirs.set(boat.id, { dir, cross, leewardSideSign })
+    })
 
     // Check which boats are actually affecting others (for intensity visualization)
     const boatsAffectingOthers = new Set<string>()
@@ -857,16 +1014,17 @@ export class RaceScene {
         // This boat is being affected, find which boats are affecting it
         Object.values(state.boats).forEach((source) => {
           if (source.id === target.id) return
+          const wakeDir = wakeDirs.get(source.id)
+          if (!wakeDir) return
           const dx = target.pos.x - source.pos.x
           const dy = target.pos.y - source.pos.y
           const distSq = dx * dx + dy * dy
-          if (distSq === 0 || distSq > (WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2) ** 2)
-            return
+          if (distSq === 0 || distSq > (WAKE_LENGTH + maxHalfWidth * 2) ** 2) return
 
           const dist = Math.sqrt(distSq)
           const relUnitX = dx / dist
           const relUnitY = dy / dist
-          const align = relUnitX * dir.x + relUnitY * dir.y
+          const align = relUnitX * wakeDir.dir.x + relUnitY * wakeDir.dir.y
           if (align > 0) {
             boatsAffectingOthers.add(source.id)
           }
@@ -878,65 +1036,100 @@ export class RaceScene {
     // This lets you see where the wake effect would be, even when empty
     Object.values(state.boats).forEach((boat) => {
       const isAffectingOthers = boatsAffectingOthers.has(boat.id)
+      const wakeDir = wakeDirs.get(boat.id)
+      if (!wakeDir) return
 
       // Always show in debug mode, or show when actually affecting others
       if (!appEnv.debugHud && !isAffectingOthers) return
 
       const startCenter = boat.pos
       const endCenter = {
-        x: boat.pos.x + dir.x * WAKE_LENGTH,
-        y: boat.pos.y + dir.y * WAKE_LENGTH,
+        x: boat.pos.x + wakeDir.dir.x * WAKE_LENGTH,
+        y: boat.pos.y + wakeDir.dir.y * WAKE_LENGTH,
       }
 
+      const leftWidthStart =
+        wakeDir.leewardSideSign > 0 ? leewardWidthStart : windwardWidthStart
+      const rightWidthStart =
+        wakeDir.leewardSideSign < 0 ? leewardWidthStart : windwardWidthStart
+      const leftWidthEnd =
+        wakeDir.leewardSideSign > 0 ? leewardWidthEnd : windwardWidthEnd
+      const rightWidthEnd =
+        wakeDir.leewardSideSign < 0 ? leewardWidthEnd : windwardWidthEnd
+
       const startLeft = {
-        x: startCenter.x + cross.x * WAKE_HALF_WIDTH_START,
-        y: startCenter.y + cross.y * WAKE_HALF_WIDTH_START,
+        x: startCenter.x + wakeDir.cross.x * leftWidthStart,
+        y: startCenter.y + wakeDir.cross.y * leftWidthStart,
       }
       const startRight = {
-        x: startCenter.x - cross.x * WAKE_HALF_WIDTH_START,
-        y: startCenter.y - cross.y * WAKE_HALF_WIDTH_START,
+        x: startCenter.x - wakeDir.cross.x * rightWidthStart,
+        y: startCenter.y - wakeDir.cross.y * rightWidthStart,
       }
       const endLeft = {
-        x: endCenter.x + cross.x * WAKE_HALF_WIDTH_END,
-        y: endCenter.y + cross.y * WAKE_HALF_WIDTH_END,
+        x: endCenter.x + wakeDir.cross.x * leftWidthEnd,
+        y: endCenter.y + wakeDir.cross.y * leftWidthEnd,
       }
       const endRight = {
-        x: endCenter.x - cross.x * WAKE_HALF_WIDTH_END,
-        y: endCenter.y - cross.y * WAKE_HALF_WIDTH_END,
+        x: endCenter.x - wakeDir.cross.x * rightWidthEnd,
+        y: endCenter.y - wakeDir.cross.y * rightWidthEnd,
       }
 
       // Make visualization more visible when actually affecting others
-      const fillAlpha = isAffectingOthers ? 0.15 : 0.05
-      const strokeAlpha = isAffectingOthers ? 0.4 : 0.15
+      const fillAlpha = isAffectingOthers ? 0.12 : 0.04
+      const strokeAlpha = isAffectingOthers ? 0.35 : 0.12
 
-      const g = new Graphics()
-      g.setStrokeStyle({ width: 1.5, color: 0xffcf70, alpha: strokeAlpha })
-      g.fill({ color: 0xffcf70, alpha: fillAlpha })
+      const gTurb = new Graphics()
+      gTurb.setStrokeStyle({ width: 1.5, color: 0x6aaeff, alpha: strokeAlpha })
+      gTurb.fill({ color: 0x6aaeff, alpha: fillAlpha })
 
       const pts = [startLeft, endLeft, endRight, startRight]
-      g.moveTo(pts[0].x, pts[0].y)
-      pts.slice(1).forEach((p) => g.lineTo(p.x, p.y))
-      g.closePath()
-      g.fill()
-      g.stroke()
+      gTurb.moveTo(pts[0].x, pts[0].y)
+      pts.slice(1).forEach((p) => gTurb.lineTo(p.x, p.y))
+      gTurb.closePath()
+      gTurb.fill()
+      gTurb.stroke()
+
+      const gCore = new Graphics()
+      gCore.fill({ color: 0x6aaeff, alpha: fillAlpha + 0.08 })
+      const coreStartLeft = {
+        x: startCenter.x + wakeDir.cross.x * leftWidthStart * coreToTurbRatio,
+        y: startCenter.y + wakeDir.cross.y * leftWidthStart * coreToTurbRatio,
+      }
+      const coreStartRight = {
+        x: startCenter.x - wakeDir.cross.x * rightWidthStart * coreToTurbRatio,
+        y: startCenter.y - wakeDir.cross.y * rightWidthStart * coreToTurbRatio,
+      }
+      const coreEndLeft = {
+        x: endCenter.x + wakeDir.cross.x * leftWidthEnd * coreToTurbRatio,
+        y: endCenter.y + wakeDir.cross.y * leftWidthEnd * coreToTurbRatio,
+      }
+      const coreEndRight = {
+        x: endCenter.x - wakeDir.cross.x * rightWidthEnd * coreToTurbRatio,
+        y: endCenter.y - wakeDir.cross.y * rightWidthEnd * coreToTurbRatio,
+      }
+      const corePts = [coreStartLeft, coreEndLeft, coreEndRight, coreStartRight]
+      gCore.moveTo(corePts[0].x, corePts[0].y)
+      corePts.slice(1).forEach((p) => gCore.lineTo(p.x, p.y))
+      gCore.closePath()
+      gCore.fill()
 
       // Outline the cone edges for clarity (only when affecting others)
       if (isAffectingOthers) {
         const coneEdgeLeft = new Graphics()
-        coneEdgeLeft.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.3 })
+        coneEdgeLeft.setStrokeStyle({ width: 1, color: 0x6aaeff, alpha: 0.3 })
         coneEdgeLeft.moveTo(startCenter.x, startCenter.y)
         coneEdgeLeft.lineTo(endLeft.x, endLeft.y)
         coneEdgeLeft.stroke()
 
         const coneEdgeRight = new Graphics()
-        coneEdgeRight.setStrokeStyle({ width: 1, color: 0xffcf70, alpha: 0.3 })
+        coneEdgeRight.setStrokeStyle({ width: 1, color: 0x6aaeff, alpha: 0.3 })
         coneEdgeRight.moveTo(startCenter.x, startCenter.y)
         coneEdgeRight.lineTo(endRight.x, endRight.y)
         coneEdgeRight.stroke()
 
-        this.overlayLayer.addChild(g, coneEdgeLeft, coneEdgeRight)
+        this.overlayLayer.addChild(gTurb, gCore, coneEdgeLeft, coneEdgeRight)
       } else {
-        this.overlayLayer.addChild(g)
+        this.overlayLayer.addChild(gTurb, gCore)
       }
     })
   }
