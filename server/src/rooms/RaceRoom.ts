@@ -108,6 +108,8 @@ export class RaceRoom extends Room<RaceRoomState> {
   private cleanupTimer?: NodeJS.Timeout
 
   onCreate(options: Record<string, unknown>) {
+    // Set patch rate to match configured publish interval (must be called before setState)
+    this.setPatchRate(appEnv.hostPublishIntervalMs)
     this.setState(new RaceRoomState())
 
     // Initialize room metadata from options
