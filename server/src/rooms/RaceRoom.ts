@@ -1,8 +1,20 @@
 import type { Client } from 'colyseus'
 import { Room } from 'colyseus'
 import { HostLoop } from '@/host/loop'
-import { createBoatState, createInitialRaceState, cloneRaceState } from '@/state/factories'
-import type { ChatMessage, ChatSenderRole, RaceEvent, RaceState, PlayerInput, RaceRole, ProtestStatus } from '@/types/race'
+import {
+  createBoatState,
+  createInitialRaceState,
+  cloneRaceState,
+} from '@/state/factories'
+import type {
+  ChatMessage,
+  ChatSenderRole,
+  RaceEvent,
+  RaceState,
+  PlayerInput,
+  RaceRole,
+  ProtestStatus,
+} from '@/types/race'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { assignLeaderboard } from '@/logic/leaderboard'
@@ -85,11 +97,11 @@ export class RaceRoom extends Room<RaceRoomState> {
   private lastCountdownLogAtMs = 0
 
   onCreate(options: Record<string, unknown>) {
+    // Set patch rate to match configured publish interval (must be called before setState)
+    this.setPatchRate(appEnv.hostPublishIntervalMs)
     this.setState(new RaceRoomState())
     console.info('[RaceRoom] created', { options, roomId: this.roomId })
     roomDebug('onCreate', { options, roomId: this.roomId })
-    // Set patch rate to match configured publish interval
-    this.setPatchRate(appEnv.hostPublishIntervalMs)
     const initialState = createInitialRaceState(`colyseus-${this.roomId}`)
     this.raceStore = new RaceStore(initialState)
     applyRaceStateToSchema(this.state.race, initialState)
@@ -136,24 +148,24 @@ export class RaceRoom extends Room<RaceRoomState> {
       if (!this.raceStore) return
       const boatId = this.resolveBoatId(client, message.boatId)
       if (!boatId) return
-      
+
       // Handle penalty clear requests
       if (message.clearPenalty) {
         this.handlePenaltyClearRequest(boatId)
         return
       }
-      
+
       // Handle spin requests: queue a 360° spin sequence
       if (message.spin === 'full') {
         this.queueSpin(boatId)
         return
       }
-      
+
       // Ignore other inputs during active spin to prevent interference
       if (this.activeSpins.has(boatId)) {
         return
       }
-      
+
       // Process normal heading/VMG inputs
       const payload = {
         boatId,
@@ -286,8 +298,12 @@ export class RaceRoom extends Room<RaceRoomState> {
 
     // De-dupe: if the same clientId is already connected, evict the previous session.
     const existingSessionId = this.findExistingSessionId(clientId, client.sessionId)
-    const existingWasHost = Boolean(existingSessionId && existingSessionId === this.hostSessionId)
-    const existingBoatId = existingSessionId ? this.clientBoatMap.get(existingSessionId) : undefined
+    const existingWasHost = Boolean(
+      existingSessionId && existingSessionId === this.hostSessionId,
+    )
+    const existingBoatId = existingSessionId
+      ? this.clientBoatMap.get(existingSessionId)
+      : undefined
     if (existingSessionId) {
       console.info('[RaceRoom] evicting duplicate session for clientId', {
         clientId,
@@ -371,7 +387,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
     this.activeSpins.clear()
   }
-  
+
   /**
    * Queue a 360° spin sequence for a boat.
    * The spin consists of three heading changes: +120°, +240°, then back to origin.
@@ -384,7 +400,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const state = this.raceStore.getState()
     const boat = state.boats[boatId]
     if (!boat) return
-    
+
     // Disable VMG mode and set rightsSuspended to prevent other inputs during spin
     this.mutateState((draft) => {
       const target = draft.boats[boatId]
@@ -394,15 +410,11 @@ export class RaceRoom extends Room<RaceRoomState> {
         target.blowSails = false
       }
     })
-    
+
     // Calculate the three headings for the spin sequence (120° increments)
     const origin = boat.desiredHeadingDeg ?? boat.headingDeg
-    const headings = [
-      origin + 120,
-      origin + 240,
-      origin,
-    ].map((deg) => normalizeDeg(deg))
-    
+    const headings = [origin + 120, origin + 240, origin].map((deg) => normalizeDeg(deg))
+
     // Schedule each heading change with increasing delays
     let delay = 0
     const timers: NodeJS.Timeout[] = headings.map((heading, index) => {
@@ -418,7 +430,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
     this.activeSpins.set(boatId, timers)
   }
-  
+
   /**
    * Inject a heading change into the race state as part of a spin sequence.
    * This simulates the boat turning during a 360° spin.
@@ -435,7 +447,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     }
     this.raceStore.upsertInput(payload)
   }
-  
+
   /**
    * Finish a spin sequence: clean up timers and restore normal boat state.
    * This is called after the final heading change (back to origin) completes.
@@ -457,7 +469,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     // Clear one penalty if the boat has any; and clear any active protest on that boat.
     this.clearOnePenaltyAfterSpin(boatId)
   }
-  
+
   /**
    * Handle "P" clear requests from the client.
    * If the penalty is protest-derived and a protest exists, this is treated as a waiver:
@@ -796,7 +808,12 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (role !== 'player') {
       return undefined
     }
-    if (preferredId && Object.values(this.raceStore?.getState().boats ?? {}).some((boat) => boat.id === preferredId)) {
+    if (
+      preferredId &&
+      Object.values(this.raceStore?.getState().boats ?? {}).some(
+        (boat) => boat.id === preferredId,
+      )
+    ) {
       this.clientBoatMap.set(client.sessionId, preferredId)
       return preferredId
     }
@@ -927,9 +944,13 @@ export class RaceRoom extends Room<RaceRoomState> {
     const hostBoatId = this.clientBoatMap.get(sessionId)
     const clientId = this.clientIdentityMap.get(sessionId)
     const storeName =
-      hostBoatId && this.raceStore ? this.raceStore.getState().boats[hostBoatId]?.name : undefined
-    const schemaName = hostBoatId ? this.state.race.boats.get(hostBoatId)?.name : undefined
-      return {
+      hostBoatId && this.raceStore
+        ? this.raceStore.getState().boats[hostBoatId]?.name
+        : undefined
+    const schemaName = hostBoatId
+      ? this.state.race.boats.get(hostBoatId)?.name
+      : undefined
+    return {
       sessionId,
       clientId,
       hostBoatId,
@@ -940,7 +961,9 @@ export class RaceRoom extends Room<RaceRoomState> {
   private setHost(sessionId?: string) {
     const previousHost = this.hostSessionId
     this.hostSessionId = sessionId
-    this.hostClientId = sessionId ? this.clientIdentityMap.get(sessionId) ?? sessionId : undefined
+    this.hostClientId = sessionId
+      ? (this.clientIdentityMap.get(sessionId) ?? sessionId)
+      : undefined
     const hostBoatId = sessionId ? this.clientBoatMap.get(sessionId) : undefined
     roomDebug('setHost', {
       previousHost,
@@ -1023,11 +1046,14 @@ export class RaceRoom extends Room<RaceRoomState> {
   }
 
   private resetRaceState() {
-    const assignment = Array.from(this.clientBoatMap.entries()).map(([sessionId, boatId], idx) => ({
-      boatId,
-      name: this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
-      index: idx,
-    }))
+    const assignment = Array.from(this.clientBoatMap.entries()).map(
+      ([sessionId, boatId], idx) => ({
+        boatId,
+        name:
+          this.state.race.boats.get(boatId)?.name ?? `Sailor ${sessionId.slice(0, 4)}`,
+        index: idx,
+      }),
+    )
     roomDebug('resetRaceState', {
       assignments: assignment.length,
       ...this.describeHost(this.hostSessionId),
@@ -1086,11 +1112,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     const trimmed = text.slice(0, 280)
     const boatId = this.clientBoatMap.get(client.sessionId)
     const senderRole: ChatSenderRole =
-      client.sessionId === this.hostSessionId
-        ? 'host'
-        : boatId
-          ? 'player'
-          : 'spectator'
+      client.sessionId === this.hostSessionId ? 'host' : boatId ? 'player' : 'spectator'
     const senderName =
       this.clientNameMap.get(client.sessionId) ??
       (boatId && this.state.race.boats.get(boatId)?.name) ??
@@ -1111,7 +1133,9 @@ export class RaceRoom extends Room<RaceRoomState> {
     const windowMs = 10_000
     const limit = 5
     const now = Date.now()
-    const recent = (this.chatRateMap.get(clientId) ?? []).filter((ts) => now - ts < windowMs)
+    const recent = (this.chatRateMap.get(clientId) ?? []).filter(
+      (ts) => now - ts < windowMs,
+    )
     if (recent.length >= limit) {
       this.chatRateMap.set(clientId, recent)
       return false
@@ -1121,4 +1145,3 @@ export class RaceRoom extends Room<RaceRoomState> {
     return true
   }
 }
-
