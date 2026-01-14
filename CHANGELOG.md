@@ -1,3 +1,15 @@
+# [1.30.0](https://github.com/Smod9/onlytactics/compare/v1.29.7...v1.30.0) (2026-01-14)
+
+
+### Bug Fixes
+
+* Adjusts the y-coordinate of the start line pin from 120 to 110 ([7f57a39](https://github.com/Smod9/onlytactics/commit/7f57a395ae00897cae7be04cb0dff90ef215ce4d))
+
+
+### Features
+
+* Add pickle badge to leaderboard for last place finishers and remove wind field toggle button for hosts ([c914313](https://github.com/Smod9/onlytactics/commit/c91431350e44746ec3d4f05fe18023bcb613d69d))
+
 ## [1.29.7](https://github.com/Smod9/onlytactics/compare/v1.29.6...v1.29.7) (2026-01-14)
 
 
