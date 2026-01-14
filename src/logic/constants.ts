@@ -26,8 +26,16 @@ export const BOAT_LENGTH = BOAT_BOW_OFFSET - BOAT_STERN_OFFSET // total boat len
 
 // Wind shadow / wake parameters
 export const WAKE_MAX_SLOWDOWN = 0.25 // Max speed reduction (25%)
-export const WAKE_LENGTH = 60 // Downwind wake length (scene units)
+export const WAKE_LENGTH = 100 // Downwind wake length (scene units)
 export const WAKE_HALF_WIDTH_START = 18 // Near-boat half width
 export const WAKE_HALF_WIDTH_END = 35 // Wake widens farther downwind
-export const WAKE_CONE_HALF_ANGLE_DEG = 35 // Limit wake to downwind sector
-export const WAKE_MIN_STRENGTH = 0.01 // Ignore negligible contributions
+export const WAKE_LEEWARD_WIDTH_MULT = 2.4 // Leeward side width multiplier
+export const WAKE_WINDWARD_WIDTH_MULT = 0.2 // Windward side width multiplier
+export const WAKE_BIAS_DEG = -50 // Leeward bias away from pure downwind
+export const WAKE_CORE_HALF_ANGLE_DEG = 12 // Core blanket width
+export const WAKE_TURB_HALF_ANGLE_DEG = 18 // Turbulent zone width
+export const WAKE_CORE_STRENGTH = 1.0 // Core blanket strength
+export const WAKE_TURB_STRENGTH = 0.4 // Turbulent zone strength
+export const WAKE_CORE_MAX_SLOWDOWN = 0.4 // Core blanket max slowdown
+export const WAKE_TURB_MAX_SLOWDOWN = 0.25 // Turbulent zone max slowdown
+export const WAKE_MIN_STRENGTH = 0.02 // Ignore negligible contributions
