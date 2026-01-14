@@ -353,26 +353,73 @@ export const LiveClient = () => {
     }
   }
 
+  const truncatedRoomName =
+    roomDisplayName && roomDisplayName.length > 14
+      ? `${roomDisplayName.slice(0, 14)}...`
+      : roomDisplayName
+
   const headerPortal = headerCtaEl
     ? createPortal(
         <div
           className="header-controls"
           style={{ display: 'flex', gap: 10, alignItems: 'center' }}
         >
-          {roomDisplayName && (
+          {!needsName && (
             <div
-              className="room-name-pill"
               style={{
-                fontSize: 13,
-                opacity: 0.8,
-                padding: '0.3rem 0.6rem',
-                border: '1px solid rgba(255,255,255,0.2)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '0.2rem 0.4rem',
+                border: '1px solid rgba(255,255,255,0.15)',
                 borderRadius: 999,
-                background: 'rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.05)',
               }}
-              title="Room name"
             >
-              {roomDisplayName}
+              <button
+                type="button"
+                className="start-sequence"
+                onClick={() => {
+                  window.location.href = '/lobby'
+                }}
+                title="Back to Lobby"
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M17 16l4-4-4-4" />
+                  <path d="M21 12H9" />
+                  <path d="M4 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4" />
+                </svg>
+                Lobby
+              </button>
+              {truncatedRoomName && (
+                <span
+                  className="room-name-pill"
+                  style={{
+                    fontSize: 13,
+                    opacity: 0.8,
+                    padding: '0.2rem 0.4rem',
+                  }}
+                  title={roomDisplayName ?? 'Race'}
+                >
+                  {truncatedRoomName}
+                </span>
+              )}
             </div>
           )}
           <div style={{ display: 'none' }}>
@@ -418,34 +465,22 @@ export const LiveClient = () => {
 
           {/* Always keep the user menu at the far right of the header controls. */}
           {!needsName && (
-            <>
-              <button
-                type="button"
-                className="start-sequence"
-                onClick={() => {
-                  window.location.href = '/lobby'
-                }}
-                title="Back to Lobby"
-              >
-                Back to Lobby
-              </button>
-              <button
-                type="button"
-                className="header-name"
-                onClick={openUserModal}
-                title="Menu"
-                aria-label="Open menu"
-                style={{ marginLeft: 'auto' }}
-              >
-                <span aria-hidden="true" style={{ opacity: 0.9 }}>
-                  👤
-                </span>
-                <span className="header-name-text">Menu</span>
-                <span aria-hidden="true" style={{ opacity: 0.75 }}>
-                  ▾
-                </span>
-              </button>
-            </>
+            <button
+              type="button"
+              className="header-name"
+              onClick={openUserModal}
+              title="Menu"
+              aria-label="Open menu"
+              style={{ marginLeft: 'auto' }}
+            >
+              <span aria-hidden="true" style={{ opacity: 0.9 }}>
+                👤
+              </span>
+              <span className="header-name-text">Menu</span>
+              <span aria-hidden="true" style={{ opacity: 0.75 }}>
+                ▾
+              </span>
+            </button>
           )}
         </div>,
         headerCtaEl,

@@ -71,7 +71,7 @@ expressApp.get('/api/rooms', async (_req, res) => {
     const roomList = await Promise.all(
       rooms.map(async (roomInfo) => {
         try {
-          const room = matchMaker.getRoomById(roomInfo.roomId)
+          const room = await matchMaker.getRoomById(roomInfo.roomId)
           const raceRoom = room as unknown as InstanceType<typeof RaceRoom> | undefined
           const metadata =
             (roomInfo.metadata as Partial<{
@@ -79,6 +79,9 @@ expressApp.get('/api/rooms', async (_req, res) => {
               description: string
               createdAt: number
               createdBy: string
+              status: 'waiting' | 'in-progress' | 'finished'
+              phase: 'prestart' | 'running' | 'finished'
+              timeToStartSeconds: number
             }>) ?? {}
           return {
             roomId: roomInfo.roomId,
@@ -86,9 +89,12 @@ expressApp.get('/api/rooms', async (_req, res) => {
             description: raceRoom?.description ?? metadata.description ?? '',
             playerCount: roomInfo.clients,
             maxClients: roomInfo.maxClients,
-            status: raceRoom?.getStatus?.() ?? 'waiting',
+            status: raceRoom?.getStatus?.() ?? metadata.status ?? 'waiting',
             hostName: raceRoom?.getHostName?.() ?? undefined,
             createdAt: raceRoom?.createdAt ?? metadata.createdAt ?? Date.now(),
+            timeToStartSeconds:
+              raceRoom?.getTimeToStartSeconds?.() ?? metadata.timeToStartSeconds ?? null,
+            phase: metadata.phase ?? 'prestart',
           }
         } catch (err) {
           console.warn('[API] error getting room details', roomInfo.roomId, err)
@@ -136,7 +142,7 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
       return
     }
     const roomData = roomInfo[0]
-    const room = matchMaker.getRoomById(roomId)
+    const room = await matchMaker.getRoomById(roomId)
     const raceRoom = room as unknown as InstanceType<typeof RaceRoom> | undefined
     const metadata =
       (roomData.metadata as Partial<{
@@ -144,6 +150,8 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
         description: string
         createdAt: number
         createdBy: string
+        status: 'waiting' | 'in-progress' | 'finished'
+        timeToStartSeconds: number
       }>) ?? {}
     res.json({
       roomId: roomData.roomId,
@@ -151,9 +159,12 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
       description: raceRoom?.description ?? metadata.description ?? '',
       playerCount: roomData.clients,
       maxClients: roomData.maxClients,
-      status: raceRoom?.getStatus?.() ?? 'waiting',
+      status: raceRoom?.getStatus?.() ?? metadata.status ?? 'waiting',
       hostName: raceRoom?.getHostName?.() ?? undefined,
       createdAt: raceRoom?.createdAt ?? metadata.createdAt ?? Date.now(),
+      timeToStartSeconds:
+        raceRoom?.getTimeToStartSeconds?.() ?? metadata.timeToStartSeconds ?? null,
+      phase: metadata.phase ?? 'prestart',
     })
   } catch (error) {
     console.error('[API] error getting room', error)

@@ -11,6 +11,8 @@ export type RoomInfo = {
   status: RoomStatus
   hostName?: string
   createdAt: number
+  timeToStartSeconds?: number | null
+  phase?: 'prestart' | 'running' | 'finished'
 }
 
 export type CreateRoomRequest = {

@@ -95,6 +95,9 @@ export class RaceRoom extends Room<RaceRoomState> {
   // Track active spins: maps boatId to array of timeout IDs for the spin sequence
   private activeSpins = new Map<string, NodeJS.Timeout[]>()
   private lastCountdownLogAtMs = 0
+  private lastLobbyUpdateAtMs = 0
+  private lastLobbyStatus?: string
+  private lastLobbyTimeToStart?: number | null
 
   // Room metadata
   public metadataRoomName: string = 'Unnamed Race'
@@ -121,6 +124,9 @@ export class RaceRoom extends Room<RaceRoomState> {
       description: this.description,
       createdAt: this.createdAt,
       createdBy: this.createdBy ?? '',
+      status: 'waiting',
+      timeToStartSeconds: null,
+      phase: 'prestart',
     })
 
     console.info('[RaceRoom] created', {
@@ -163,6 +169,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         }
         state.hostId = this.hostClientId ?? state.hostId ?? ''
         applyRaceStateToSchema(this.state.race, state)
+        this.updateLobbyMetadata(state)
       },
     })
     this.loop.start()
@@ -466,11 +473,45 @@ export class RaceRoom extends Room<RaceRoomState> {
     if (allFinished && Object.keys(state.boats).length > 0) return 'finished'
     if (
       state.phase === 'running' ||
-      (state.phase === 'prestart' && state.countdownArmed)
+      (state.phase === 'prestart' && (state.countdownArmed || state.clockStartMs !== null))
     ) {
       return 'in-progress'
     }
     return 'waiting'
+  }
+
+  /**
+   * Get time-to-start in seconds for pre-start countdowns.
+   */
+  getTimeToStartSeconds(): number | null {
+    if (!this.raceStore) return null
+    const state = this.raceStore.getState()
+    if (state.phase !== 'prestart' || !state.countdownArmed) return null
+    if (!Number.isFinite(state.t)) return null
+    if (state.t >= 0) return 0
+    return Math.max(0, Math.ceil(-state.t))
+  }
+
+  private updateLobbyMetadata(state: RaceState) {
+    const now = Date.now()
+    if (now - this.lastLobbyUpdateAtMs < 1000) return
+    this.lastLobbyUpdateAtMs = now
+    const status = this.getStatus()
+    const timeToStartSeconds = this.getTimeToStartSeconds()
+    if (status === this.lastLobbyStatus && timeToStartSeconds === this.lastLobbyTimeToStart) {
+      return
+    }
+    this.lastLobbyStatus = status
+    this.lastLobbyTimeToStart = timeToStartSeconds
+    void this.setMetadata({
+      roomName: this.metadataRoomName,
+      description: this.description,
+      createdAt: this.createdAt,
+      createdBy: this.createdBy ?? '',
+      status,
+      phase: state.phase,
+      timeToStartSeconds,
+    })
   }
 
   /**
