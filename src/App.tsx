@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { LiveClient } from './features/live/LiveClient'
 import { ReplayClient } from './features/replay/ReplayClient'
+import { LobbyClient } from './features/live/LobbyClient'
 
-type AppMode = 'live' | 'replay'
+type AppMode = 'live' | 'replay' | 'lobby'
 
 const MODES: Array<{ label: string; value: AppMode }> = [
   { label: 'Live Race', value: 'live' },
@@ -10,9 +11,29 @@ const MODES: Array<{ label: string; value: AppMode }> = [
 ]
 
 export function App() {
-  const [mode, setMode] = useState<AppMode>('live')
+  const [mode, setMode] = useState<AppMode>(() => {
+    if (typeof window === 'undefined') return 'live'
+    const path = window.location.pathname
+    if (path.startsWith('/lobby')) return 'lobby'
+    if (path.startsWith('/app')) return 'live'
+    return 'live'
+  })
   const appVersion = `v${__APP_VERSION__}`
   const releaseUrl = __APP_RELEASE_URL__
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      if (typeof window === 'undefined') return
+      const path = window.location.pathname
+      if (path.startsWith('/lobby')) {
+        setMode('lobby')
+      } else if (path.startsWith('/app')) {
+        setMode('live')
+      }
+    }
+    window.addEventListener('popstate', handleLocationChange)
+    return () => window.removeEventListener('popstate', handleLocationChange)
+  }, [])
 
   return (
     <div className="app-shell">
@@ -49,7 +70,13 @@ export function App() {
         </div>
       </header>
       <main className="app-main">
-        {mode === 'live' ? <LiveClient /> : <ReplayClient />}
+        {mode === 'lobby' ? (
+          <LobbyClient />
+        ) : mode === 'live' ? (
+          <LiveClient />
+        ) : (
+          <ReplayClient />
+        )}
       </main>
     </div>
   )

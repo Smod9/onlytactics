@@ -4,7 +4,7 @@ import './styles/global.css'
 import { App } from './App'
 import { LandingPage } from './LandingPage'
 
-const isGameRoute = window.location.pathname.startsWith('/app')
+const isGameRoute = window.location.pathname.startsWith('/app') || window.location.pathname.startsWith('/lobby')
 
 if (isGameRoute) {
   document.documentElement.classList.add('game-root')

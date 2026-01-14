@@ -11,6 +11,7 @@ import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
 import { useInputTelemetry, useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
+import { roomService } from '@/net/roomService'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
@@ -64,7 +65,15 @@ export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const telemetry = useInputTelemetry()
-  const [network] = useState(() => new GameNetwork())
+  
+  // Get roomId from URL query parameter
+  const roomId = useMemo(() => {
+    if (typeof window === 'undefined') return undefined
+    const params = new URLSearchParams(window.location.search)
+    return params.get('roomId') ?? undefined
+  }, [])
+  
+  const [network] = useState(() => new GameNetwork(roomId))
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [joinRole, setJoinRole] = useState<NonHostRole>('player')
@@ -82,6 +91,7 @@ export const LiveClient = () => {
   const [userNameDraft, setUserNameDraft] = useState(identity.clientName ?? '')
   const [userRoleDraft, setUserRoleDraft] = useState<NonHostRole>('player')
   const [userSettingsError, setUserSettingsError] = useState<string | null>(null)
+  const [roomDisplayName, setRoomDisplayName] = useState<string | null>(null)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(
     null,
@@ -102,6 +112,22 @@ export const LiveClient = () => {
   useEffect(() => {
     void startRosterWatcher()
   }, [])
+
+  useEffect(() => {
+    if (!roomId) return
+    let active = true
+    roomService
+      .getRoomDetails(roomId)
+      .then((room) => {
+        if (active) setRoomDisplayName(room.roomName)
+      })
+      .catch((err) => {
+        console.warn('[LiveClient] failed to load room details', err)
+      })
+    return () => {
+      active = false
+    }
+  }, [roomId])
 
   // Throttle leaderboard speed updates to avoid noisy UI churn.
   // We update roughly once per 10 sim/store updates (tracked by `race.t` changes),
@@ -327,12 +353,75 @@ export const LiveClient = () => {
     }
   }
 
+  const truncatedRoomName =
+    roomDisplayName && roomDisplayName.length > 14
+      ? `${roomDisplayName.slice(0, 14)}...`
+      : roomDisplayName
+
   const headerPortal = headerCtaEl
     ? createPortal(
         <div
           className="header-controls"
           style={{ display: 'flex', gap: 10, alignItems: 'center' }}
         >
+          {!needsName && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '0.2rem 0.4rem',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 999,
+                background: 'rgba(255,255,255,0.05)',
+              }}
+            >
+              <button
+                type="button"
+                className="start-sequence"
+                onClick={() => {
+                  window.location.href = '/lobby'
+                }}
+                title="Back to Lobby"
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M17 16l4-4-4-4" />
+                  <path d="M21 12H9" />
+                  <path d="M4 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4" />
+                </svg>
+                Lobby
+              </button>
+              {truncatedRoomName && (
+                <span
+                  className="room-name-pill"
+                  style={{
+                    fontSize: 13,
+                    opacity: 0.8,
+                    padding: '0.2rem 0.4rem',
+                  }}
+                  title={roomDisplayName ?? 'Race'}
+                >
+                  {truncatedRoomName}
+                </span>
+              )}
+            </div>
+          )}
           <div style={{ display: 'none' }}>
             <ReplaySaveButton />
           </div>

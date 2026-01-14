@@ -74,20 +74,37 @@ export class ColyseusBridge {
     return () => this.roleListeners.delete(listener)
   }
 
-  async connect(options?: { role?: Exclude<RaceRole, 'host'> }) {
+  async connect(options?: { role?: Exclude<RaceRole, 'host'>; joinExisting?: boolean }) {
     this.emitStatus('connecting')
     this.intentionalLeave = false
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'connect()', {
         endpoint: this.endpoint,
         roomId: this.roomId,
+        joinExisting: options?.joinExisting,
       })
     }
-    this.room = await this.client.joinOrCreate<RaceRoomSchema>(this.roomId, {
+    const joinOptions = {
       name: identity.clientName ?? 'Visitor',
       clientId: identity.clientId,
       role: options?.role,
-    })
+    }
+    // Use joinById for existing rooms, joinOrCreate for creating new rooms
+    if (options?.joinExisting !== false && this.roomId && this.roomId !== 'race_room') {
+      // Try to join existing room by ID
+      try {
+        this.room = await this.client.joinById<RaceRoomSchema>(this.roomId, joinOptions)
+      } catch (err) {
+        // If room doesn't exist, fall back to joinOrCreate with room type
+        if (appEnv.debugNetLogs) {
+          console.info('[ColyseusBridge]', 'room not found, creating new', { roomId: this.roomId, err })
+        }
+        this.room = await this.client.joinOrCreate<RaceRoomSchema>('race_room', joinOptions)
+      }
+    } else {
+      // Create or join room type directly
+      this.room = await this.client.joinOrCreate<RaceRoomSchema>('race_room', joinOptions)
+    }
     this.sessionId = this.room.sessionId
     this.reconnectionToken = (this.room as unknown as { reconnectionToken?: string })
       .reconnectionToken

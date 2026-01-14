@@ -37,7 +37,10 @@ export class GameNetwork {
   private lastLoggedHostId?: string
   private chatListeners = new Set<(message: ChatMessage) => void>()
 
-  constructor() {
+  private roomId?: string
+
+  constructor(roomId?: string) {
+    this.roomId = roomId
     // Allow simple role selection via URL, e.g. `/app?role=judge` or `/app?role=spectator`.
     // If no URL override, fall back to a persisted preference.
     this.desiredRoleOverride =
@@ -241,11 +244,19 @@ export class GameNetwork {
     })
   }
 
+  /**
+   * Set the room ID to connect to
+   */
+  setRoomId(roomId: string | undefined) {
+    this.roomId = roomId
+  }
+
   private async startColyseus() {
     if (!this.colyseusBridge) {
+      const roomId = this.roomId ?? 'race_room'
       this.colyseusBridge = new ColyseusBridge(
         appEnv.colyseusEndpoint,
-        appEnv.colyseusRoomId,
+        roomId,
       )
       this.colyseusBridge.onStatusChange((status) => {
         netLog('colyseus status', { status })
@@ -260,11 +271,16 @@ export class GameNetwork {
         }
       })
     }
+    const roomId = this.roomId ?? 'race_room'
     netLog('colyseus connect()', {
       endpoint: appEnv.colyseusEndpoint,
-      roomId: appEnv.colyseusRoomId,
+      roomId,
+      joinExisting: Boolean(this.roomId),
     })
-    await this.colyseusBridge.connect({ role: this.desiredRoleOverride })
+    await this.colyseusBridge.connect({
+      role: this.desiredRoleOverride,
+      joinExisting: Boolean(this.roomId),
+    })
     if (this.stopRequested || !this.colyseusBridge) {
       this.teardownColyseus()
       return
