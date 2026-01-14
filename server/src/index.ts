@@ -152,6 +152,7 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
         createdBy: string
         status: 'waiting' | 'in-progress' | 'finished'
         timeToStartSeconds: number
+        phase: string
       }>) ?? {}
     res.json({
       roomId: roomData.roomId,
