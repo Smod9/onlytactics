@@ -22,18 +22,28 @@ attachGlobalPolyfills()
 
 const expressApp = express()
 
-// Basic CORS handling for local dev + deployments that serve the client separately.
-expressApp.use((req, res, next) => {
+const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+const applyCorsHeaders = (
+  req: express.Request | import('http').IncomingMessage,
+  res: express.Response | import('http').ServerResponse,
+) => {
+  if (res.headersSent) return
   const origin = typeof req.headers.origin === 'string' ? req.headers.origin : ''
-  const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173']
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
+    res.setHeader('Vary', 'Origin')
   } else {
     res.setHeader('Access-Control-Allow-Origin', '*')
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
   res.setHeader('Access-Control-Max-Age', '86400')
+}
+
+// Basic CORS handling for local dev + deployments that serve the client separately.
+expressApp.use((req, res, next) => {
+  applyCorsHeaders(req, res)
   if (req.method === 'OPTIONS') {
     res.status(204).end()
     return
@@ -56,10 +66,45 @@ expressApp.get('/health', (_req, res) => {
 })
 
 const httpServer = createServer(expressApp)
+httpServer.on('request', (req, res) => {
+  applyCorsHeaders(req, res)
+  if (!res.headersSent && req.method === 'OPTIONS') {
+    res.statusCode = 204
+    res.end()
+  }
+})
 
 const gameServer = new ColyseusServer({
   server: httpServer,
 })
+
+const normalizeMatchmakeResponse = (response: unknown) => {
+  if (!response || typeof response !== 'object') return response
+  const record = response as Record<string, unknown>
+  if (record.room && typeof record.room === 'object') return response
+  const name = typeof record.name === 'string' ? record.name : undefined
+  const roomId = typeof record.roomId === 'string' ? record.roomId : undefined
+  if (!name || !roomId) return response
+  const processId =
+    typeof record.processId === 'string' ? record.processId : matchMaker.processId
+  const publicAddress =
+    typeof record.publicAddress === 'string' ? record.publicAddress : undefined
+  return {
+    ...record,
+    room: {
+      name,
+      roomId,
+      processId,
+      ...(publicAddress ? { publicAddress } : {}),
+    },
+  }
+}
+
+const originalInvoke = matchMaker.controller.invokeMethod.bind(matchMaker.controller)
+matchMaker.controller.invokeMethod = async (...args) => {
+  const response = await originalInvoke(...args)
+  return normalizeMatchmakeResponse(response)
+}
 
 // Define 'race_room' as the room type for dynamic room creation
 gameServer.define('race_room', RaceRoom)
@@ -176,9 +221,7 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
 const start = async () => {
   try {
     await gameServer.listen(env.port, env.hostname)
-    console.log(
-      `[colyseus] listening on ${env.hostname}:${env.port}`,
-    )
+    console.log(`[colyseus] listening on ${env.hostname}:${env.port}`)
   } catch (error) {
     console.error('[colyseus] failed to start server', error)
     process.exit(1)
@@ -186,4 +229,3 @@ const start = async () => {
 }
 
 void start()
-
