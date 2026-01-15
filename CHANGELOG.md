@@ -1,3 +1,11 @@
+## [1.33.2](https://github.com/Smod9/onlytactics/compare/v1.33.1...v1.33.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* polishes emoji picker ([dde06e4](https://github.com/Smod9/onlytactics/commit/dde06e42d7a87d1151094b2a4549ba867ea7c11c))
+* Reverts .env ([f3aa25b](https://github.com/Smod9/onlytactics/commit/f3aa25b32a737e49d7f14897bbfa6e0c13cafbe4))
+
 ## [1.33.1](https://github.com/Smod9/onlytactics/compare/v1.33.0...v1.33.1) (2026-01-15)
 
 
