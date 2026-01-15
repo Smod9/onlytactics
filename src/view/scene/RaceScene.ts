@@ -10,6 +10,8 @@ import {
   BOAT_LENGTH,
   BOAT_STERN_OFFSET,
   BOAT_STERN_RADIUS,
+  GATE_COLLIDER_RADIUS,
+  MARK_COLLIDER_RADIUS,
   NO_GO_ANGLE_DEG,
   STALL_DURATION_S,
   WAKE_BIAS_DEG,
@@ -24,6 +26,7 @@ import {
   WAKE_MAX_SLOWDOWN,
   WAKE_TURB_HALF_ANGLE_DEG,
 } from '@/logic/constants'
+import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import { raceStore } from '@/state/raceStore'
 import {
   courseLegs,
@@ -843,6 +846,7 @@ export class RaceScene {
     this.drawMarkLabels(state)
     this.drawNextMarkHighlight(state)
     this.drawCrossingMarkers(state)
+    this.drawCollisionDebug(state)
     this.drawCameraDebug(state)
   }
 
@@ -1430,6 +1434,36 @@ export class RaceScene {
         this.overlayLayer.addChild(group)
       })
     })
+  }
+
+  private drawCollisionDebug(state: RaceState) {
+    const gateIndices = new Set<number>()
+    courseLegs.forEach((leg) => {
+      if (leg.kind === 'gate' && leg.gateMarkIndices) {
+        gateIndices.add(leg.gateMarkIndices[0])
+        gateIndices.add(leg.gateMarkIndices[1])
+      }
+    })
+
+    const markOverlay = new Graphics()
+    markOverlay.setStrokeStyle({ width: 1, color: 0xffa53a, alpha: 0.5 })
+    state.marks.forEach((mark, index) => {
+      const radius = gateIndices.has(index) ? GATE_COLLIDER_RADIUS : MARK_COLLIDER_RADIUS
+      markOverlay.circle(mark.x, mark.y, radius)
+    })
+    markOverlay.stroke()
+
+    const boatOverlay = new Graphics()
+    boatOverlay.setStrokeStyle({ width: 1, color: 0x24e5ff, alpha: 0.55 })
+    Object.values(state.boats).forEach((boat) => {
+      const circles = boatCapsuleCircles(boat)
+      circles.forEach((circle) => {
+        boatOverlay.circle(circle.x, circle.y, circle.r)
+      })
+    })
+    boatOverlay.stroke()
+
+    this.overlayLayer.addChild(markOverlay, boatOverlay)
   }
 
   private drawStartLine(state: RaceState) {

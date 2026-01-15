@@ -77,9 +77,12 @@ import {
   TURN_RATE_DEG,
   MAX_REVERSE_SPEED_KTS,
   LEEWARD_DRIFT_SPEED_KTS,
+  COLLISION_SLOWDOWN_AT_FAULT,
 } from './constants'
 import { appEnv } from '@/config/env'
 import { sampleWindSpeed } from '@/logic/windField'
+import { resolveBoatMarkCollisions } from '@/logic/collision/rapier'
+import type { CollisionOutcome } from '@/logic/rules'
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -438,7 +441,12 @@ export type InputMap = Record<string, PlayerInput>
  * @param inputs - Map of player inputs by boat ID
  * @param dt - Time step in seconds (typically 1/60 for 60fps)
  */
-export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) => {
+export const stepRaceState = (
+  state: RaceState,
+  inputs: InputMap,
+  dt: number,
+  collisionOutcome?: CollisionOutcome,
+) => {
   // Advance simulation time
   state.t += dt
 
@@ -580,6 +588,12 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     // Smoothly interpolate toward target speed
     boat.speed = smoothSpeed(boat.speed, targetSpeed, dt)
 
+    const fault = collisionOutcome?.faults[boat.id]
+    const hasBoatCollision = collisionOutcome?.collidedBoatIds.has(boat.id)
+    if (fault === 'at_fault' && hasBoatCollision) {
+      boat.speed *= COLLISION_SLOWDOWN_AT_FAULT
+    }
+
     // Update position based on heading and speed
     // Coordinate system: +X = East, +Y = South (y inverted because North is "up" on screen)
     const courseRad = degToRad(boat.headingDeg)
@@ -600,6 +614,14 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
       boat.pos.x += leewardVec.x * driftMs * dt
       boat.pos.y += leewardVec.y * driftMs * dt
     }
+  })
+
+  const { correctedPositions } = resolveBoatMarkCollisions(state)
+  correctedPositions.forEach((pos, boatId) => {
+    const boat = state.boats[boatId]
+    if (!boat) return
+    boat.pos.x = pos.x
+    boat.pos.y = pos.y
   })
 }
 

@@ -205,9 +205,10 @@ export class HostLoop {
       return
     }
     const inputs = this.store.consumeInputs()
+    const collisionOutcomes = this.rules.computeCollisionOutcomes(next)
     const countdownHeld = next.phase === 'prestart' && !next.countdownArmed
     if (!countdownHeld) {
-      stepRaceState(next, inputs, dt)
+      stepRaceState(next, inputs, dt, collisionOutcomes)
     } else if (next.phase === 'prestart' && !next.countdownArmed) {
       next.t = -appEnv.countdownSeconds
     }
