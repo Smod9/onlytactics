@@ -22,7 +22,6 @@ export const LobbyClient = () => {
     '🧭',
     '⚓',
     '🌬️',
-    '⛵️',
     '🏝️',
     '🐬',
     '🐳',
@@ -97,7 +96,7 @@ export const LobbyClient = () => {
   }
 
   const handleJoinRoom = (roomId: string) => {
-      window.location.href = `/app?roomId=${encodeURIComponent(roomId)}`
+    window.location.href = `/app?roomId=${encodeURIComponent(roomId)}`
   }
 
   const formatDate = (timestamp: number) => {
@@ -119,14 +118,14 @@ export const LobbyClient = () => {
   }
 
   return (
-      <div
-        className="lobby-client"
-        style={{
-          padding: '2.5rem 2rem 3rem',
-          maxWidth: '980px',
-          margin: '0 auto',
-        }}
-      >
+    <div
+      className="lobby-client"
+      style={{
+        padding: '2.5rem 2rem 3rem',
+        maxWidth: '980px',
+        margin: '0 auto',
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -139,9 +138,7 @@ export const LobbyClient = () => {
       >
         <div style={{ minWidth: 240 }}>
           <h1 style={{ fontSize: '2.2rem', marginBottom: '0.35rem' }}>Race Lobby</h1>
-          <p style={{ opacity: 0.75, margin: 0 }}>
-            Pick a race or start a new one.
-          </p>
+          <p style={{ opacity: 0.75, margin: 0 }}>Pick a race or start a new one.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button
@@ -235,12 +232,14 @@ export const LobbyClient = () => {
                   aria-label="Select emoji"
                   disabled={creating}
                   style={{
-                    padding: '0.5rem',
+                    padding: '0.5rem 0.6rem',
                     border: '1px solid rgba(255, 255, 255, 0.2)',
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     color: 'inherit',
                     borderRadius: '4px',
                     fontFamily: 'inherit',
+                    fontSize: '1.8rem',
+                    lineHeight: 1,
                   }}
                 >
                   {emojiOptions.map((emoji) => (
@@ -440,7 +439,9 @@ export const LobbyClient = () => {
                   opacity: 0.85,
                 }}
               >
-                <div>Players: {room.playerCount} / {room.maxClients}</div>
+                <div>
+                  Players: {room.playerCount} / {room.maxClients}
+                </div>
                 {typeof room.timeToStartSeconds === 'number' && (
                   <div>
                     Time to start:{' '}
@@ -524,4 +525,3 @@ export const LobbyClient = () => {
     </div>
   )
 }
-
