@@ -76,7 +76,7 @@ type RosterEntryPayload = {
   boatId: string | null
 }
 
-export class RaceRoom extends Room<RaceRoomState> {
+export class RaceRoom extends Room<{ state: RaceRoomState }> {
   maxClients = 32
 
   private raceStore?: RaceStore
@@ -416,7 +416,8 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.broadcastRoster()
   }
 
-  async onLeave(client: Client, consented: boolean) {
+  async onLeave(client: Client, code?: number) {
+    const consented = code === 1000 || code === 1001
     // If a client disconnects unexpectedly, allow a brief reconnection window.
     // This prevents "freeze -> refresh -> new boat" churn for transient network drops.
     if (!consented) {

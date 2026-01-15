@@ -1,4 +1,5 @@
 import { Server as ColyseusServer, matchMaker } from 'colyseus'
+import { WebSocketTransport } from '@colyseus/ws-transport'
 import express from 'express'
 import { createServer } from 'http'
 import { performance } from 'node:perf_hooks'
@@ -58,7 +59,7 @@ expressApp.get('/health', (_req, res) => {
 const httpServer = createServer(expressApp)
 
 const gameServer = new ColyseusServer({
-  server: httpServer,
+  transport: new WebSocketTransport({ server: httpServer }),
 })
 
 // Define 'race_room' as the room type for dynamic room creation
