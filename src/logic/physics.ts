@@ -75,6 +75,8 @@ import {
   WAKE_TURB_MAX_SLOWDOWN,
   WAKE_TURB_STRENGTH,
   TURN_RATE_DEG,
+  MAX_REVERSE_SPEED_KTS,
+  LEEWARD_DRIFT_SPEED_KTS,
 } from './constants'
 import { appEnv } from '@/config/env'
 import { sampleWindSpeed } from '@/logic/windField'
@@ -534,14 +536,16 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
       polarTargetSpeed(awa, localWindSpeed, DEFAULT_SHEET) * appEnv.speedMultiplier
 
     // Slow-down / depower handling:
-    // - Blowing sails (held control) should reduce speed to ~10% of TWS.
-    // - Near the maximum upwind angle (NO_GO boundary), speed should also be ~10% of TWS
+    // - Blowing sails (held control) allows reversing down to -0.2 kts.
+    // - Near the maximum upwind angle (NO_GO boundary), speed should be ~10% of TWS
     //   (this keeps "parking" and prestart control consistent and avoids being too fast at max upwind).
     const absAwa = Math.abs(awa)
     const slowCap = localWindSpeed * 0.1 * appEnv.speedMultiplier
+    const reverseSpeedKts = MAX_REVERSE_SPEED_KTS * appEnv.speedMultiplier
     const nearMaxUpwind = absAwa <= NO_GO_ANGLE_DEG + 1
-    const shouldSlow = boat.blowSails || boat.stallTimer > 0 || nearMaxUpwind
-    if (shouldSlow) {
+    if (boat.blowSails) {
+      targetSpeed = Math.min(targetSpeed, reverseSpeedKts)
+    } else if (boat.stallTimer > 0 || nearMaxUpwind) {
       targetSpeed = Math.min(targetSpeed, slowCap)
     }
 
@@ -585,6 +589,17 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     boat.prevPos.y = boat.pos.y
     boat.pos.x += Math.sin(courseRad) * speedMs * dt
     boat.pos.y -= Math.cos(courseRad) * speedMs * dt // Negative because North is up
+
+    if (boat.speed <= 0) {
+      const headingVec = dirToUnit(boat.headingDeg)
+      const leewardVec =
+        awa >= 0
+          ? { x: -headingVec.y, y: headingVec.x }
+          : { x: headingVec.y, y: -headingVec.x }
+      const driftMs = LEEWARD_DRIFT_SPEED_KTS * KNOTS_TO_MS * appEnv.speedMultiplier
+      boat.pos.x += leewardVec.x * driftMs * dt
+      boat.pos.y += leewardVec.y * driftMs * dt
+    }
   })
 }
 
