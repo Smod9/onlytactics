@@ -583,7 +583,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: -0.35rem;
 }
+
 
 .bottom-left-overlays {
   position: fixed;
@@ -607,6 +609,74 @@ button {
 .perf-overlay {
   pointer-events: none;
   user-select: none;
+}
+
+.wind-intensity-legend {
+  position: fixed;
+  right: 0.75rem;
+  bottom: 40%;
+  transform: translateY(50%);
+  z-index: 12;
+  pointer-events: none;
+  background: rgba(8, 12, 24, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  color: #dfe7ff;
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  min-width: 10.5rem;
+}
+
+.wind-intensity-title {
+  text-transform: uppercase;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin-bottom: 0.35rem;
+}
+
+.wind-intensity-scale {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.6rem;
+  row-gap: 0.3rem;
+  align-items: start;
+}
+
+.wind-intensity-gradient {
+  width: 0.7rem;
+  height: 4.2rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #19d3c5 0%, #2d3d66 50%, #12345a 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  grid-row: 1 / span 2;
+}
+
+.wind-intensity-labels {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.64rem;
+  opacity: 0.85;
+  height: 4.2rem;
+  justify-content: space-between;
+  padding: 0.05rem 0;
+  line-height: 1.15;
+}
+
+.wind-intensity-note {
+  font-size: 0.66rem;
+  opacity: 0.65;
+}
+
+@media (max-height: 720px) {
+  .wind-intensity-legend {
+    display: none;
+  }
 }
 
 .speed-heading-overlay .hud-section {
@@ -746,6 +816,26 @@ button {
   display: inline-block;
   min-width: 8ch;
   text-align: right;
+  position: relative;
+  padding-right: 2.9ch;
+}
+
+.wind-speed-delta {
+  position: absolute;
+  right: -0.6ch;
+  top: -0.25em;
+  font-size: 0.62rem;
+  opacity: 0.7;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.wind-speed-delta.positive {
+  color: #7ef7e3;
+}
+
+.wind-speed-delta.negative {
+  color: #7ea4ff;
 }
 
 .speed-heading-overlay .hud-metric-winddir .hud-value {
@@ -1900,6 +1990,47 @@ button {
   margin-bottom: 0.75rem;
   color: rgba(205, 213, 243, 0.92);
   line-height: 1.35;
+}
+
+.keyboard-help-callout {
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(83, 224, 255, 0.24);
+  background: rgba(11, 22, 38, 0.7);
+  color: rgba(225, 236, 255, 0.96);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.keyboard-help-callout-header {
+  margin-bottom: 0.5rem;
+}
+
+.keyboard-help-callout-scale {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.5rem;
+  align-items: center;
+}
+
+.keyboard-help-callout-gradient {
+  width: 0.55rem;
+  height: 2.8rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #19d3c5 0%, #2d3d66 50%, #12345a 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.keyboard-help-callout-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 2.8rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 .keyboard-help-layout {
