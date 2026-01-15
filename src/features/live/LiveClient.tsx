@@ -93,6 +93,7 @@ export const LiveClient = () => {
   const [userRoleDraft, setUserRoleDraft] = useState<NonHostRole>('player')
   const [userSettingsError, setUserSettingsError] = useState<string | null>(null)
   const [roomDisplayName, setRoomDisplayName] = useState<string | null>(null)
+  const [roomResolved, setRoomResolved] = useState(!roomId)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(
     null,
@@ -117,22 +118,41 @@ export const LiveClient = () => {
   useEffect(() => {
     if (!roomId) return
     let active = true
-    roomService
-      .getRoomDetails(roomId)
-      .then((room) => {
-        if (active) setRoomDisplayName(room.roomName)
-      })
-      .catch((err) => {
+    let attempts = 0
+    let retryTimer: number | undefined
+    const retryDelayMs = 500
+    const maxRetries = 6
+
+    const fetchDetails = async () => {
+      try {
+        const room = await roomService.getRoomDetails(roomId)
+        if (!active) return
+        setRoomDisplayName(room.roomName)
+        setRoomResolved(true)
+      } catch (err) {
         if (!active) return
         if (err instanceof RoomNotFoundError) {
+          attempts += 1
+          if (attempts <= maxRetries) {
+            retryTimer = window.setTimeout(fetchDetails, retryDelayMs)
+            return
+          }
           const search = new URLSearchParams({ invalidRoomId: roomId })
           window.location.href = `/lobby?${search.toString()}`
           return
         }
         console.warn('[LiveClient] failed to load room details', err)
-      })
+        setRoomResolved(true)
+      }
+    }
+
+    setRoomResolved(false)
+    void fetchDetails()
     return () => {
       active = false
+      if (retryTimer) {
+        window.clearTimeout(retryTimer)
+      }
     }
   }, [roomId])
 
@@ -182,6 +202,7 @@ export const LiveClient = () => {
 
   useEffect(() => {
     if (needsName) return
+    if (roomId && !roomResolved) return
     void network.start().catch((err) => {
       console.warn('[LiveClient] network start failed', err)
     })
@@ -192,7 +213,7 @@ export const LiveClient = () => {
       }
       network.stop()
     }
-  }, [network, needsName])
+  }, [network, needsName, roomId, roomResolved])
 
   useEffect(() => {
     if (needsName || idleSuspended) return

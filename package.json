@@ -14,8 +14,8 @@
     "release": "semantic-release"
   },
   "dependencies": {
-    "colyseus.js": "^0.16.22",
     "@dimforge/rapier2d-compat": "^0.14.0",
+    "colyseus.js": "^0.16.5",
     "idb": "^8.0.3",
     "pixi.js": "^8.14.3",
     "react": "^19.2.0",

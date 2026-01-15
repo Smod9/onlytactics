@@ -99,15 +99,32 @@ export class ColyseusBridge {
     }
     // Use joinById for existing rooms, joinOrCreate for creating new rooms
     if (options?.joinExisting !== false && this.roomId && this.roomId !== 'race_room') {
-      // Try to join existing room by ID
-      try {
-        this.room = await this.client.joinById<RaceRoomSchema>(this.roomId, joinOptions)
-      } catch (err) {
-        if (appEnv.debugNetLogs) {
-          console.info('[ColyseusBridge]', 'room not found', { roomId: this.roomId, err })
+      // Try to join existing room by ID, with a few retries for matchmaker propagation.
+      const maxAttempts = 5
+      const retryDelayMs = 400
+      let lastError: unknown
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          this.room = await this.client.joinById<RaceRoomSchema>(this.roomId, joinOptions)
+          lastError = undefined
+          break
+        } catch (err) {
+          lastError = err
+          if (appEnv.debugNetLogs) {
+            console.info('[ColyseusBridge]', 'joinById failed', {
+              roomId: this.roomId,
+              attempt,
+              err,
+            })
+          }
+          if (attempt < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+          }
         }
+      }
+      if (!this.room) {
         this.emitStatus('error')
-        throw err
+        throw lastError
       }
     } else {
       // Create or join room type directly
