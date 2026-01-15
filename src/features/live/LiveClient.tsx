@@ -65,14 +65,14 @@ export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const telemetry = useInputTelemetry()
-  
+
   // Get roomId from URL query parameter
   const roomId = useMemo(() => {
     if (typeof window === 'undefined') return undefined
     const params = new URLSearchParams(window.location.search)
     return params.get('roomId') ?? undefined
   }, [])
-  
+
   const [network] = useState(() => new GameNetwork(roomId))
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
@@ -1244,19 +1244,16 @@ export const LiveClient = () => {
 }
 
 const BottomLeftOverlays = ({ rttText }: { rttText: string }) => {
-  const showPerf = appEnv.debugHud || appEnv.perfHud
-  const { label } = useFrameDropStats({ enabled: showPerf })
+  const { label } = useFrameDropStats()
 
   return (
     <div className="bottom-left-overlays" aria-label="Network and performance overlays">
       <div className="rtt-overlay" aria-label="Input RTT">
         {rttText}
       </div>
-      {showPerf && (
-        <div className="perf-overlay" aria-label="Frame drop percentage">
-          {label}
-        </div>
-      )}
+      <div className="perf-overlay" aria-label="Frame drop percentage">
+        {label}
+      </div>
     </div>
   )
 }
