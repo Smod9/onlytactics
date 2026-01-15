@@ -11,7 +11,21 @@ const KEYBOARD_LAYOUT_SRC = `${import.meta.env.BASE_URL}${encodeURIComponent(KEY
 
 type HelpSection = 'keyboard' | 'tips'
 
-export const TacticianPopout = () => {
+export const TacticianPopout = ({
+  windIntensityEnabled,
+  windIntensityKts,
+}: {
+  windIntensityEnabled?: boolean
+  windIntensityKts?: number
+}) => {
+  const hasWindIntensity =
+    Boolean(windIntensityEnabled) && Number.isFinite(windIntensityKts)
+  const intensityValue = hasWindIntensity
+    ? Math.abs(windIntensityKts ?? 0)
+    : null
+  const windIntensityLabel = hasWindIntensity
+    ? `Wind intensity: ±${intensityValue?.toFixed(1)} kts (puffs/lulls)`
+    : 'Wind intensity: off'
   const [open, setOpen] = useState(() => {
     if (typeof window === 'undefined') return false
     const stored = localStorage.getItem(STORAGE_KEY)
@@ -175,6 +189,24 @@ export const TacticianPopout = () => {
                     aria-label="Tips"
                   >
                     <p className="keyboard-help-lead">Quick tips:</p>
+                    <div className="keyboard-help-callout" role="status">
+                      <div className="keyboard-help-callout-header">
+                        {windIntensityLabel}
+                      </div>
+                      {hasWindIntensity && (
+                        <div className="keyboard-help-callout-scale">
+                          <div
+                            className="keyboard-help-callout-gradient"
+                            aria-hidden="true"
+                          />
+                          <div className="keyboard-help-callout-labels">
+                            <span>+{intensityValue?.toFixed(1)}</span>
+                            <span>0</span>
+                            <span>-{intensityValue?.toFixed(1)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <ul className="keyboard-help-tips">
                       {HELP_TIPS.map((tip) => (
                         <li key={tip.id}>{tip.text}</li>

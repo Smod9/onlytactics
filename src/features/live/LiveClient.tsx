@@ -65,14 +65,14 @@ export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const telemetry = useInputTelemetry()
-  
+
   // Get roomId from URL query parameter
   const roomId = useMemo(() => {
     if (typeof window === 'undefined') return undefined
     const params = new URLSearchParams(window.location.search)
     return params.get('roomId') ?? undefined
   }, [])
-  
+
   const [network] = useState(() => new GameNetwork(roomId))
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
@@ -780,6 +780,20 @@ export const LiveClient = () => {
                                 <span className="hud-label">SPD</span>
                                 <span className="hud-value">
                                   {windSpeedAtBoat.toFixed(1)} kts
+                                  {(() => {
+                                    const delta = windSpeedAtBoat - race.wind.speed
+                                    if (Math.abs(delta) < 0.1) return null
+                                    const sign = delta > 0 ? '+' : ''
+                                    return (
+                                      <span
+                                        className={`wind-speed-delta ${delta >= 0 ? 'positive' : 'negative'}`}
+                                        title="Local wind delta from puffs/lulls"
+                                      >
+                                        {sign}
+                                        {delta.toFixed(1)}
+                                      </span>
+                                    )
+                                  })()}
                                 </span>
                               </div>
                               <div className="hud-metric hud-metric-windshift">
@@ -1113,7 +1127,14 @@ export const LiveClient = () => {
           rttText={myLatency ? `RTT ${myLatency.latencyMs.toFixed(0)}ms` : 'RTT —'}
         />
       )}
-      <TacticianPopout />
+      <WindIntensityLegend
+        enabled={race.windField?.enabled}
+        intensityKts={race.windField?.intensityKts}
+      />
+      <TacticianPopout
+        windIntensityEnabled={race.windField?.enabled}
+        windIntensityKts={race.windField?.intensityKts}
+      />
       {showDebug && (
         <div className="debug-dock">
           <DebugPanel onClose={() => setShowDebug(false)} network={network} />
@@ -1257,6 +1278,32 @@ const BottomLeftOverlays = ({ rttText }: { rttText: string }) => {
           {label}
         </div>
       )}
+    </div>
+  )
+}
+
+const WindIntensityLegend = ({
+  enabled,
+  intensityKts,
+}: {
+  enabled?: boolean
+  intensityKts?: number
+}) => {
+  if (!enabled || !intensityKts || !Number.isFinite(intensityKts)) return null
+  const absIntensity = Math.abs(intensityKts)
+  if (absIntensity <= 0) return null
+
+  return (
+    <div className="wind-intensity-legend" aria-label="Wind intensity scale">
+      <div className="wind-intensity-title">Wind Intensity</div>
+      <div className="wind-intensity-scale">
+        <div className="wind-intensity-gradient" aria-hidden="true" />
+        <div className="wind-intensity-labels">
+          <span>Puff +{absIntensity.toFixed(1)} kts</span>
+          <span>Neutral</span>
+          <span>Lull -{absIntensity.toFixed(1)} kts</span>
+        </div>
+      </div>
     </div>
   )
 }
