@@ -1,3 +1,11 @@
+# [1.32.0](https://github.com/Smod9/onlytactics/compare/v1.31.0...v1.32.0) (2026-01-15)
+
+
+### Features
+
+* Enhance rules engine with stern rammer logic and update boat display names ([0c31547](https://github.com/Smod9/onlytactics/commit/0c315477ac791f2f06fc80cb47bd5f3b9b229111))
+* Introduce reverse speed and leeward drift mechanics ([32d2ed1](https://github.com/Smod9/onlytactics/commit/32d2ed146e3196b6c3565341b4454c58a3e527d6))
+
 # [1.31.0](https://github.com/Smod9/onlytactics/compare/v1.30.0...v1.31.0) (2026-01-15)
 
 
