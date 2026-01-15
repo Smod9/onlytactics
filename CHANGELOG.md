@@ -1,3 +1,10 @@
+## [1.34.2](https://github.com/Smod9/onlytactics/compare/v1.34.1...v1.34.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* devdependency fix ([94cc682](https://github.com/Smod9/onlytactics/commit/94cc68230f3258967887ab46d7f48544f3787824))
+
 ## [1.34.1](https://github.com/Smod9/onlytactics/compare/v1.34.0...v1.34.1) (2026-01-15)
 
 
