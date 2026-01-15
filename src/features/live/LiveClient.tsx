@@ -25,7 +25,7 @@ import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
 import { RosterPanel } from './RosterPanel'
 import type { CameraMode } from '@/view/scene/RaceScene'
-import { ZoomIcon } from '@/view/icons'
+import { LobbyIcon, ZoomIcon } from '@/view/icons'
 import { angleDiff } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
 import { useFrameDropStats } from '@/state/useFrameDropStats'
@@ -272,6 +272,32 @@ export const LiveClient = () => {
     return Number.isInteger(minutes) ? `${minutes}min` : `${minutes.toFixed(1)}min`
   }
 
+  const formatRaceTime = (seconds: number, decimals = 2) => {
+    const safeSeconds = Math.max(0, seconds)
+    const wholeSeconds = Math.floor(safeSeconds)
+    const fraction = safeSeconds - wholeSeconds
+    const hours = Math.floor(wholeSeconds / 3600)
+    const minutes = Math.floor((wholeSeconds % 3600) / 60)
+    const secs = wholeSeconds % 60
+    const fractionValue = Math.floor(fraction * Math.pow(10, decimals))
+    const fractionLabel =
+      decimals > 0 ? `.${fractionValue.toString().padStart(decimals, '0')}` : ''
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs
+        .toString()
+        .padStart(2, '0')}${fractionLabel}`
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}${fractionLabel}`
+  }
+
+  const formatSplit = (deltaSeconds: number) => {
+    const sign = deltaSeconds >= 0 ? '+' : '-'
+    const totalSeconds = Math.round(Math.abs(deltaSeconds))
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${sign}${minutes}:${seconds.toString().padStart(2, '0')}s`
+  }
+
   const roster = useRoster()
   const rosterHostName =
     roster.hostId &&
@@ -296,6 +322,12 @@ export const LiveClient = () => {
   const hostNameDisplay = hostName ?? 'Host'
   const showWaitingOverlay =
     role !== 'host' && race.phase === 'prestart' && !race.countdownArmed
+
+  const elapsedRaceLabel = formatRaceTime(Math.max(0, race.t))
+  const finishedTimes = race.leaderboard
+    .map((boatId) => race.boats[boatId]?.finishTime)
+    .filter((time): time is number => typeof time === 'number')
+  const firstFinishTime = finishedTimes.length ? Math.min(...finishedTimes) : null
 
   const submitName = (event: FormEvent) => {
     event.preventDefault()
@@ -364,62 +396,11 @@ export const LiveClient = () => {
           className="header-controls"
           style={{ display: 'flex', gap: 10, alignItems: 'center' }}
         >
-          {!needsName && (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0.2rem 0.4rem',
-                border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.05)',
-              }}
-            >
-              <button
-                type="button"
-                className="start-sequence"
-                onClick={() => {
-                  window.location.href = '/lobby'
-                }}
-                title="Back to Lobby"
-                style={{
-                  padding: '0.35rem 0.6rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M17 16l4-4-4-4" />
-                  <path d="M21 12H9" />
-                  <path d="M4 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4" />
-                </svg>
-                Lobby
-              </button>
-              {truncatedRoomName && (
-                <span
-                  className="room-name-pill"
-                  style={{
-                    fontSize: 13,
-                    opacity: 0.8,
-                    padding: '0.2rem 0.4rem',
-                  }}
-                  title={roomDisplayName ?? 'Race'}
-                >
-                  {truncatedRoomName}
-                </span>
-              )}
+          {!needsName && truncatedRoomName && (
+            <div className="header-room-group">
+              <span className="header-room-name" title={roomDisplayName ?? 'Race'}>
+                {truncatedRoomName}
+              </span>
             </div>
           )}
           <div style={{ display: 'none' }}>
@@ -843,6 +824,10 @@ export const LiveClient = () => {
                   )
                 })()}
               </div>
+              <WindIntensityLegend
+                enabled={race.windField?.enabled}
+                intensityKts={race.windField?.intensityKts}
+              />
               {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
                 <div className="spin-under-hud">
                   <button
@@ -928,6 +913,10 @@ export const LiveClient = () => {
                   </button>
                 )}
               </div>
+              <div className="race-time-panel" aria-label="Elapsed race time">
+                <span className="race-time-label">Race time</span>
+                <span className="race-time-value">{elapsedRaceLabel}</span>
+              </div>
               <div className="leaderboard-overlay">
                 <div className="leaderboard-panel">
                   <h3>Leaderboard</h3>
@@ -963,8 +952,24 @@ export const LiveClient = () => {
                             : ''
 
                         let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
+                        let splitText: string | null = null
                         if (finished) {
-                          statusText = 'Finished'
+                          if (typeof boat.finishTime === 'number') {
+                            const finishLabel = formatRaceTime(boat.finishTime)
+                            if (
+                              firstFinishTime !== null &&
+                              Number.isFinite(firstFinishTime) &&
+                              Number.isFinite(boat.finishTime)
+                            ) {
+                              const deltaSeconds = boat.finishTime - firstFinishTime
+                              const normalizedDelta =
+                                Math.abs(deltaSeconds) < 0.005 ? 0 : deltaSeconds
+                              splitText = formatSplit(normalizedDelta)
+                            }
+                            statusText = finishLabel
+                          } else {
+                            statusText = 'Finished'
+                          }
                         } else if (atLine && !onFinalLap) {
                           statusText = 'Pre-start'
                         } else if (atLine && onFinalLap) {
@@ -972,6 +977,7 @@ export const LiveClient = () => {
                         }
 
                         const speedText = leaderboardSpeeds[boatId] ?? '—'
+                        const metaBottomText = finished ? (splitText ?? '—') : speedText
 
                         return (
                           <li key={boatId}>
@@ -989,7 +995,9 @@ export const LiveClient = () => {
                             </span>
                             <span className="leaderboard-meta">
                               <span className="leaderboard-meta-top">{statusText}</span>
-                              <span className="leaderboard-meta-bottom">{speedText}</span>
+                              <span className="leaderboard-meta-bottom">
+                                {metaBottomText}
+                              </span>
                             </span>
                           </li>
                         )
@@ -1127,10 +1135,6 @@ export const LiveClient = () => {
           rttText={myLatency ? `RTT ${myLatency.latencyMs.toFixed(0)}ms` : 'RTT —'}
         />
       )}
-      <WindIntensityLegend
-        enabled={race.windField?.enabled}
-        intensityKts={race.windField?.intensityKts}
-      />
       <TacticianPopout
         windIntensityEnabled={race.windField?.enabled}
         windIntensityKts={race.windField?.intensityKts}
@@ -1244,6 +1248,16 @@ export const LiveClient = () => {
               <div className="username-form-actions">
                 <button
                   type="button"
+                  className="user-menu-lobby"
+                  onClick={() => {
+                    window.location.href = '/lobby'
+                  }}
+                >
+                  <LobbyIcon />
+                  Lobby
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setShowUserModal(false)
                     setUserSettingsError(null)
@@ -1292,18 +1306,12 @@ const WindIntensityLegend = ({
 
   return (
     <div className="wind-intensity-legend" aria-label="Wind intensity scale">
-      <div className="wind-intensity-title">Wind Intensity</div>
-      <div className="wind-intensity-scale">
-        <div className="wind-intensity-squares" aria-hidden="true">
-          {Array.from({ length: 9 }).map((_, index) => (
-            <span key={index} className="wind-intensity-square" />
-          ))}
-        </div>
-        <div className="wind-intensity-labels">
-          <span>+{absIntensity.toFixed(1)} kts</span>
-          <span>Neutral</span>
+      <div className="wind-intensity-track-wrap" aria-hidden="true">
+        <div className="wind-intensity-track-labels">
           <span>-{absIntensity.toFixed(1)} kts</span>
+          <span>+{absIntensity.toFixed(1)} kts</span>
         </div>
+        <div className="wind-intensity-track" />
       </div>
     </div>
   )
