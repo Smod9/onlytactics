@@ -195,10 +195,11 @@ export const TacticianPopout = ({
                       </div>
                       {hasWindIntensity && (
                         <div className="keyboard-help-callout-scale">
-                          <div
-                            className="keyboard-help-callout-gradient"
-                            aria-hidden="true"
-                          />
+                          <div className="keyboard-help-callout-squares" aria-hidden="true">
+                            {Array.from({ length: 9 }).map((_, index) => (
+                              <span key={index} className="keyboard-help-callout-square" />
+                            ))}
+                          </div>
                           <div className="keyboard-help-callout-labels">
                             <span>+{intensityValue?.toFixed(1)}</span>
                             <span>0</span>

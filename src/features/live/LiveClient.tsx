@@ -1294,11 +1294,15 @@ const WindIntensityLegend = ({
     <div className="wind-intensity-legend" aria-label="Wind intensity scale">
       <div className="wind-intensity-title">Wind Intensity</div>
       <div className="wind-intensity-scale">
-        <div className="wind-intensity-gradient" aria-hidden="true" />
+        <div className="wind-intensity-squares" aria-hidden="true">
+          {Array.from({ length: 9 }).map((_, index) => (
+            <span key={index} className="wind-intensity-square" />
+          ))}
+        </div>
         <div className="wind-intensity-labels">
-          <span>Puff +{absIntensity.toFixed(1)} kts</span>
+          <span>+{absIntensity.toFixed(1)} kts</span>
           <span>Neutral</span>
-          <span>Lull -{absIntensity.toFixed(1)} kts</span>
+          <span>-{absIntensity.toFixed(1)} kts</span>
         </div>
       </div>
     </div>
