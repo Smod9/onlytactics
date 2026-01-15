@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/Smod9/onlytactics/compare/v1.32.0...v1.33.0) (2026-01-15)
+
+
+### Features
+
+* Add wind intensity features to TacticianPopout and LiveClient ([984a710](https://github.com/Smod9/onlytactics/commit/984a710dfd95bdb93cdc1280117c27d6b8ea447d))
+
 # [1.32.0](https://github.com/Smod9/onlytactics/compare/v1.31.0...v1.32.0) (2026-01-15)
 
 
