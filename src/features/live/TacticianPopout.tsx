@@ -20,9 +20,7 @@ export const TacticianPopout = ({
 }) => {
   const hasWindIntensity =
     Boolean(windIntensityEnabled) && Number.isFinite(windIntensityKts)
-  const intensityValue = hasWindIntensity
-    ? Math.abs(windIntensityKts ?? 0)
-    : null
+  const intensityValue = hasWindIntensity ? Math.abs(windIntensityKts ?? 0) : null
   const windIntensityLabel = hasWindIntensity
     ? `Wind intensity: ±${intensityValue?.toFixed(1)} kts (puffs/lulls)`
     : 'Wind intensity: off'
@@ -195,15 +193,15 @@ export const TacticianPopout = ({
                       </div>
                       {hasWindIntensity && (
                         <div className="keyboard-help-callout-scale">
-                          <div className="keyboard-help-callout-squares" aria-hidden="true">
-                            {Array.from({ length: 9 }).map((_, index) => (
-                              <span key={index} className="keyboard-help-callout-square" />
-                            ))}
-                          </div>
-                          <div className="keyboard-help-callout-labels">
-                            <span>+{intensityValue?.toFixed(1)}</span>
-                            <span>0</span>
-                            <span>-{intensityValue?.toFixed(1)}</span>
+                          <div
+                            className="keyboard-help-callout-track-wrap"
+                            aria-hidden="true"
+                          >
+                            <div className="keyboard-help-callout-track-labels">
+                              <span>-{intensityValue?.toFixed(1)} kts</span>
+                              <span>+{intensityValue?.toFixed(1)} kts</span>
+                            </div>
+                            <div className="keyboard-help-callout-track" />
                           </div>
                         </div>
                       )}
