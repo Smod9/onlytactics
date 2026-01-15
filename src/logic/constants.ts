@@ -23,15 +23,17 @@ export const BOAT_STERN_RADIUS = 9
 export const BOAT_BOW_OFFSET = 12 // forward offset from boat center (scene units)
 export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
 export const BOAT_LENGTH = BOAT_BOW_OFFSET - BOAT_STERN_OFFSET // total boat length (scene units)
+export const WAKE_FORWARD_OFFSET_MAX = BOAT_LENGTH * 0.6 // Forward shift when deep downwind
 
 // Wind shadow / wake parameters
-export const WAKE_MAX_SLOWDOWN = 0.25 // Max speed reduction (25%)
+export const WAKE_MAX_SLOWDOWN = 0.4 // Max speed reduction (25%)
 export const WAKE_LENGTH = 100 // Downwind wake length (scene units)
 export const WAKE_HALF_WIDTH_START = 18 // Near-boat half width
 export const WAKE_HALF_WIDTH_END = 35 // Wake widens farther downwind
 export const WAKE_LEEWARD_WIDTH_MULT = 2.4 // Leeward side width multiplier
 export const WAKE_WINDWARD_WIDTH_MULT = 0.2 // Windward side width multiplier
-export const WAKE_BIAS_DEG = -50 // Leeward bias away from pure downwind
+export const WAKE_BIAS_DEG = -40 // Leeward bias away from pure downwind
+export const WAKE_TWA_ROTATION_SCALE = 0.2 // Blend wind-downwind toward boat TWA
 export const WAKE_CORE_HALF_ANGLE_DEG = 12 // Core blanket width
 export const WAKE_TURB_HALF_ANGLE_DEG = 18 // Turbulent zone width
 export const WAKE_CORE_STRENGTH = 1.0 // Core blanket strength
