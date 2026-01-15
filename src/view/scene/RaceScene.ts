@@ -17,6 +17,8 @@ import {
   WAKE_HALF_WIDTH_END,
   WAKE_HALF_WIDTH_START,
   WAKE_LEEWARD_WIDTH_MULT,
+  WAKE_FORWARD_OFFSET_MAX,
+  WAKE_TWA_ROTATION_SCALE,
   WAKE_WINDWARD_WIDTH_MULT,
   WAKE_LENGTH,
   WAKE_MAX_SLOWDOWN,
@@ -41,6 +43,11 @@ const rotateVec = (vec: Vec2, deg: number) => {
   const cos = Math.cos(rad)
   const sin = Math.sin(rad)
   return { x: vec.x * cos - vec.y * sin, y: vec.x * sin + vec.y * cos }
+}
+const wakeForwardOffset = (headingDeg: number, windDirDeg: number) => {
+  const absTwa = Math.abs(angleDiff(headingDeg, windDirDeg))
+  const downwindT = clamp01((absTwa - 110) / 50)
+  return WAKE_FORWARD_OFFSET_MAX * downwindT
 }
 
 // Mark-zone radius in world units.
@@ -883,15 +890,16 @@ export class RaceScene {
     const boat = state.boats[identity.boatId]
     if (!boat) return
 
-    const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
-    const downRad = degToRad(downwindDeg)
-    const baseDir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
+    const windDownwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+    const windDownRad = degToRad(windDownwindDeg)
+    const windDownDir = { x: Math.sin(windDownRad), y: -Math.cos(windDownRad) }
 
     const leewardSideSign = this.getLeewardSideSign(
       boat.headingDeg,
       state.wind.directionDeg,
-      baseDir,
+      windDownDir,
     )
+    const twa = angleDiff(boat.headingDeg, state.wind.directionDeg)
     const nowMs = performance.now()
     const dt = this.windShadowLastMs > 0 ? (nowMs - this.windShadowLastMs) / 1000 : 0
     this.windShadowLastMs = nowMs
@@ -900,7 +908,7 @@ export class RaceScene {
       (leewardSideSign - this.windShadowLeewardBlend) * blendT
     const leewardWeight = (this.windShadowLeewardBlend + 1) / 2
     const biasDeg = this.windShadowLeewardBlend * WAKE_BIAS_DEG
-    const dir = rotateVec(baseDir, biasDeg)
+    const dir = rotateVec(windDownDir, twa * WAKE_TWA_ROTATION_SCALE + biasDeg)
     const cross = { x: -dir.y, y: dir.x }
     const coreToTurbRatio =
       Math.tan(degToRad(WAKE_CORE_HALF_ANGLE_DEG)) /
@@ -919,6 +927,14 @@ export class RaceScene {
     const rightWidthEnd =
       windwardWidthEnd + (leewardWidthEnd - windwardWidthEnd) * (1 - leewardWeight)
 
+    const headingRad = degToRad(boat.headingDeg)
+    const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
+    const forwardOffset = wakeForwardOffset(boat.headingDeg, state.wind.directionDeg)
+    const basePos = {
+      x: boat.pos.x + headingVec.x * forwardOffset,
+      y: boat.pos.y + headingVec.y * forwardOffset,
+    }
+
     const drawZone = (widthScale: number, baseAlpha: number) => {
       const slices = 14
       const featherScales = [1, 1.18, 1.32]
@@ -927,12 +943,12 @@ export class RaceScene {
         const t0 = i / slices
         const t1 = (i + 1) / slices
         const startCenter = {
-          x: boat.pos.x + dir.x * WAKE_LENGTH * t0,
-          y: boat.pos.y + dir.y * WAKE_LENGTH * t0,
+          x: basePos.x + dir.x * WAKE_LENGTH * t0,
+          y: basePos.y + dir.y * WAKE_LENGTH * t0,
         }
         const endCenter = {
-          x: boat.pos.x + dir.x * WAKE_LENGTH * t1,
-          y: boat.pos.y + dir.y * WAKE_LENGTH * t1,
+          x: basePos.x + dir.x * WAKE_LENGTH * t1,
+          y: basePos.y + dir.y * WAKE_LENGTH * t1,
         }
         const fade = Math.pow(1 - t0, 1.6)
         for (let s = 0; s < featherScales.length; s += 1) {
@@ -978,9 +994,9 @@ export class RaceScene {
   }
 
   private drawWindShadowsDebug(state: RaceState) {
-    const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
-    const downRad = degToRad(downwindDeg)
-    const baseDir = { x: Math.sin(downRad), y: -Math.cos(downRad) }
+    const windDownwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+    const windDownRad = degToRad(windDownwindDeg)
+    const windDownDir = { x: Math.sin(windDownRad), y: -Math.cos(windDownRad) }
     const maxHalfWidth = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
     const leewardWidthStart = WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT
     const leewardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
@@ -992,18 +1008,26 @@ export class RaceScene {
 
     const wakeDirs = new Map<
       string,
-      { dir: Vec2; cross: Vec2; leewardSideSign: 1 | -1 }
+      { dir: Vec2; cross: Vec2; leewardSideSign: 1 | -1; origin: Vec2 }
     >()
     Object.values(state.boats).forEach((boat) => {
       const leewardSideSign = this.getLeewardSideSign(
         boat.headingDeg,
         state.wind.directionDeg,
-        baseDir,
+        windDownDir,
       )
+      const twa = angleDiff(boat.headingDeg, state.wind.directionDeg)
       const biasDeg = leewardSideSign * WAKE_BIAS_DEG
-      const dir = rotateVec(baseDir, biasDeg)
+      const dir = rotateVec(windDownDir, twa * WAKE_TWA_ROTATION_SCALE + biasDeg)
       const cross = { x: -dir.y, y: dir.x }
-      wakeDirs.set(boat.id, { dir, cross, leewardSideSign })
+      const headingRad = degToRad(boat.headingDeg)
+      const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
+      const forwardOffset = wakeForwardOffset(boat.headingDeg, state.wind.directionDeg)
+      const origin = {
+        x: boat.pos.x + headingVec.x * forwardOffset,
+        y: boat.pos.y + headingVec.y * forwardOffset,
+      }
+      wakeDirs.set(boat.id, { dir, cross, leewardSideSign, origin })
     })
 
     // Check which boats are actually affecting others (for intensity visualization)
@@ -1016,8 +1040,8 @@ export class RaceScene {
           if (source.id === target.id) return
           const wakeDir = wakeDirs.get(source.id)
           if (!wakeDir) return
-          const dx = target.pos.x - source.pos.x
-          const dy = target.pos.y - source.pos.y
+          const dx = target.pos.x - wakeDir.origin.x
+          const dy = target.pos.y - wakeDir.origin.y
           const distSq = dx * dx + dy * dy
           if (distSq === 0 || distSq > (WAKE_LENGTH + maxHalfWidth * 2) ** 2) return
 
@@ -1042,10 +1066,10 @@ export class RaceScene {
       // Always show in debug mode, or show when actually affecting others
       if (!appEnv.debugHud && !isAffectingOthers) return
 
-      const startCenter = boat.pos
+      const startCenter = wakeDir.origin
       const endCenter = {
-        x: boat.pos.x + wakeDir.dir.x * WAKE_LENGTH,
-        y: boat.pos.y + wakeDir.dir.y * WAKE_LENGTH,
+        x: wakeDir.origin.x + wakeDir.dir.x * WAKE_LENGTH,
+        y: wakeDir.origin.y + wakeDir.dir.y * WAKE_LENGTH,
       }
 
       const leftWidthStart =

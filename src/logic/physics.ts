@@ -65,7 +65,9 @@ import {
   WAKE_CORE_MAX_SLOWDOWN,
   WAKE_CORE_STRENGTH,
   WAKE_LEEWARD_WIDTH_MULT,
+  WAKE_TWA_ROTATION_SCALE,
   WAKE_WINDWARD_WIDTH_MULT,
+  WAKE_FORWARD_OFFSET_MAX,
   WAKE_LENGTH,
   WAKE_MAX_SLOWDOWN,
   WAKE_MIN_STRENGTH,
@@ -320,8 +322,8 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
   const boats = Object.values(state.boats)
   const factors: Record<string, number> = {}
 
-  const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
-  const baseDownwindVec = dirToUnit(downwindDeg)
+  const windDownwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+  const windDownwindVec = dirToUnit(windDownwindDeg)
   const maxHalfWidth = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
   const maxRadius = WAKE_LENGTH + maxHalfWidth * 2
   const maxRadiusSq = maxRadius * maxRadius
@@ -340,8 +342,11 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
     const awa = angleDiff(boat.headingDeg, state.wind.directionDeg)
     const headingVec = dirToUnit(boat.headingDeg)
     const leewardVec =
-      awa >= 0 ? { x: -headingVec.y, y: headingVec.x } : { x: headingVec.y, y: -headingVec.x }
-    const leewardCross = baseDownwindVec.x * leewardVec.y - baseDownwindVec.y * leewardVec.x
+      awa >= 0
+        ? { x: -headingVec.y, y: headingVec.x }
+        : { x: headingVec.y, y: -headingVec.x }
+    const leewardCross =
+      windDownwindVec.x * leewardVec.y - windDownwindVec.y * leewardVec.x
     leewardSideByBoatId[boat.id] = leewardCross >= 0 ? 1 : -1
   })
 
@@ -352,11 +357,21 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
     for (let si = 0; si < boats.length; si += 1) {
       if (si === ti) continue
       const source = boats[si]
+      const twa = angleDiff(source.headingDeg, state.wind.directionDeg)
       const biasDeg = leewardSideByBoatId[source.id] * WAKE_BIAS_DEG
-      const downwindVec = rotateVec(baseDownwindVec, biasDeg)
+      const downwindVec = rotateVec(
+        windDownwindVec,
+        twa * WAKE_TWA_ROTATION_SCALE + biasDeg,
+      )
       const crossVec = { x: -downwindVec.y, y: downwindVec.x }
-      const dx = target.pos.x - source.pos.x
-      const dy = target.pos.y - source.pos.y
+      const absTwa = Math.abs(twa)
+      const downwindT = clamp((absTwa - 110) / 50, 0, 1)
+      const forwardOffset = WAKE_FORWARD_OFFSET_MAX * downwindT
+      const headingVec = dirToUnit(source.headingDeg)
+      const sourceX = source.pos.x + headingVec.x * forwardOffset
+      const sourceY = source.pos.y + headingVec.y * forwardOffset
+      const dx = target.pos.x - sourceX
+      const dy = target.pos.y - sourceY
       const distSq = dx * dx + dy * dy
       if (distSq > maxRadiusSq) continue
       if (distSq === 0) continue
