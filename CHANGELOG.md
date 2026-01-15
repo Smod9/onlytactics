@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/Smod9/onlytactics/compare/v1.33.2...v1.34.0) (2026-01-15)
+
+
+### Features
+
+* **solid_boats:** Makes the boats at least semi solid. The give way boat is heavily penalized (basically stop) in a collision ([#96](https://github.com/Smod9/onlytactics/issues/96)) ([5e3aae5](https://github.com/Smod9/onlytactics/commit/5e3aae53750b38fb6674ae645a0a76135fa6c42c))
+
 ## [1.33.2](https://github.com/Smod9/onlytactics/compare/v1.33.1...v1.33.2) (2026-01-15)
 
 
