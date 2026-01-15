@@ -1,3 +1,10 @@
+## [1.34.3](https://github.com/Smod9/onlytactics/compare/v1.34.2...v1.34.3) (2026-01-15)
+
+
+### Bug Fixes
+
+* devdependency fix in dockerfile ([d7c9056](https://github.com/Smod9/onlytactics/commit/d7c905676837246b97015a16983704622bb8d72c))
+
 ## [1.34.2](https://github.com/Smod9/onlytactics/compare/v1.34.1...v1.34.2) (2026-01-15)
 
 
