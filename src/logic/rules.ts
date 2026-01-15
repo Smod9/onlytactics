@@ -1,5 +1,5 @@
 import type { BoatState, RaceState, RuleId } from '@/types/race'
-import { boatCapsuleCircles } from '@/logic/boatGeometry'
+import { boatCapsuleCircles, headingForward } from '@/logic/boatGeometry'
 import { createId } from '@/utils/ids'
 import type { RaceEvent } from '@/types/race'
 
@@ -23,11 +23,33 @@ type Circle = { x: number; y: number; r: number }
 
 const boatCircles = (boat: BoatState): Circle[] => boatCapsuleCircles(boat)
 
+const boatEnds = (boat: BoatState) => {
+  const [bow, stern] = boatCapsuleCircles(boat)
+  return { bow, stern }
+}
+
 const circlesOverlap = (a: Circle, b: Circle) => {
   const dx = a.x - b.x
   const dy = a.y - b.y
   const rr = a.r + b.r
   return dx * dx + dy * dy <= rr * rr
+}
+
+const isBehind = (target: BoatState, other: BoatState) => {
+  const forward = headingForward(target.headingDeg)
+  const dx = other.pos.x - target.pos.x
+  const dy = other.pos.y - target.pos.y
+  return dx * forward.x + dy * forward.y < 0
+}
+
+const sternRammer = (a: BoatState, b: BoatState) => {
+  const aEnds = boatEnds(a)
+  const bEnds = boatEnds(b)
+  const aHitsB = circlesOverlap(aEnds.bow, bEnds.stern) && isBehind(b, a)
+  const bHitsA = circlesOverlap(bEnds.bow, aEnds.stern) && isBehind(a, b)
+  if (aHitsB && !bHitsA) return a
+  if (bHitsA && !aHitsB) return b
+  return null
 }
 
 const boatsTooClose = (a: BoatState, b: BoatState) => {
@@ -132,15 +154,22 @@ export class RulesEngine {
     const bScore = project(b)
     const windward = aScore < bScore ? a : b
     const leeward = windward === a ? b : a
-    if (isRightsSuspended(leeward) && !isRightsSuspended(windward)) {
+
+    const rammer = sternRammer(a, b)
+    const offender = rammer ?? windward
+    const standOn = offender === a ? b : a
+    if (isRightsSuspended(standOn) && !isRightsSuspended(offender)) {
       return []
     }
 
-    return this.recordOnce(state, '11', windward.id, leeward.id, {
+    return this.recordOnce(state, '11', offender.id, standOn.id, {
       ruleId: '11',
-      offenderId: windward.id,
-      boats: [windward.id, leeward.id],
-      message: `${windward.name} (windward) must keep clear of ${leeward.name}`,
+      offenderId: offender.id,
+      boats: [offender.id, standOn.id],
+      message:
+        rammer !== null
+          ? `${offender.name} (astern) must keep clear of ${standOn.name}`
+          : `${windward.name} (windward) must keep clear of ${leeward.name}`,
     })
   }
 

@@ -215,7 +215,12 @@ class BoatView {
     // Keep sail fully opaque when just luffing; only de-emphasize when fully blown.
     this.sail.alpha = isBlown ? 0.75 : 1
 
-    const nextNameText = boat.penalties ? `${boat.name} (${boat.penalties})` : boat.name
+    const nameSuffix: string[] = []
+    if (boat.penalties) nameSuffix.push(`(${boat.penalties})`)
+    if (boat.overEarly) nameSuffix.push('OCS')
+    const nextNameText = nameSuffix.length
+      ? `${boat.name} ${nameSuffix.join(' ')}`
+      : boat.name
     if (nextNameText !== this.lastNameText) {
       this.nameTag.text = nextNameText
       this.lastNameText = nextNameText
