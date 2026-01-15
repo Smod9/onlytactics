@@ -78,7 +78,7 @@ export const LobbyClient = () => {
     const closedRoomId = params.get('roomId')
     let notice: string | null = null
     if (invalidRoomId) {
-      notice = `Room ${invalidRoomId} is no longer available.`
+      notice = `Race ${invalidRoomId} is no longer available.`
     } else if (closedReason) {
       const label = closedRoomId ? `Room ${closedRoomId}` : 'Room'
       notice =

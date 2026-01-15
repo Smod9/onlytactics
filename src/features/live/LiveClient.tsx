@@ -79,6 +79,7 @@ export const LiveClient = () => {
   const [joinRole, setJoinRole] = useState<NonHostRole>('player')
   const [needsName, setNeedsName] = useState(!identity.clientName)
   const [idleSuspended, setIdleSuspended] = useState(false)
+  const [rejoinPending, setRejoinPending] = useState(false)
   const [cameraMode, setCameraMode] = useState<CameraMode>('follow')
   const [followBoatId, setFollowBoatId] = useState<string | null>(null)
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null)
@@ -355,10 +356,36 @@ export const LiveClient = () => {
     void network.switchRole(joinRole)
   }
 
-  const resumeFromIdle = () => {
+  const ensureRoomAvailable = async () => {
+    if (!roomId) return true
+    try {
+      await roomService.getRoomDetails(roomId)
+      return true
+    } catch (err) {
+      if (err instanceof RoomNotFoundError) {
+        const search = new URLSearchParams({ invalidRoomId: roomId })
+        window.location.href = `/lobby?${search.toString()}`
+        return false
+      }
+      console.warn('[LiveClient] room availability check failed', err)
+      return true
+    }
+  }
+
+  const resumeFromIdle = async () => {
     if (!idleSuspended) return
-    setIdleSuspended(false)
-    void network.start()
+    if (rejoinPending) return
+    setRejoinPending(true)
+    try {
+      const isAvailable = await ensureRoomAvailable()
+      if (!isAvailable) return
+      setIdleSuspended(false)
+      void network.start().catch((err) => {
+        console.warn('[LiveClient] network rejoin failed', err)
+      })
+    } finally {
+      setRejoinPending(false)
+    }
   }
 
   const openUserModal = () => {
@@ -524,8 +551,8 @@ export const LiveClient = () => {
           <div className="username-card">
             <h2>You went idle</h2>
             <p>We paused your connection so someone else can host while you’re away.</p>
-            <button type="button" onClick={resumeFromIdle}>
-              Rejoin Race
+            <button type="button" onClick={resumeFromIdle} disabled={rejoinPending}>
+              {rejoinPending ? 'Rejoining...' : 'Rejoin Race'}
             </button>
           </div>
         </div>
