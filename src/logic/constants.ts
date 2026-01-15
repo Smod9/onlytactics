@@ -27,6 +27,13 @@ export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
 export const BOAT_LENGTH = BOAT_BOW_OFFSET - BOAT_STERN_OFFSET // total boat length (scene units)
 export const WAKE_FORWARD_OFFSET_MAX = BOAT_LENGTH * 0.6 // Forward shift when deep downwind
 
+// Mark collision radii (aligned with RaceScene drawing sizes)
+export const MARK_COLLIDER_RADIUS = 6
+export const GATE_COLLIDER_RADIUS = 7
+
+// Collision speed multipliers
+export const COLLISION_SLOWDOWN_AT_FAULT = 0.35
+
 // Wind shadow / wake parameters
 export const WAKE_MAX_SLOWDOWN = 0.4 // Max speed reduction (25%)
 export const WAKE_LENGTH = 100 // Downwind wake length (scene units)
