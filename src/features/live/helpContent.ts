@@ -6,7 +6,7 @@ export type HelpTip = {
 export const HELP_TIPS: HelpTip[] = [
   {
     id: 'vmg',
-    text: "🏎️ Smash 'space' after tacking to go into VMG mode. This is great for staying fast upwind/downwind.",
+    text: "🏎️ Hit 'space' or VMG button after tacking to go into VMG mode. This is great for staying fast upwind/downwind.",
   },
   {
     id: 'blow-sails',
@@ -14,7 +14,7 @@ export const HELP_TIPS: HelpTip[] = [
   },
   {
     id: 'sharp-turns',
-    text: "↪️ Hold Left Shift (or Alt) while turning to make harder turns. This is great for getting out of trouble.",
+    text: '↪️ Hold Left Shift (or Alt) while turning to make harder turns. This is great for getting out of trouble.',
   },
   {
     id: 'slow-mode',
