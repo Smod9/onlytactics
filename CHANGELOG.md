@@ -1,3 +1,10 @@
+## [1.34.4](https://github.com/Smod9/onlytactics/compare/v1.34.3...v1.34.4) (2026-01-15)
+
+
+### Bug Fixes
+
+* Resolves more room connection shenanigans ([#97](https://github.com/Smod9/onlytactics/issues/97)) ([de98e9d](https://github.com/Smod9/onlytactics/commit/de98e9d5496541701438371f4b193b8cac8bfe37))
+
 ## [1.34.3](https://github.com/Smod9/onlytactics/compare/v1.34.2...v1.34.3) (2026-01-15)
 
 
