@@ -1,3 +1,10 @@
+## [1.33.1](https://github.com/Smod9/onlytactics/compare/v1.33.0...v1.33.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* Reverts .env - face-palm-emoji ([d111a50](https://github.com/Smod9/onlytactics/commit/d111a501dc806f2b0ef986dfa710e5fe075b69c9))
+
 # [1.33.0](https://github.com/Smod9/onlytactics/compare/v1.32.0...v1.33.0) (2026-01-15)
 
 
