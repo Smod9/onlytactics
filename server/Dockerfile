@@ -6,6 +6,9 @@ COPY package*.json ./
 # Install all dependencies (including dev) for building
 RUN npm ci
 
+# Ensure shared source files (../src) can resolve node_modules via /app/node_modules
+RUN ln -s /app/server/node_modules /app/node_modules
+
 COPY . .
 
 # Copy src directory (copied into server as src-parent by build script)
