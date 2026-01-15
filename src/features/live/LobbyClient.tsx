@@ -15,6 +15,7 @@ export const LobbyClient = () => {
   const [showControls, setShowControls] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null)
+  const [roomNotice, setRoomNotice] = useState<string | null>(null)
   const emojiOptions = [
     '⛵',
     '🌊',
@@ -67,6 +68,28 @@ export const LobbyClient = () => {
       void refreshRooms()
     }, 5000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const invalidRoomId = params.get('invalidRoomId')
+    const closedReason = params.get('closed')
+    const closedRoomId = params.get('roomId')
+    let notice: string | null = null
+    if (invalidRoomId) {
+      notice = `Room ${invalidRoomId} is no longer available.`
+    } else if (closedReason) {
+      const label = closedRoomId ? `Room ${closedRoomId}` : 'Room'
+      notice =
+        closedReason === 'timeout'
+          ? `${label} timed out and was closed.`
+          : `${label} closed.`
+    }
+    if (notice) {
+      setRoomNotice(notice)
+      window.history.replaceState({}, '', '/lobby')
+    }
   }, [])
 
   const handleCreateRoom = async (event: FormEvent) => {
@@ -190,6 +213,21 @@ export const LobbyClient = () => {
           </span>
         </button>
       </div>
+
+      {roomNotice && (
+        <div
+          style={{
+            padding: '1rem',
+            backgroundColor: 'rgba(255, 196, 0, 0.12)',
+            border: '1px solid rgba(255, 196, 0, 0.35)',
+            borderRadius: '4px',
+            marginBottom: '1rem',
+            color: '#f5d66b',
+          }}
+        >
+          {roomNotice}
+        </div>
+      )}
 
       {error && (
         <div

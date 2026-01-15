@@ -38,6 +38,7 @@ export class ColyseusBridge {
   private statusListeners = new Set<(status: ColyseusStatus) => void>()
   private chatListeners = new Set<(message: ChatMessage) => void>()
   private roleListeners = new Set<(role: Exclude<RaceRole, 'host'>) => void>()
+  private roomClosedListeners = new Set<(payload: { reason?: string }) => void>()
 
   private sessionId?: string
 
@@ -74,6 +75,13 @@ export class ColyseusBridge {
     return () => this.roleListeners.delete(listener)
   }
 
+  onRoomClosed(listener: (payload: { reason?: string }) => void) {
+    this.roomClosedListeners.add(listener)
+    return () => {
+      this.roomClosedListeners.delete(listener)
+    }
+  }
+
   async connect(options?: { role?: Exclude<RaceRole, 'host'>; joinExisting?: boolean }) {
     this.emitStatus('connecting')
     this.intentionalLeave = false
@@ -95,11 +103,11 @@ export class ColyseusBridge {
       try {
         this.room = await this.client.joinById<RaceRoomSchema>(this.roomId, joinOptions)
       } catch (err) {
-        // If room doesn't exist, fall back to joinOrCreate with room type
         if (appEnv.debugNetLogs) {
-          console.info('[ColyseusBridge]', 'room not found, creating new', { roomId: this.roomId, err })
+          console.info('[ColyseusBridge]', 'room not found', { roomId: this.roomId, err })
         }
-        this.room = await this.client.joinOrCreate<RaceRoomSchema>('race_room', joinOptions)
+        this.emitStatus('error')
+        throw err
       }
     } else {
       // Create or join room type directly
@@ -208,6 +216,9 @@ export class ColyseusBridge {
         console.info('[ColyseusBridge]', 'role assignment', role)
       }
       this.roleListeners.forEach((listener) => listener(role))
+    })
+    room.onMessage('room_closed', (payload: { reason?: string }) => {
+      this.roomClosedListeners.forEach((listener) => listener(payload ?? {}))
     })
     room.onLeave(() => {
       if (appEnv.debugNetLogs) {

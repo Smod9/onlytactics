@@ -21,6 +21,7 @@ export class GameNetwork {
   private colyseusChatUnsub?: () => void
   private colyseusRoleAssignmentUnsub?: () => void
   private colyseusAssignedRole?: Exclude<RaceRole, 'host'>
+  private colyseusRoomClosedUnsub?: () => void
 
   private currentRole: RaceRole = 'spectator'
 
@@ -31,6 +32,7 @@ export class GameNetwork {
   private status: NetworkStatus = 'idle'
 
   private statusListeners = new Set<(status: NetworkStatus) => void>()
+  private roomClosedListeners = new Set<(payload: { reason?: string }) => void>()
 
   private startPromise?: Promise<void>
   private stopRequested = false
@@ -77,7 +79,12 @@ export class GameNetwork {
     this.stopRequested = false
     this.startPromise = (async () => {
       this.setStatus('connecting')
-      await this.startColyseus()
+      try {
+        await this.startColyseus()
+      } catch (err) {
+        this.setStatus('idle')
+        throw err
+      }
     })()
     try {
       await this.startPromise
@@ -108,6 +115,13 @@ export class GameNetwork {
   onStatusChange(listener: (status: NetworkStatus) => void) {
     this.statusListeners.add(listener)
     return () => this.statusListeners.delete(listener)
+  }
+
+  onRoomClosed(listener: (payload: { reason?: string }) => void) {
+    this.roomClosedListeners.add(listener)
+    return () => {
+      this.roomClosedListeners.delete(listener)
+    }
   }
 
   onChatMessage(listener: (message: ChatMessage) => void) {
@@ -298,6 +312,10 @@ export class GameNetwork {
     this.colyseusChatUnsub = this.colyseusBridge.onChatMessage((message) =>
       this.emitChat(message),
     )
+    this.colyseusRoomClosedUnsub?.()
+    this.colyseusRoomClosedUnsub = this.colyseusBridge.onRoomClosed((payload) =>
+      this.emitRoomClosed(payload),
+    )
     this.syncColyseusRole()
     this.setStatus('ready')
   }
@@ -313,6 +331,8 @@ export class GameNetwork {
     this.colyseusRoleAssignmentUnsub?.()
     this.colyseusRoleAssignmentUnsub = undefined
     this.colyseusAssignedRole = undefined
+    this.colyseusRoomClosedUnsub?.()
+    this.colyseusRoomClosedUnsub = undefined
     this.setStatus('idle')
   }
 
@@ -358,6 +378,10 @@ export class GameNetwork {
     if (this.status === status) return
     this.status = status
     this.statusListeners.forEach((listener) => listener(status))
+  }
+
+  private emitRoomClosed(payload: { reason?: string }) {
+    this.roomClosedListeners.forEach((listener) => listener(payload))
   }
 
   private readRoleOverrideFromUrl(): Exclude<RaceRole, 'host'> | undefined {

@@ -11,7 +11,7 @@ import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
 import { useInputTelemetry, useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
-import { roomService } from '@/net/roomService'
+import { roomService, RoomNotFoundError } from '@/net/roomService'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
@@ -122,12 +122,27 @@ export const LiveClient = () => {
         if (active) setRoomDisplayName(room.roomName)
       })
       .catch((err) => {
+        if (!active) return
+        if (err instanceof RoomNotFoundError) {
+          const search = new URLSearchParams({ invalidRoomId: roomId })
+          window.location.href = `/lobby?${search.toString()}`
+          return
+        }
         console.warn('[LiveClient] failed to load room details', err)
       })
     return () => {
       active = false
     }
   }, [roomId])
+
+  useEffect(() => {
+    if (!roomId) return
+    return network.onRoomClosed((payload) => {
+      const reason = payload?.reason ?? 'closed'
+      const search = new URLSearchParams({ closed: reason, roomId })
+      window.location.href = `/lobby?${search.toString()}`
+    })
+  }, [network, roomId])
 
   // Throttle leaderboard speed updates to avoid noisy UI churn.
   // We update roughly once per 10 sim/store updates (tracked by `race.t` changes),
@@ -166,7 +181,9 @@ export const LiveClient = () => {
 
   useEffect(() => {
     if (needsName) return
-    void network.start()
+    void network.start().catch((err) => {
+      console.warn('[LiveClient] network start failed', err)
+    })
     return () => {
       if (skipDevCleanupRef.current) {
         skipDevCleanupRef.current = false
