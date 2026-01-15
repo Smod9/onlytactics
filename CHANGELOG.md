@@ -1,3 +1,10 @@
+# [1.31.0](https://github.com/Smod9/onlytactics/compare/v1.30.0...v1.31.0) (2026-01-15)
+
+
+### Features
+
+* Enhance wake dynamics with new parameters and visualizations ([91502c6](https://github.com/Smod9/onlytactics/commit/91502c6739ceb3b1affe6770a6845293d1277ba0))
+
 # [1.30.0](https://github.com/Smod9/onlytactics/compare/v1.29.7...v1.30.0) (2026-01-14)
 
 
