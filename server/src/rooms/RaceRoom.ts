@@ -98,6 +98,7 @@ export class RaceRoom extends Room<RaceRoomState> {
   private lastLobbyUpdateAtMs = 0
   private lastLobbyStatus?: string
   private lastLobbyTimeToStart?: number | null
+  private timeoutTriggered = false
 
   // Room metadata
   public metadataRoomName: string = 'Unnamed Race'
@@ -146,6 +147,7 @@ export class RaceRoom extends Room<RaceRoomState> {
     applyRaceStateToSchema(this.state.race, initialState)
     this.loop = new HostLoop(this.raceStore, undefined, undefined, {
       onEvents: (events) => this.broadcastEvents(events),
+      onTimeout: () => this.handleTimeout(),
       onTick: (state) => {
         // Debug: confirm countdown is ticking server-side.
         // Logs at most once per second while countdown is armed.
@@ -462,6 +464,24 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
     this.activeSpins.clear()
     this.cancelCleanup()
+  }
+
+  private handleTimeout() {
+    if (this.timeoutTriggered) return
+    this.timeoutTriggered = true
+    console.info('[RaceRoom] timeout reached, closing room', {
+      roomId: this.roomId,
+      roomName: this.metadataRoomName,
+    })
+    this.broadcast('room_closed', { reason: 'timeout' })
+    this.loop?.stop()
+    setTimeout(() => {
+      try {
+        this.disconnect()
+      } catch (err) {
+        console.warn('[RaceRoom] failed to disconnect after timeout', err)
+      }
+    }, 250)
   }
 
   /**

@@ -25,6 +25,14 @@ export type CreateRoomResponse = {
   roomId: string
 }
 
+export class RoomNotFoundError extends Error {
+  code = 'ROOM_NOT_FOUND'
+  constructor(roomId: string) {
+    super(`Room not found: ${roomId}`)
+    this.name = 'RoomNotFoundError'
+  }
+}
+
 const getApiBaseUrl = () => {
   const endpoint = appEnv.colyseusEndpoint
   // Convert ws:// or wss:// to http:// or https://
@@ -78,7 +86,7 @@ export const roomService = {
     const response = await fetch(`${baseUrl}/api/rooms/${encodeURIComponent(roomId)}`)
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error(`Room not found: ${roomId}`)
+        throw new RoomNotFoundError(roomId)
       }
       throw new Error(`Failed to get room details: ${response.statusText}`)
     }

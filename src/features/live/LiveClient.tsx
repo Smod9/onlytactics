@@ -11,7 +11,7 @@ import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
 import { useInputTelemetry, useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
-import { roomService } from '@/net/roomService'
+import { roomService, RoomNotFoundError } from '@/net/roomService'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
@@ -79,6 +79,7 @@ export const LiveClient = () => {
   const [joinRole, setJoinRole] = useState<NonHostRole>('player')
   const [needsName, setNeedsName] = useState(!identity.clientName)
   const [idleSuspended, setIdleSuspended] = useState(false)
+  const [rejoinPending, setRejoinPending] = useState(false)
   const [cameraMode, setCameraMode] = useState<CameraMode>('follow')
   const [followBoatId, setFollowBoatId] = useState<string | null>(null)
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null)
@@ -122,12 +123,27 @@ export const LiveClient = () => {
         if (active) setRoomDisplayName(room.roomName)
       })
       .catch((err) => {
+        if (!active) return
+        if (err instanceof RoomNotFoundError) {
+          const search = new URLSearchParams({ invalidRoomId: roomId })
+          window.location.href = `/lobby?${search.toString()}`
+          return
+        }
         console.warn('[LiveClient] failed to load room details', err)
       })
     return () => {
       active = false
     }
   }, [roomId])
+
+  useEffect(() => {
+    if (!roomId) return
+    return network.onRoomClosed((payload) => {
+      const reason = payload?.reason ?? 'closed'
+      const search = new URLSearchParams({ closed: reason, roomId })
+      window.location.href = `/lobby?${search.toString()}`
+    })
+  }, [network, roomId])
 
   // Throttle leaderboard speed updates to avoid noisy UI churn.
   // We update roughly once per 10 sim/store updates (tracked by `race.t` changes),
@@ -166,7 +182,9 @@ export const LiveClient = () => {
 
   useEffect(() => {
     if (needsName) return
-    void network.start()
+    void network.start().catch((err) => {
+      console.warn('[LiveClient] network start failed', err)
+    })
     return () => {
       if (skipDevCleanupRef.current) {
         skipDevCleanupRef.current = false
@@ -338,10 +356,36 @@ export const LiveClient = () => {
     void network.switchRole(joinRole)
   }
 
-  const resumeFromIdle = () => {
+  const ensureRoomAvailable = async () => {
+    if (!roomId) return true
+    try {
+      await roomService.getRoomDetails(roomId)
+      return true
+    } catch (err) {
+      if (err instanceof RoomNotFoundError) {
+        const search = new URLSearchParams({ invalidRoomId: roomId })
+        window.location.href = `/lobby?${search.toString()}`
+        return false
+      }
+      console.warn('[LiveClient] room availability check failed', err)
+      return true
+    }
+  }
+
+  const resumeFromIdle = async () => {
     if (!idleSuspended) return
-    setIdleSuspended(false)
-    void network.start()
+    if (rejoinPending) return
+    setRejoinPending(true)
+    try {
+      const isAvailable = await ensureRoomAvailable()
+      if (!isAvailable) return
+      setIdleSuspended(false)
+      void network.start().catch((err) => {
+        console.warn('[LiveClient] network rejoin failed', err)
+      })
+    } finally {
+      setRejoinPending(false)
+    }
   }
 
   const openUserModal = () => {
@@ -507,8 +551,8 @@ export const LiveClient = () => {
           <div className="username-card">
             <h2>You went idle</h2>
             <p>We paused your connection so someone else can host while you’re away.</p>
-            <button type="button" onClick={resumeFromIdle}>
-              Rejoin Race
+            <button type="button" onClick={resumeFromIdle} disabled={rejoinPending}>
+              {rejoinPending ? 'Rejoining...' : 'Rejoin Race'}
             </button>
           </div>
         </div>
