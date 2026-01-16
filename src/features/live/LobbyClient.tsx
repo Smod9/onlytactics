@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { roomService, type RoomInfo, type CreateRoomRequest } from '@/net/roomService'
 import { identity } from '@/net/identity'
+import { removeKey } from '@/utils/storage'
 import { KeyboardIcon } from '@/view/icons'
+
+const LOBBY_RESET_KEYS = ['sgame:boatId', 'sgame:rolePreference']
 
 export const LobbyClient = () => {
   const [rooms, setRooms] = useState<RoomInfo[]>([])
@@ -60,6 +63,10 @@ export const LobbyClient = () => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    LOBBY_RESET_KEYS.forEach((key) => removeKey(key))
+  }, [])
 
   useEffect(() => {
     void refreshRooms()

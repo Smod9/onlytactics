@@ -149,21 +149,6 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       onEvents: (events) => this.broadcastEvents(events),
       onTimeout: () => this.handleTimeout(),
       onTick: (state) => {
-        // Debug: confirm countdown is ticking server-side.
-        // Logs at most once per second while countdown is armed.
-        if (state.phase === 'prestart' && state.countdownArmed) {
-          const now = Date.now()
-          if (now - this.lastCountdownLogAtMs > 1000) {
-            this.lastCountdownLogAtMs = now
-            console.info('[RaceRoom]', 'countdown_tick', {
-              t: Number.isFinite(state.t) ? state.t.toFixed(2) : state.t,
-              phase: state.phase,
-              countdownArmed: state.countdownArmed,
-              clockStartMs: state.clockStartMs ?? null,
-            })
-          }
-        }
-
         if (state.hostId !== this.hostClientId) {
           roomDebug('loop host sync', {
             loopHostId: state.hostId,
@@ -496,7 +481,8 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     if (allFinished && Object.keys(state.boats).length > 0) return 'finished'
     if (
       state.phase === 'running' ||
-      (state.phase === 'prestart' && (state.countdownArmed || state.clockStartMs !== null))
+      (state.phase === 'prestart' &&
+        (state.countdownArmed || state.clockStartMs !== null))
     ) {
       return 'in-progress'
     }
@@ -521,7 +507,10 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     this.lastLobbyUpdateAtMs = now
     const status = this.getStatus()
     const timeToStartSeconds = this.getTimeToStartSeconds()
-    if (status === this.lastLobbyStatus && timeToStartSeconds === this.lastLobbyTimeToStart) {
+    if (
+      status === this.lastLobbyStatus &&
+      timeToStartSeconds === this.lastLobbyTimeToStart
+    ) {
       return
     }
     this.lastLobbyStatus = status

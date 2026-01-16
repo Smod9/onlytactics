@@ -1,9 +1,6 @@
 const getLocalStorage = () =>
   typeof window === 'undefined' ? undefined : window.localStorage
 
-const getSessionStorage = () =>
-  typeof window === 'undefined' ? undefined : window.sessionStorage
-
 const safeRead = <T>(storage: Storage | undefined, key: string, fallback: T): T => {
   try {
     if (!storage) return fallback
@@ -25,12 +22,6 @@ export const readJson = <T>(key: string, fallback: T): T =>
 
 export const writeJson = (key: string, value: unknown) =>
   safeWrite(getLocalStorage(), key, value)
-
-export const readSessionJson = <T>(key: string, fallback: T): T =>
-  safeRead(getSessionStorage(), key, fallback)
-
-export const writeSessionJson = (key: string, value: unknown) =>
-  safeWrite(getSessionStorage(), key, value)
 
 export const removeKey = (key: string) => {
   const ls = getLocalStorage()

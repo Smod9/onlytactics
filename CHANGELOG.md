@@ -1,3 +1,31 @@
+## [1.34.6](https://github.com/Smod9/onlytactics/compare/v1.34.5...v1.34.6) (2026-01-16)
+
+
+### Bug Fixes
+
+* Room duplication issue - tries to simplify the join process and remove the cookie stuff ([#101](https://github.com/Smod9/onlytactics/issues/101)) ([4e124b4](https://github.com/Smod9/onlytactics/commit/4e124b4e8eb3f6e964af9eeacbae25b156bfdb82))
+
+## [1.34.5](https://github.com/Smod9/onlytactics/compare/v1.34.4...v1.34.5) (2026-01-16)
+
+
+### Bug Fixes
+
+* Room duplication issue - tries to simplify the join process and remove the cookie stuff ([#98](https://github.com/Smod9/onlytactics/issues/98)) ([c336749](https://github.com/Smod9/onlytactics/commit/c336749c7db1c2e2bfbd03b306a7b826dabee87e))
+
+## [1.34.4](https://github.com/Smod9/onlytactics/compare/v1.34.3...v1.34.4) (2026-01-15)
+
+
+### Bug Fixes
+
+* Resolves more room connection shenanigans ([#97](https://github.com/Smod9/onlytactics/issues/97)) ([de98e9d](https://github.com/Smod9/onlytactics/commit/de98e9d5496541701438371f4b193b8cac8bfe37))
+
+## [1.34.3](https://github.com/Smod9/onlytactics/compare/v1.34.2...v1.34.3) (2026-01-15)
+
+
+### Bug Fixes
+
+* devdependency fix in dockerfile ([d7c9056](https://github.com/Smod9/onlytactics/commit/d7c905676837246b97015a16983704622bb8d72c))
+
 ## [1.34.2](https://github.com/Smod9/onlytactics/compare/v1.34.1...v1.34.2) (2026-01-15)
 
 
