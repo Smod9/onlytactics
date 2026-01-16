@@ -1204,6 +1204,15 @@ export const LiveClient = () => {
         windIntensityEnabled={race.windField?.enabled}
         windIntensityKts={race.windField?.intensityKts}
       />
+      {appEnv.debugHud && (
+        <button
+          type="button"
+          className="debug-toggle"
+          onClick={() => setShowDebug((prev) => !prev)}
+        >
+          {showDebug ? 'Hide Debug' : 'Show Debug'}
+        </button>
+      )}
       {showDebug && (
         <div className="debug-dock">
           <DebugPanel onClose={() => setShowDebug(false)} network={network} />

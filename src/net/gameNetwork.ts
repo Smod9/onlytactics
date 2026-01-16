@@ -61,9 +61,9 @@ export class GameNetwork {
     // Persist preference. We store only spectator/judge; player is the default (clear).
     if (typeof window !== 'undefined') {
       if (next === 'spectator' || next === 'judge' || next === 'god') {
-        window.sessionStorage.setItem(ROLE_PREFERENCE_KEY, next)
+        window.localStorage.setItem(ROLE_PREFERENCE_KEY, next)
       } else {
-        window.sessionStorage.removeItem(ROLE_PREFERENCE_KEY)
+        window.localStorage.removeItem(ROLE_PREFERENCE_KEY)
       }
     }
 
@@ -396,7 +396,7 @@ export class GameNetwork {
 
   private readRoleOverrideFromStorage(): Exclude<RaceRole, 'host'> | undefined {
     if (typeof window === 'undefined') return undefined
-    const raw = (window.sessionStorage.getItem(ROLE_PREFERENCE_KEY) ?? '')
+    const raw = (window.localStorage.getItem(ROLE_PREFERENCE_KEY) ?? '')
       .trim()
       .toLowerCase()
     if (raw === 'judge') return 'judge'

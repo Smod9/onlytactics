@@ -14,18 +14,9 @@ import {
   MARK_COLLIDER_RADIUS,
   NO_GO_ANGLE_DEG,
   STALL_DURATION_S,
-  WAKE_BIAS_DEG,
-  WAKE_CORE_HALF_ANGLE_DEG,
-  WAKE_HALF_WIDTH_END,
-  WAKE_HALF_WIDTH_START,
-  WAKE_LEEWARD_WIDTH_MULT,
   WAKE_FORWARD_OFFSET_MAX,
-  WAKE_TWA_ROTATION_SCALE,
-  WAKE_WINDWARD_WIDTH_MULT,
-  WAKE_LENGTH,
-  WAKE_MAX_SLOWDOWN,
-  WAKE_TURB_HALF_ANGLE_DEG,
 } from '@/logic/constants'
+import { getEffectiveWakeTuning } from '@/logic/wakeTuning'
 import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import { raceStore } from '@/state/raceStore'
 import {
@@ -239,6 +230,7 @@ class BoatView {
   }
 
   private updateWakeIndicator(boat: BoatState) {
+    const wake = getEffectiveWakeTuning()
     const wakeFactor = boat.wakeFactor ?? 1
     const isAffected = wakeFactor < 0.995
     const showIndicator = appEnv.debugHud && isAffected
@@ -249,7 +241,7 @@ class BoatView {
     if (showIndicator) {
       const slowdown = 1 - wakeFactor
       const slowdownPercent = Math.round(slowdown * 100)
-      const intensity = Math.min(1, slowdown / WAKE_MAX_SLOWDOWN)
+      const intensity = Math.min(1, slowdown / wake.maxSlowdown)
 
       // Draw a colored outline around the boat to show it's in a wake
       this.wakeIndicator.clear()
@@ -899,6 +891,7 @@ export class RaceScene {
     const boat = state.boats[identity.boatId]
     if (!boat) return
 
+    const wake = getEffectiveWakeTuning()
     const windDownwindDeg = normalizeDeg(state.wind.directionDeg + 180)
     const windDownRad = degToRad(windDownwindDeg)
     const windDownDir = { x: Math.sin(windDownRad), y: -Math.cos(windDownRad) }
@@ -916,25 +909,33 @@ export class RaceScene {
     this.windShadowLeewardBlend +=
       (leewardSideSign - this.windShadowLeewardBlend) * blendT
     const leewardWeight = (this.windShadowLeewardBlend + 1) / 2
-    const biasDeg = this.windShadowLeewardBlend * WAKE_BIAS_DEG
-    const dir = rotateVec(windDownDir, twa * WAKE_TWA_ROTATION_SCALE + biasDeg)
+    const absTwa = Math.abs(twa)
+    const downwindT = clamp01((absTwa - 110) / 50)
+    const biasDeg = this.windShadowLeewardBlend * wake.biasDeg
+    const rotScale =
+      wake.twaRotationScaleUpwind +
+      (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT
+    const dir = rotateVec(windDownDir, twa * rotScale + biasDeg)
     const cross = { x: -dir.y, y: dir.x }
     const coreToTurbRatio =
-      Math.tan(degToRad(WAKE_CORE_HALF_ANGLE_DEG)) /
-      Math.tan(degToRad(WAKE_TURB_HALF_ANGLE_DEG))
-
-    const leewardWidthStart = WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT
-    const leewardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
-    const windwardWidthStart = WAKE_HALF_WIDTH_START * WAKE_WINDWARD_WIDTH_MULT
-    const windwardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_WINDWARD_WIDTH_MULT
-    const leftWidthStart =
-      windwardWidthStart + (leewardWidthStart - windwardWidthStart) * leewardWeight
-    const rightWidthStart =
-      windwardWidthStart + (leewardWidthStart - windwardWidthStart) * (1 - leewardWeight)
-    const leftWidthEnd =
-      windwardWidthEnd + (leewardWidthEnd - windwardWidthEnd) * leewardWeight
-    const rightWidthEnd =
-      windwardWidthEnd + (leewardWidthEnd - windwardWidthEnd) * (1 - leewardWeight)
+      Math.tan(degToRad(wake.coreHalfAngleDeg)) /
+      Math.tan(degToRad(wake.turbHalfAngleDeg))
+    const widthAt = (t: number, sideMult: number) => {
+      const baseWidth =
+        wake.widthEnd +
+        (wake.widthStart - wake.widthEnd) * Math.pow(1 - t, wake.widthCurve)
+      return baseWidth * sideMult
+    }
+    const leftWidthAt = (t: number) => {
+      const leeward = widthAt(t, wake.leewardWidthMult)
+      const windward = widthAt(t, wake.windwardWidthMult)
+      return windward + (leeward - windward) * leewardWeight
+    }
+    const rightWidthAt = (t: number) => {
+      const leeward = widthAt(t, wake.leewardWidthMult)
+      const windward = widthAt(t, wake.windwardWidthMult)
+      return windward + (leeward - windward) * (1 - leewardWeight)
+    }
 
     const headingRad = degToRad(boat.headingDeg)
     const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
@@ -952,22 +953,20 @@ export class RaceScene {
         const t0 = i / slices
         const t1 = (i + 1) / slices
         const startCenter = {
-          x: basePos.x + dir.x * WAKE_LENGTH * t0,
-          y: basePos.y + dir.y * WAKE_LENGTH * t0,
+          x: basePos.x + dir.x * wake.length * t0,
+          y: basePos.y + dir.y * wake.length * t0,
         }
         const endCenter = {
-          x: basePos.x + dir.x * WAKE_LENGTH * t1,
-          y: basePos.y + dir.y * WAKE_LENGTH * t1,
+          x: basePos.x + dir.x * wake.length * t1,
+          y: basePos.y + dir.y * wake.length * t1,
         }
         const fade = Math.pow(1 - t0, 1.6)
         for (let s = 0; s < featherScales.length; s += 1) {
           const scale = widthScale * featherScales[s]
-          const leftW0 = (leftWidthStart + (leftWidthEnd - leftWidthStart) * t0) * scale
-          const leftW1 = (leftWidthStart + (leftWidthEnd - leftWidthStart) * t1) * scale
-          const rightW0 =
-            (rightWidthStart + (rightWidthEnd - rightWidthStart) * t0) * scale
-          const rightW1 =
-            (rightWidthStart + (rightWidthEnd - rightWidthStart) * t1) * scale
+          const leftW0 = leftWidthAt(t0) * scale
+          const leftW1 = leftWidthAt(t1) * scale
+          const rightW0 = rightWidthAt(t0) * scale
+          const rightW1 = rightWidthAt(t1) * scale
 
           const startLeft = {
             x: startCenter.x + cross.x * leftW0,
@@ -1003,21 +1002,30 @@ export class RaceScene {
   }
 
   private drawWindShadowsDebug(state: RaceState) {
+    const wake = getEffectiveWakeTuning()
     const windDownwindDeg = normalizeDeg(state.wind.directionDeg + 180)
     const windDownRad = degToRad(windDownwindDeg)
     const windDownDir = { x: Math.sin(windDownRad), y: -Math.cos(windDownRad) }
-    const maxHalfWidth = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
-    const leewardWidthStart = WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT
-    const leewardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_LEEWARD_WIDTH_MULT
-    const windwardWidthStart = WAKE_HALF_WIDTH_START * WAKE_WINDWARD_WIDTH_MULT
-    const windwardWidthEnd = WAKE_HALF_WIDTH_END * WAKE_WINDWARD_WIDTH_MULT
+    const maxSideMult = Math.max(wake.leewardWidthMult, wake.windwardWidthMult)
+    const maxHalfWidth = Math.max(wake.widthStart, wake.widthEnd) * maxSideMult
     const coreToTurbRatio =
-      Math.tan(degToRad(WAKE_CORE_HALF_ANGLE_DEG)) /
-      Math.tan(degToRad(WAKE_TURB_HALF_ANGLE_DEG))
+      Math.tan(degToRad(wake.coreHalfAngleDeg)) /
+      Math.tan(degToRad(wake.turbHalfAngleDeg))
+    const widthAt = (t: number, sideMult: number) => {
+      const baseWidth =
+        wake.widthEnd +
+        (wake.widthStart - wake.widthEnd) * Math.pow(1 - t, wake.widthCurve)
+      return baseWidth * sideMult
+    }
 
     const wakeDirs = new Map<
       string,
-      { dir: Vec2; cross: Vec2; leewardSideSign: 1 | -1; origin: Vec2 }
+      {
+        dir: Vec2
+        cross: Vec2
+        leewardSideSign: 1 | -1
+        origin: Vec2
+      }
     >()
     Object.values(state.boats).forEach((boat) => {
       const leewardSideSign = this.getLeewardSideSign(
@@ -1026,8 +1034,13 @@ export class RaceScene {
         windDownDir,
       )
       const twa = angleDiff(boat.headingDeg, state.wind.directionDeg)
-      const biasDeg = leewardSideSign * WAKE_BIAS_DEG
-      const dir = rotateVec(windDownDir, twa * WAKE_TWA_ROTATION_SCALE + biasDeg)
+      const absTwa = Math.abs(twa)
+      const downwindT = clamp01((absTwa - 110) / 50)
+      const biasDeg = leewardSideSign * wake.biasDeg
+      const rotScale =
+        wake.twaRotationScaleUpwind +
+        (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT
+      const dir = rotateVec(windDownDir, twa * rotScale + biasDeg)
       const cross = { x: -dir.y, y: dir.x }
       const headingRad = degToRad(boat.headingDeg)
       const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
@@ -1052,7 +1065,7 @@ export class RaceScene {
           const dx = target.pos.x - wakeDir.origin.x
           const dy = target.pos.y - wakeDir.origin.y
           const distSq = dx * dx + dy * dy
-          if (distSq === 0 || distSq > (WAKE_LENGTH + maxHalfWidth * 2) ** 2) return
+          if (distSq === 0 || distSq > (wake.length + maxHalfWidth * 2) ** 2) return
 
           const dist = Math.sqrt(distSq)
           const relUnitX = dx / dist
@@ -1077,18 +1090,26 @@ export class RaceScene {
 
       const startCenter = wakeDir.origin
       const endCenter = {
-        x: wakeDir.origin.x + wakeDir.dir.x * WAKE_LENGTH,
-        y: wakeDir.origin.y + wakeDir.dir.y * WAKE_LENGTH,
+        x: wakeDir.origin.x + wakeDir.dir.x * wake.length,
+        y: wakeDir.origin.y + wakeDir.dir.y * wake.length,
       }
 
-      const leftWidthStart =
-        wakeDir.leewardSideSign > 0 ? leewardWidthStart : windwardWidthStart
-      const rightWidthStart =
-        wakeDir.leewardSideSign < 0 ? leewardWidthStart : windwardWidthStart
-      const leftWidthEnd =
-        wakeDir.leewardSideSign > 0 ? leewardWidthEnd : windwardWidthEnd
-      const rightWidthEnd =
-        wakeDir.leewardSideSign < 0 ? leewardWidthEnd : windwardWidthEnd
+      const leftWidthStart = widthAt(
+        0,
+        wakeDir.leewardSideSign > 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
+      )
+      const rightWidthStart = widthAt(
+        0,
+        wakeDir.leewardSideSign < 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
+      )
+      const leftWidthEnd = widthAt(
+        1,
+        wakeDir.leewardSideSign > 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
+      )
+      const rightWidthEnd = widthAt(
+        1,
+        wakeDir.leewardSideSign < 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
+      )
 
       const startLeft = {
         x: startCenter.x + wakeDir.cross.x * leftWidthStart,

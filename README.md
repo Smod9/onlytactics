@@ -47,10 +47,10 @@ The simulator models wind shadow effects where boats sailing downwind create a w
 
 ### How It Works
 
-- **Wake Zone**: Each boat creates a wake zone extending downwind (in the direction the wind is blowing). The wake is a trapezoid that:
-  - Starts narrow near the boat (`WAKE_HALF_WIDTH_START = 18` scene units)
-  - Widens as it extends downwind (`WAKE_HALF_WIDTH_END = 35` scene units)
-  - Extends for `WAKE_LENGTH = 60` scene units downwind
+- **Wake Zone**: Each boat creates a wake zone extending downwind (in the direction the wind is blowing). The wake strength is computed from the distance and angle between boats, with widths that:
+  - Start wide near the boat (`WAKE_HALF_WIDTH_START = 35` scene units)
+  - Narrow downwind (`WAKE_HALF_WIDTH_END = 18` scene units, shaped by `WAKE_WIDTH_CURVE`)
+  - Extend for `WAKE_LENGTH = 100` scene units downwind
 
 - **Cone Angle**: The wake is limited to a downwind sector defined by `WAKE_CONE_HALF_ANGLE_DEG = 35°`. This means the wake only affects boats that are roughly downwind (within 35° of directly downwind).
 
@@ -67,6 +67,7 @@ With debug HUD enabled (`VITE_DEBUG_HUD=true`):
 - Wake zones are visualized as yellow/gold trapezoids extending downwind from each boat
 - Boats affected by wakes show a yellow outline and a "Wake -X%" label indicating the slowdown percentage
 - The player's speed/heading overlay shows a "Wake -X%" indicator when affected
+- Wake tuning sliders let you adjust the wake shape at runtime and copy constants back to `src/logic/constants.ts`
 
 This system encourages tactical positioning—staying out of other boats' wakes when possible, and using your wake to slow down competitors when advantageous.
 
