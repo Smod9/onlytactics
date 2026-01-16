@@ -15,4 +15,3 @@ export class RaceRoomState extends Schema {
     this.status = 'ready'
   }
 }
-

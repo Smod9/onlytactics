@@ -23,4 +23,3 @@ export const env = {
   hardcodedRoomId: process.env.RACE_ROOM_ID ?? 'onlytactics-dev',
   enableMonitor: normalizeBoolean(process.env.ENABLE_MONITOR, false),
 }
-

@@ -52,7 +52,12 @@ class RosterStore {
   }
 
   updateFromServerRoster(
-    entries: Array<{ clientId: string; name: string; role: RaceRole; boatId?: string | null }>,
+    entries: Array<{
+      clientId: string
+      name: string
+      role: RaceRole
+      boatId?: string | null
+    }>,
   ) {
     const now = Date.now()
     this.extraEntries.clear()

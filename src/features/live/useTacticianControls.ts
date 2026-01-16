@@ -118,15 +118,7 @@ export const useTacticianControls = (
         raw: { code: event.code, key: event.key, location: event.location },
         meta: { shiftKey: event.shiftKey, altKey: event.altKey, repeat: event.repeat },
       })
-      const allowed = [
-        'Space',
-        'Enter',
-        'ArrowUp',
-        'ArrowDown',
-        'KeyS',
-        'KeyP',
-        'KeyL',
-      ]
+      const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP', 'KeyL']
       if (appEnv.debugHud) allowed.push('KeyJ')
       if (!allowed.includes(key)) {
         debugInputLog('keydown:ignored', { key })

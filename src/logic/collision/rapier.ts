@@ -66,7 +66,9 @@ const rebuildWorld = (state: RaceState) => {
   marksKey = buildMarksKey(state)
 
   state.marks.forEach((mark, index) => {
-    const radius = gateMarkIndices.has(index) ? GATE_COLLIDER_RADIUS : MARK_COLLIDER_RADIUS
+    const radius = gateMarkIndices.has(index)
+      ? GATE_COLLIDER_RADIUS
+      : MARK_COLLIDER_RADIUS
     const body = world.createRigidBody(
       rapier.RigidBodyDesc.fixed().setTranslation(mark.x, mark.y),
     )

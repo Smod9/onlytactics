@@ -172,21 +172,11 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         {renderControl('Width curve', wake.widthCurve, 0.4, 3, 0.05, (value) =>
           setWakeValue('widthCurve', value),
         )}
-        {renderControl(
-          'Leeward mult',
-          wake.leewardWidthMult,
-          0.2,
-          4,
-          0.05,
-          (value) => setWakeValue('leewardWidthMult', value),
+        {renderControl('Leeward mult', wake.leewardWidthMult, 0.2, 4, 0.05, (value) =>
+          setWakeValue('leewardWidthMult', value),
         )}
-        {renderControl(
-          'Windward mult',
-          wake.windwardWidthMult,
-          0.1,
-          2,
-          0.05,
-          (value) => setWakeValue('windwardWidthMult', value),
+        {renderControl('Windward mult', wake.windwardWidthMult, 0.1, 2, 0.05, (value) =>
+          setWakeValue('windwardWidthMult', value),
         )}
         {renderControl('Bias deg', wake.biasDeg, -90, 90, 1, (value) =>
           setWakeValue('biasDeg', value),
@@ -207,21 +197,11 @@ export const DebugPanel = ({ onClose, network }: Props) => {
           0.02,
           (value) => setWakeValue('twaRotationScaleDownwind', value),
         )}
-        {renderControl(
-          'Core half angle',
-          wake.coreHalfAngleDeg,
-          2,
-          30,
-          0.5,
-          (value) => setWakeValue('coreHalfAngleDeg', value),
+        {renderControl('Core half angle', wake.coreHalfAngleDeg, 2, 30, 0.5, (value) =>
+          setWakeValue('coreHalfAngleDeg', value),
         )}
-        {renderControl(
-          'Turb half angle',
-          wake.turbHalfAngleDeg,
-          4,
-          45,
-          0.5,
-          (value) => setWakeValue('turbHalfAngleDeg', value),
+        {renderControl('Turb half angle', wake.turbHalfAngleDeg, 4, 45, 0.5, (value) =>
+          setWakeValue('turbHalfAngleDeg', value),
         )}
         {renderControl('Core strength', wake.coreStrength, 0, 2, 0.05, (value) =>
           setWakeValue('coreStrength', value),
@@ -229,21 +209,11 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         {renderControl('Turb strength', wake.turbStrength, 0, 2, 0.05, (value) =>
           setWakeValue('turbStrength', value),
         )}
-        {renderControl(
-          'Core max slow',
-          wake.coreMaxSlowdown,
-          0,
-          1,
-          0.02,
-          (value) => setWakeValue('coreMaxSlowdown', value),
+        {renderControl('Core max slow', wake.coreMaxSlowdown, 0, 1, 0.02, (value) =>
+          setWakeValue('coreMaxSlowdown', value),
         )}
-        {renderControl(
-          'Turb max slow',
-          wake.turbMaxSlowdown,
-          0,
-          1,
-          0.02,
-          (value) => setWakeValue('turbMaxSlowdown', value),
+        {renderControl('Turb max slow', wake.turbMaxSlowdown, 0, 1, 0.02, (value) =>
+          setWakeValue('turbMaxSlowdown', value),
         )}
         {renderControl('Max slow', wake.maxSlowdown, 0.05, 0.9, 0.02, (value) =>
           setWakeValue('maxSlowdown', value),
@@ -254,8 +224,8 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         <div className="debug-row">
           <strong>Defaults:</strong>
           <span>
-            width {wakeTuningDefaults.widthStart}→{wakeTuningDefaults.widthEnd},
-            length {wakeTuningDefaults.length}
+            width {wakeTuningDefaults.widthStart}→{wakeTuningDefaults.widthEnd}, length{' '}
+            {wakeTuningDefaults.length}
           </span>
         </div>
       </div>

@@ -131,8 +131,9 @@ export class ColyseusBridge {
       this.room = await this.client.joinOrCreate<RaceRoomSchema>('race_room', joinOptions)
     }
     this.sessionId = this.room.sessionId
-    this.reconnectionToken = (this.room as unknown as { reconnectionToken?: string })
-      .reconnectionToken
+    this.reconnectionToken = (
+      this.room as unknown as { reconnectionToken?: string }
+    ).reconnectionToken
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'joined room', {
         sessionId: this.sessionId,
@@ -279,14 +280,17 @@ export class ColyseusBridge {
         }
         this.emitStatus('connecting')
         try {
-          const nextRoom = (await (this.client as unknown as {
-            reconnect: <T>(reconnectionToken: string) => Promise<Room<T>>
-          }).reconnect<RaceRoomSchema>(token)) as Room<RaceRoomSchema>
+          const nextRoom = (await (
+            this.client as unknown as {
+              reconnect: <T>(reconnectionToken: string) => Promise<Room<T>>
+            }
+          ).reconnect<RaceRoomSchema>(token)) as Room<RaceRoomSchema>
 
           this.room = nextRoom
           this.sessionId = nextRoom.sessionId
-          this.reconnectionToken = (nextRoom as unknown as { reconnectionToken?: string })
-            .reconnectionToken ?? this.reconnectionToken
+          this.reconnectionToken =
+            (nextRoom as unknown as { reconnectionToken?: string }).reconnectionToken ??
+            this.reconnectionToken
           this.attachHandlers(nextRoom)
           this.emitStatus('connected')
           return

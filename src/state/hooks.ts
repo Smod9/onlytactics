@@ -20,8 +20,4 @@ export const useInputTelemetry = (): InputTelemetrySnapshot =>
   )
 
 export const useWakeTuning = () =>
-  useSyncExternalStore(
-    subscribeWakeTuning,
-    getWakeTuningState,
-    getWakeTuningState,
-  )
+  useSyncExternalStore(subscribeWakeTuning, getWakeTuningState, getWakeTuningState)
