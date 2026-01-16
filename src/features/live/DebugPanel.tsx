@@ -50,11 +50,11 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         formatConst('WAKE_HALF_WIDTH_START', wake.widthStart),
         formatConst('WAKE_HALF_WIDTH_END', wake.widthEnd),
         formatConst('WAKE_WIDTH_CURVE', wake.widthCurve),
-        formatConst('WAKE_AWA_WIDTH_SCALE', wake.awaWidthScale),
         formatConst('WAKE_LEEWARD_WIDTH_MULT', wake.leewardWidthMult),
         formatConst('WAKE_WINDWARD_WIDTH_MULT', wake.windwardWidthMult),
         formatConst('WAKE_BIAS_DEG', wake.biasDeg),
-        formatConst('WAKE_TWA_ROTATION_SCALE', wake.twaRotationScale),
+        formatConst('WAKE_TWA_ROTATION_SCALE_UPWIND', wake.twaRotationScaleUpwind),
+        formatConst('WAKE_TWA_ROTATION_SCALE_DOWNWIND', wake.twaRotationScaleDownwind),
         formatConst('WAKE_CORE_HALF_ANGLE_DEG', wake.coreHalfAngleDeg),
         formatConst('WAKE_TURB_HALF_ANGLE_DEG', wake.turbHalfAngleDeg),
         formatConst('WAKE_CORE_STRENGTH', wake.coreStrength),
@@ -172,9 +172,6 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         {renderControl('Width curve', wake.widthCurve, 0.4, 3, 0.05, (value) =>
           setWakeValue('widthCurve', value),
         )}
-        {renderControl('AWA width scale', wake.awaWidthScale, 0, 1.5, 0.05, (value) =>
-          setWakeValue('awaWidthScale', value),
-        )}
         {renderControl(
           'Leeward mult',
           wake.leewardWidthMult,
@@ -194,8 +191,21 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         {renderControl('Bias deg', wake.biasDeg, -90, 90, 1, (value) =>
           setWakeValue('biasDeg', value),
         )}
-        {renderControl('TWA rot scale', wake.twaRotationScale, 0, 1, 0.02, (value) =>
-          setWakeValue('twaRotationScale', value),
+        {renderControl(
+          'TWA rot upwind',
+          wake.twaRotationScaleUpwind,
+          0,
+          1,
+          0.02,
+          (value) => setWakeValue('twaRotationScaleUpwind', value),
+        )}
+        {renderControl(
+          'TWA rot downwind',
+          wake.twaRotationScaleDownwind,
+          0,
+          1,
+          0.02,
+          (value) => setWakeValue('twaRotationScaleDownwind', value),
         )}
         {renderControl(
           'Core half angle',

@@ -1,6 +1,5 @@
 import { appEnv } from '@/config/env'
 import {
-  WAKE_AWA_WIDTH_SCALE,
   WAKE_BIAS_DEG,
   WAKE_CORE_HALF_ANGLE_DEG,
   WAKE_CORE_MAX_SLOWDOWN,
@@ -14,7 +13,8 @@ import {
   WAKE_TURB_HALF_ANGLE_DEG,
   WAKE_TURB_MAX_SLOWDOWN,
   WAKE_TURB_STRENGTH,
-  WAKE_TWA_ROTATION_SCALE,
+  WAKE_TWA_ROTATION_SCALE_DOWNWIND,
+  WAKE_TWA_ROTATION_SCALE_UPWIND,
   WAKE_WINDWARD_WIDTH_MULT,
   WAKE_WIDTH_CURVE,
 } from '@/logic/constants'
@@ -24,11 +24,11 @@ export type WakeTuningParams = {
   widthStart: number
   widthEnd: number
   widthCurve: number
-  awaWidthScale: number
   leewardWidthMult: number
   windwardWidthMult: number
   biasDeg: number
-  twaRotationScale: number
+  twaRotationScaleUpwind: number
+  twaRotationScaleDownwind: number
   coreHalfAngleDeg: number
   turbHalfAngleDeg: number
   coreStrength: number
@@ -49,11 +49,11 @@ export const wakeTuningDefaults: WakeTuningParams = {
   widthStart: WAKE_HALF_WIDTH_START,
   widthEnd: WAKE_HALF_WIDTH_END,
   widthCurve: WAKE_WIDTH_CURVE,
-  awaWidthScale: WAKE_AWA_WIDTH_SCALE,
   leewardWidthMult: WAKE_LEEWARD_WIDTH_MULT,
   windwardWidthMult: WAKE_WINDWARD_WIDTH_MULT,
   biasDeg: WAKE_BIAS_DEG,
-  twaRotationScale: WAKE_TWA_ROTATION_SCALE,
+  twaRotationScaleUpwind: WAKE_TWA_ROTATION_SCALE_UPWIND,
+  twaRotationScaleDownwind: WAKE_TWA_ROTATION_SCALE_DOWNWIND,
   coreHalfAngleDeg: WAKE_CORE_HALF_ANGLE_DEG,
   turbHalfAngleDeg: WAKE_TURB_HALF_ANGLE_DEG,
   coreStrength: WAKE_CORE_STRENGTH,
@@ -80,9 +80,10 @@ const sanitize = (next: WakeTuningParams): WakeTuningParams => ({
   widthStart: clampPositive(next.widthStart, 1),
   widthEnd: clampPositive(next.widthEnd, 1),
   widthCurve: clampPositive(next.widthCurve, 0.1),
-  awaWidthScale: Math.max(0, next.awaWidthScale),
   leewardWidthMult: clampPositive(next.leewardWidthMult, 0.1),
   windwardWidthMult: clampPositive(next.windwardWidthMult, 0.1),
+  twaRotationScaleUpwind: Math.max(0, next.twaRotationScaleUpwind),
+  twaRotationScaleDownwind: Math.max(0, next.twaRotationScaleDownwind),
   coreHalfAngleDeg: clampPositive(next.coreHalfAngleDeg, 1),
   turbHalfAngleDeg: clampPositive(next.turbHalfAngleDeg, 1),
   coreStrength: Math.max(0, next.coreStrength),

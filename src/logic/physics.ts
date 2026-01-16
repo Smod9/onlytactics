@@ -317,21 +317,19 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
   const windDownwindDeg = normalizeDeg(state.wind.directionDeg + 180)
   const windDownwindVec = dirToUnit(windDownwindDeg)
   const maxSideMult = Math.max(wake.leewardWidthMult, wake.windwardWidthMult)
-  const maxHalfWidth =
-    Math.max(wake.widthStart, wake.widthEnd) * maxSideMult * (1 + wake.awaWidthScale)
+  const maxHalfWidth = Math.max(wake.widthStart, wake.widthEnd) * maxSideMult
   const maxRadius = wake.length + maxHalfWidth * 2
   const maxRadiusSq = maxRadius * maxRadius
   const turbConeCos = Math.cos(degToRad(wake.turbHalfAngleDeg))
   const coreToTurbRatio =
-    Math.tan(degToRad(wake.coreHalfAngleDeg)) /
-    Math.tan(degToRad(wake.turbHalfAngleDeg))
+    Math.tan(degToRad(wake.coreHalfAngleDeg)) / Math.tan(degToRad(wake.turbHalfAngleDeg))
   const leewardSideByBoatId: Record<string, 1 | -1> = {}
 
-  const widthAt = (alongNorm: number, sideMult: number, awaScale: number) => {
+  const widthAt = (alongNorm: number, sideMult: number) => {
     const baseWidth =
       wake.widthEnd +
       (wake.widthStart - wake.widthEnd) * Math.pow(1 - alongNorm, wake.widthCurve)
-    return baseWidth * sideMult * awaScale
+    return baseWidth * sideMult
   }
 
   boats.forEach((boat) => {
@@ -356,14 +354,16 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
       const source = boats[si]
       const twa = angleDiff(source.headingDeg, state.wind.directionDeg)
       const biasDeg = leewardSideByBoatId[source.id] * wake.biasDeg
-      const downwindVec = rotateVec(
-        windDownwindVec,
-        twa * wake.twaRotationScale + biasDeg,
-      )
-      const crossVec = { x: -downwindVec.y, y: downwindVec.x }
       const absTwa = Math.abs(twa)
       const downwindT = clamp((absTwa - 110) / 50, 0, 1)
-      const awaScale = 1 + downwindT * wake.awaWidthScale
+      const downwindVec = rotateVec(
+        windDownwindVec,
+        twa *
+          (wake.twaRotationScaleUpwind +
+            (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT) +
+          biasDeg,
+      )
+      const crossVec = { x: -downwindVec.y, y: downwindVec.x }
       const forwardOffset = WAKE_FORWARD_OFFSET_MAX * downwindT
       const headingVec = dirToUnit(source.headingDeg)
       const sourceX = source.pos.x + headingVec.x * forwardOffset
@@ -388,7 +388,7 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
       const sideSign: 1 | -1 = cross >= 0 ? 1 : -1
       const isLeewardSide = sideSign === leewardSideByBoatId[source.id]
       const sideMult = isLeewardSide ? wake.leewardWidthMult : wake.windwardWidthMult
-      const turbHalfWidth = widthAt(alongNorm, sideMult, awaScale)
+      const turbHalfWidth = widthAt(alongNorm, sideMult)
       const coreHalfWidth = turbHalfWidth * coreToTurbRatio
       const sinAngle = Math.sqrt(Math.max(0, 1 - align * align))
       const lateral = dist * sinAngle

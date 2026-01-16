@@ -911,9 +911,11 @@ export class RaceScene {
     const leewardWeight = (this.windShadowLeewardBlend + 1) / 2
     const absTwa = Math.abs(twa)
     const downwindT = clamp01((absTwa - 110) / 50)
-    const awaScale = 1 + downwindT * wake.awaWidthScale
     const biasDeg = this.windShadowLeewardBlend * wake.biasDeg
-    const dir = rotateVec(windDownDir, twa * wake.twaRotationScale + biasDeg)
+    const rotScale =
+      wake.twaRotationScaleUpwind +
+      (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT
+    const dir = rotateVec(windDownDir, twa * rotScale + biasDeg)
     const cross = { x: -dir.y, y: dir.x }
     const coreToTurbRatio =
       Math.tan(degToRad(wake.coreHalfAngleDeg)) /
@@ -922,7 +924,7 @@ export class RaceScene {
       const baseWidth =
         wake.widthEnd +
         (wake.widthStart - wake.widthEnd) * Math.pow(1 - t, wake.widthCurve)
-      return baseWidth * sideMult * awaScale
+      return baseWidth * sideMult
     }
     const leftWidthAt = (t: number) => {
       const leeward = widthAt(t, wake.leewardWidthMult)
@@ -1005,16 +1007,15 @@ export class RaceScene {
     const windDownRad = degToRad(windDownwindDeg)
     const windDownDir = { x: Math.sin(windDownRad), y: -Math.cos(windDownRad) }
     const maxSideMult = Math.max(wake.leewardWidthMult, wake.windwardWidthMult)
-    const maxHalfWidth =
-      Math.max(wake.widthStart, wake.widthEnd) * maxSideMult * (1 + wake.awaWidthScale)
+    const maxHalfWidth = Math.max(wake.widthStart, wake.widthEnd) * maxSideMult
     const coreToTurbRatio =
       Math.tan(degToRad(wake.coreHalfAngleDeg)) /
       Math.tan(degToRad(wake.turbHalfAngleDeg))
-    const widthAt = (t: number, sideMult: number, awaScale: number) => {
+    const widthAt = (t: number, sideMult: number) => {
       const baseWidth =
         wake.widthEnd +
         (wake.widthStart - wake.widthEnd) * Math.pow(1 - t, wake.widthCurve)
-      return baseWidth * sideMult * awaScale
+      return baseWidth * sideMult
     }
 
     const wakeDirs = new Map<
@@ -1024,7 +1025,6 @@ export class RaceScene {
         cross: Vec2
         leewardSideSign: 1 | -1
         origin: Vec2
-        awaScale: number
       }
     >()
     Object.values(state.boats).forEach((boat) => {
@@ -1036,9 +1036,11 @@ export class RaceScene {
       const twa = angleDiff(boat.headingDeg, state.wind.directionDeg)
       const absTwa = Math.abs(twa)
       const downwindT = clamp01((absTwa - 110) / 50)
-      const awaScale = 1 + downwindT * wake.awaWidthScale
       const biasDeg = leewardSideSign * wake.biasDeg
-      const dir = rotateVec(windDownDir, twa * wake.twaRotationScale + biasDeg)
+      const rotScale =
+        wake.twaRotationScaleUpwind +
+        (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT
+      const dir = rotateVec(windDownDir, twa * rotScale + biasDeg)
       const cross = { x: -dir.y, y: dir.x }
       const headingRad = degToRad(boat.headingDeg)
       const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
@@ -1047,7 +1049,7 @@ export class RaceScene {
         x: boat.pos.x + headingVec.x * forwardOffset,
         y: boat.pos.y + headingVec.y * forwardOffset,
       }
-      wakeDirs.set(boat.id, { dir, cross, leewardSideSign, origin, awaScale })
+      wakeDirs.set(boat.id, { dir, cross, leewardSideSign, origin })
     })
 
     // Check which boats are actually affecting others (for intensity visualization)
@@ -1095,22 +1097,18 @@ export class RaceScene {
       const leftWidthStart = widthAt(
         0,
         wakeDir.leewardSideSign > 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
-        wakeDir.awaScale,
       )
       const rightWidthStart = widthAt(
         0,
         wakeDir.leewardSideSign < 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
-        wakeDir.awaScale,
       )
       const leftWidthEnd = widthAt(
         1,
         wakeDir.leewardSideSign > 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
-        wakeDir.awaScale,
       )
       const rightWidthEnd = widthAt(
         1,
         wakeDir.leewardSideSign < 0 ? wake.leewardWidthMult : wake.windwardWidthMult,
-        wakeDir.awaScale,
       )
 
       const startLeft = {
