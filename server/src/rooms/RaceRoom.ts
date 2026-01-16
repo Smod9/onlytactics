@@ -76,7 +76,7 @@ type RosterEntryPayload = {
   boatId: string | null
 }
 
-export class RaceRoom extends Room<{ state: RaceRoomState }> {
+export class RaceRoom extends Room<RaceRoomState> {
   maxClients = 32
 
   private raceStore?: RaceStore
@@ -401,11 +401,11 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     this.broadcastRoster()
   }
 
-  async onLeave(client: Client, code?: number) {
-    const consented = code === 1000 || code === 1001
+  async onLeave(client: Client, consented?: boolean) {
+    const didConsent = Boolean(consented)
     // If a client disconnects unexpectedly, allow a brief reconnection window.
     // This prevents "freeze -> refresh -> new boat" churn for transient network drops.
-    if (!consented) {
+    if (!didConsent) {
       try {
         await this.allowReconnection(client, 30)
         roomDebug('onLeave:reconnected', { clientId: client.sessionId })
@@ -418,7 +418,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     this.state.playerCount = Math.max(0, this.state.playerCount - 1)
     console.info('[RaceRoom] client left', {
       clientId: client.sessionId,
-      consented,
+      consented: didConsent,
       playerCount: this.state.playerCount,
     })
     this.releaseBoat(client)
