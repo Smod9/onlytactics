@@ -1,3 +1,10 @@
+## [1.34.5](https://github.com/Smod9/onlytactics/compare/v1.34.4...v1.34.5) (2026-01-16)
+
+
+### Bug Fixes
+
+* Room duplication issue - tries to simplify the join process and remove the cookie stuff ([#98](https://github.com/Smod9/onlytactics/issues/98)) ([c336749](https://github.com/Smod9/onlytactics/commit/c336749c7db1c2e2bfbd03b306a7b826dabee87e))
+
 ## [1.34.4](https://github.com/Smod9/onlytactics/compare/v1.34.3...v1.34.4) (2026-01-15)
 
 
