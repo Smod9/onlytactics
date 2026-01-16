@@ -37,10 +37,12 @@ export const COLLISION_SLOWDOWN_AT_FAULT = 0.35
 // Wind shadow / wake parameters
 export const WAKE_MAX_SLOWDOWN = 0.4 // Max speed reduction (25%)
 export const WAKE_LENGTH = 100 // Downwind wake length (scene units)
-export const WAKE_HALF_WIDTH_START = 18 // Near-boat half width
-export const WAKE_HALF_WIDTH_END = 35 // Wake widens farther downwind
+export const WAKE_HALF_WIDTH_START = 35 // Near-boat half width
+export const WAKE_HALF_WIDTH_END = 18 // Wake narrows farther downwind
+export const WAKE_WIDTH_CURVE = 1.1 // >1 narrows faster downwind
+export const WAKE_AWA_WIDTH_SCALE = 0.35 // Extra width when deeper downwind
 export const WAKE_LEEWARD_WIDTH_MULT = 2.4 // Leeward side width multiplier
-export const WAKE_WINDWARD_WIDTH_MULT = 0.2 // Windward side width multiplier
+export const WAKE_WINDWARD_WIDTH_MULT = 0.9 // Windward side width multiplier
 export const WAKE_BIAS_DEG = -40 // Leeward bias away from pure downwind
 export const WAKE_TWA_ROTATION_SCALE = 0.2 // Blend wind-downwind toward boat TWA
 export const WAKE_CORE_HALF_ANGLE_DEG = 12 // Core blanket width
