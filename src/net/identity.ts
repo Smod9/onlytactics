@@ -1,5 +1,5 @@
 import { createId } from '@/utils/ids'
-import { readJson, writeJson, readSessionJson, writeSessionJson } from '@/utils/storage'
+import { readJson, writeJson } from '@/utils/storage'
 
 const CLIENT_ID_KEY = 'sgame:clientId'
 const BOAT_ID_KEY = 'sgame:boatId'
@@ -8,8 +8,8 @@ const CLIENT_NAME_KEY = 'sgame:clientName'
 const ensureSessionId = (
   key: string,
   generator: () => string,
-  read: typeof readJson | typeof readSessionJson = readSessionJson,
-  write: typeof writeJson | typeof writeSessionJson = writeSessionJson,
+  read: typeof readJson = readJson,
+  write: typeof writeJson = writeJson,
 ) => {
   const existing = read<string | null>(key, null)
   if (existing) return existing
@@ -35,7 +35,7 @@ export const identity = {
 
 export const setBoatId = (nextBoatId: string) => {
   identity.boatId = nextBoatId
-  writeSessionJson(BOAT_ID_KEY, nextBoatId)
+  writeJson(BOAT_ID_KEY, nextBoatId)
 }
 
 export const setClientName = (name: string) => {
