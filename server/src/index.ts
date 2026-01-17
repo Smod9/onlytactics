@@ -107,8 +107,8 @@ matchMaker.controller.invokeMethod = async (...args) => {
   return normalizeMatchmakeResponse(response)
 }
 
-// Define 'race_room' as the room type for dynamic room creation
-gameServer.define('race_room', RaceRoom)
+// Define 'race_room' with roomName-based matchmaking when provided.
+gameServer.define('race_room', RaceRoom).filterBy(['roomName'])
 
 // Room API endpoints (must be after gameServer is created)
 expressApp.get('/api/rooms', async (_req, res) => {
