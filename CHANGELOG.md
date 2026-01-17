@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/Smod9/onlytactics/compare/v1.34.6...v1.35.0) (2026-01-17)
+
+
+### Features
+
+* fixes .env :( ([7200dee](https://github.com/Smod9/onlytactics/commit/7200deed088dc9cf0d9090e09faa26c780c30ad1))
+
 ## [1.34.6](https://github.com/Smod9/onlytactics/compare/v1.34.5...v1.34.6) (2026-01-16)
 
 
