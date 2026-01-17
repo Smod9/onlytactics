@@ -97,8 +97,8 @@ export class ColyseusBridge {
       clientId: identity.clientId,
       role: options?.role,
     }
-    // Use joinById for existing rooms, joinOrCreate for creating new rooms
-    if (options?.joinExisting !== false && this.roomId && this.roomId !== 'race_room') {
+    // Use joinById whenever a concrete roomId is provided.
+    if (this.roomId && this.roomId !== 'race_room') {
       // Try to join existing room by ID, with a few retries for matchmaker propagation.
       const maxAttempts = 5
       const retryDelayMs = 400
