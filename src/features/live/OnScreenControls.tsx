@@ -121,8 +121,7 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
       button.key,
       wantsHardTurn
         ? {
-            // Use Alt to request hard-turn behavior. We reserve Left Shift as the
-            // physical-key modifier.
+            // Use Alt to request hard-turn behavior for touch controls.
             shiftKey: Boolean(modifiers?.shiftKey),
             altKey: Boolean(modifiers?.altKey) || hardTurnHeld,
           }
@@ -151,9 +150,9 @@ export const OnScreenControls = ({ cameraMode, onToggleCamera }: Props) => {
     {
       id: 'hardTurn',
       classes: `wide${hardTurnHeld ? ' active' : ''}`,
-      title: 'Hold to make ↑/↓ do 20° turns (Left Shift/Alt modifier)',
+      title: 'Hold to make ↑/↓ do 20° turns (Shift/Alt modifier)',
       label: '20° Turn',
-      subLabel: 'L-SHIFT (Hold + ↑/↓)',
+      subLabel: 'SHIFT (Hold + ↑/↓)',
       onPointerDown: (event) => {
         if (event.pointerType === 'touch') event.preventDefault()
         setHardTurnHeld(true)

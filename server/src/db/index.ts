@@ -72,5 +72,3 @@ export const runMigrations = async () => {
     client.release()
   }
 }
-
-

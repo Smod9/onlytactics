@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { ChatMessage, RaceEvent, RaceState } from '@/types/race'
 import { raceStore, type InputTelemetrySnapshot } from './raceStore'
+import { getWakeTuningState, subscribeWakeTuning } from '@/logic/wakeTuning'
 
 export const useRaceState = (): RaceState =>
   useSyncExternalStore(raceStore.subscribe, raceStore.getState)
@@ -17,3 +18,6 @@ export const useInputTelemetry = (): InputTelemetrySnapshot =>
     raceStore.getInputTelemetry,
     raceStore.getInputTelemetry,
   )
+
+export const useWakeTuning = () =>
+  useSyncExternalStore(subscribeWakeTuning, getWakeTuningState, getWakeTuningState)

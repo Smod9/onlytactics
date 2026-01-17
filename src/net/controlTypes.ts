@@ -6,5 +6,3 @@ export type ControlUpdate = {
   vmgMode?: boolean
   spin?: 'full'
 }
-
-

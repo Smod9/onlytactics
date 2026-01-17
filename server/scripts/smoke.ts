@@ -44,4 +44,3 @@ run()
     console.error('[smoke] ❌ Server health check failed:', error)
     process.exit(1)
   })
-

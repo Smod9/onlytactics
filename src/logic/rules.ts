@@ -1,5 +1,5 @@
 import type { BoatState, RaceState, RuleId } from '@/types/race'
-import { boatCapsuleCircles } from '@/logic/boatGeometry'
+import { boatCapsuleCircles, headingForward } from '@/logic/boatGeometry'
 import { createId } from '@/utils/ids'
 import type { RaceEvent } from '@/types/race'
 
@@ -8,6 +8,13 @@ export type RuleResolution = {
   boats: string[]
   offenderId: string
   message: string
+}
+
+export type CollisionFault = 'at_fault' | 'stand_on'
+
+export type CollisionOutcome = {
+  faults: Record<string, CollisionFault>
+  collidedBoatIds: Set<string>
 }
 
 const clampAngle180 = (deg: number) => {
@@ -23,11 +30,33 @@ type Circle = { x: number; y: number; r: number }
 
 const boatCircles = (boat: BoatState): Circle[] => boatCapsuleCircles(boat)
 
+const boatEnds = (boat: BoatState) => {
+  const [bow, stern] = boatCapsuleCircles(boat)
+  return { bow, stern }
+}
+
 const circlesOverlap = (a: Circle, b: Circle) => {
   const dx = a.x - b.x
   const dy = a.y - b.y
   const rr = a.r + b.r
   return dx * dx + dy * dy <= rr * rr
+}
+
+const isBehind = (target: BoatState, other: BoatState) => {
+  const forward = headingForward(target.headingDeg)
+  const dx = other.pos.x - target.pos.x
+  const dy = other.pos.y - target.pos.y
+  return dx * forward.x + dy * forward.y < 0
+}
+
+const sternRammer = (a: BoatState, b: BoatState) => {
+  const aEnds = boatEnds(a)
+  const bEnds = boatEnds(b)
+  const aHitsB = circlesOverlap(aEnds.bow, bEnds.stern) && isBehind(b, a)
+  const bHitsA = circlesOverlap(bEnds.bow, aEnds.stern) && isBehind(a, b)
+  if (aHitsB && !bHitsA) return a
+  if (bHitsA && !aHitsB) return b
+  return null
 }
 
 const boatsTooClose = (a: BoatState, b: BoatState) => {
@@ -82,6 +111,36 @@ export class RulesEngine {
     return results
   }
 
+  computeCollisionFaults(state: RaceState): Record<string, CollisionFault> {
+    return this.computeCollisionOutcomes(state).faults
+  }
+
+  computeCollisionOutcomes(state: RaceState): CollisionOutcome {
+    const boats = Object.values(state.boats)
+    const faults: Record<string, CollisionFault> = {}
+    const collidedBoatIds = new Set<string>()
+    for (let i = 0; i < boats.length; i += 1) {
+      for (let j = i + 1; j < boats.length; j += 1) {
+        const a = boats[i]
+        const b = boats[j]
+        if (boatsTooClose(a, b)) {
+          collidedBoatIds.add(a.id)
+          collidedBoatIds.add(b.id)
+        }
+        const rule10 = this.rule10Fault(state, a, b)
+        const rule11 = rule10 ? null : this.rule11Fault(state, a, b)
+        const fault = rule10 ?? rule11
+        if (!fault) continue
+        const { offender, standOn } = fault
+        faults[offender.id] = 'at_fault'
+        if (faults[standOn.id] !== 'at_fault') {
+          faults[standOn.id] = 'stand_on'
+        }
+      }
+    }
+    return { faults, collidedBoatIds }
+  }
+
   toEvents(state: RaceState, resolutions: RaceResolution[]): RaceEvent[] {
     if (!resolutions.length) return []
     return resolutions.map((violation) => ({
@@ -95,17 +154,9 @@ export class RulesEngine {
   }
 
   private checkRule10(state: RaceState, a: BoatState, b: BoatState): RuleResolution[] {
-    if (!boatsTooClose(a, b)) return []
-
-    const tackA = getTack(a, state.wind.directionDeg)
-    const tackB = getTack(b, state.wind.directionDeg)
-    if (tackA === tackB) return []
-
-    const offender = tackA === 'port' ? a : b
-    const standOn = offender === a ? b : a
-    if (isRightsSuspended(standOn) && !isRightsSuspended(offender)) {
-      return []
-    }
+    const fault = this.rule10Fault(state, a, b)
+    if (!fault) return []
+    const { offender, standOn } = fault
     return this.recordOnce(state, '10', offender.id, standOn.id, {
       ruleId: '10',
       offenderId: offender.id,
@@ -115,10 +166,41 @@ export class RulesEngine {
   }
 
   private checkRule11(state: RaceState, a: BoatState, b: BoatState): RuleResolution[] {
-    if (!boatsTooClose(a, b)) return []
+    const fault = this.rule11Fault(state, a, b)
+    if (!fault) return []
+    const { offender, standOn, rammer, windward, leeward } = fault
+
+    return this.recordOnce(state, '11', offender.id, standOn.id, {
+      ruleId: '11',
+      offenderId: offender.id,
+      boats: [offender.id, standOn.id],
+      message:
+        rammer !== null
+          ? `${offender.name} (astern) must keep clear of ${standOn.name}`
+          : `${windward.name} (windward) must keep clear of ${leeward.name}`,
+    })
+  }
+
+  private rule10Fault(state: RaceState, a: BoatState, b: BoatState) {
+    if (!boatsTooClose(a, b)) return null
+
     const tackA = getTack(a, state.wind.directionDeg)
     const tackB = getTack(b, state.wind.directionDeg)
-    if (tackA !== tackB) return []
+    if (tackA === tackB) return null
+
+    const offender = tackA === 'port' ? a : b
+    const standOn = offender === a ? b : a
+    if (isRightsSuspended(standOn) && !isRightsSuspended(offender)) {
+      return null
+    }
+    return { offender, standOn }
+  }
+
+  private rule11Fault(state: RaceState, a: BoatState, b: BoatState) {
+    if (!boatsTooClose(a, b)) return null
+    const tackA = getTack(a, state.wind.directionDeg)
+    const tackB = getTack(b, state.wind.directionDeg)
+    if (tackA !== tackB) return null
 
     const perpAngle = degToRad(state.wind.directionDeg + 90)
     const lineNormal = {
@@ -132,16 +214,14 @@ export class RulesEngine {
     const bScore = project(b)
     const windward = aScore < bScore ? a : b
     const leeward = windward === a ? b : a
-    if (isRightsSuspended(leeward) && !isRightsSuspended(windward)) {
-      return []
-    }
 
-    return this.recordOnce(state, '11', windward.id, leeward.id, {
-      ruleId: '11',
-      offenderId: windward.id,
-      boats: [windward.id, leeward.id],
-      message: `${windward.name} (windward) must keep clear of ${leeward.name}`,
-    })
+    const rammer = sternRammer(a, b)
+    const offender = rammer ?? windward
+    const standOn = offender === a ? b : a
+    if (isRightsSuspended(standOn) && !isRightsSuspended(offender)) {
+      return null
+    }
+    return { offender, standOn, rammer, windward, leeward }
   }
 
   private recordOnce(

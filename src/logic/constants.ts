@@ -16,6 +16,8 @@ export const TACK_LOCK_ENABLED = false //Whether a boat can tack while it is loc
 export const TACK_MIN_TIME_SECONDS = 1.0 //Minimum tack time in seconds
 export const TACK_SPEED_PENALTY = 0.7 //Speed Multiplier:lower = slower, 1.0 = no penalty
 export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be considered a tack and apply speed penalty
+export const MAX_REVERSE_SPEED_KTS = -0.25 //Max reverse speed when blowing sails (L key)
+export const LEEWARD_DRIFT_SPEED_KTS = 0.6 //Leeward drift when speed is zero or less
 
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
 export const BOAT_BOW_RADIUS = 4.5
@@ -23,11 +25,30 @@ export const BOAT_STERN_RADIUS = 9
 export const BOAT_BOW_OFFSET = 12 // forward offset from boat center (scene units)
 export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
 export const BOAT_LENGTH = BOAT_BOW_OFFSET - BOAT_STERN_OFFSET // total boat length (scene units)
+export const WAKE_FORWARD_OFFSET_MAX = BOAT_LENGTH * 0.6 // Forward shift when deep downwind
+
+// Mark collision radii (aligned with RaceScene drawing sizes)
+export const MARK_COLLIDER_RADIUS = 6
+export const GATE_COLLIDER_RADIUS = 7
+
+// Collision speed multipliers
+export const COLLISION_SLOWDOWN_AT_FAULT = 0.35
 
 // Wind shadow / wake parameters
-export const WAKE_MAX_SLOWDOWN = 0.25 // Max speed reduction (25%)
-export const WAKE_LENGTH = 60 // Downwind wake length (scene units)
-export const WAKE_HALF_WIDTH_START = 18 // Near-boat half width
-export const WAKE_HALF_WIDTH_END = 35 // Wake widens farther downwind
-export const WAKE_CONE_HALF_ANGLE_DEG = 35 // Limit wake to downwind sector
-export const WAKE_MIN_STRENGTH = 0.01 // Ignore negligible contributions
+export const WAKE_MAX_SLOWDOWN = 0.4 // Max speed reduction (25%)
+export const WAKE_LENGTH = 123 // Downwind wake length (scene units)
+export const WAKE_HALF_WIDTH_START = 25 // Near-boat half width
+export const WAKE_HALF_WIDTH_END = 17 // Wake narrows farther downwind
+export const WAKE_WIDTH_CURVE = 0.4 // >1 narrows faster downwind
+export const WAKE_LEEWARD_WIDTH_MULT = 2.3 // Leeward side width multiplier
+export const WAKE_WINDWARD_WIDTH_MULT = 1.3 // Windward side width multiplier
+export const WAKE_BIAS_DEG = -35 // Leeward bias away from pure downwind
+export const WAKE_TWA_ROTATION_SCALE_UPWIND = 0.12 // Rotation scale upwind
+export const WAKE_TWA_ROTATION_SCALE_DOWNWIND = 0.42 // Rotation scale deep downwind
+export const WAKE_CORE_HALF_ANGLE_DEG = 9.5 // Core blanket width
+export const WAKE_TURB_HALF_ANGLE_DEG = 13.5 // Turbulent zone width
+export const WAKE_CORE_STRENGTH = 0.85 // Core blanket strength
+export const WAKE_TURB_STRENGTH = 0.4 // Turbulent zone strength
+export const WAKE_CORE_MAX_SLOWDOWN = 0.4 // Core blanket max slowdown
+export const WAKE_TURB_MAX_SLOWDOWN = 0.25 // Turbulent zone max slowdown
+export const WAKE_MIN_STRENGTH = 0.015 // Ignore negligible contributions

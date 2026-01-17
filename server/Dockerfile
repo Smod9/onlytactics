@@ -1,10 +1,13 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app/server
 
 COPY package*.json ./
 # Install all dependencies (including dev) for building
 RUN npm ci
+
+# Ensure shared source files (../src) can resolve node_modules via /app/node_modules
+RUN ln -s /app/server/node_modules /app/node_modules
 
 COPY . .
 
@@ -15,7 +18,7 @@ RUN mv /tmp/src-parent /app/src
 
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app/server
 

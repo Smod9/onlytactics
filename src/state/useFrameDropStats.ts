@@ -54,8 +54,8 @@ export function useFrameDropStats(options?: Options) {
     const samples: {
       timestampMs: number
       dropped: boolean
-      deltaTimeMs: number
     }[] = []
+    let head = 0
     let droppedFrameCount = 0
 
     // A short-term accumulator for FPS. We reset it on each UI update so it reacts quickly.
@@ -64,17 +64,21 @@ export function useFrameDropStats(options?: Options) {
 
     const pushSample = (timestampMs: number, deltaTimeMs: number) => {
       const dropped = deltaTimeMs > dropThresholdMs
-      samples.push({ timestampMs, dropped, deltaTimeMs })
+      samples.push({ timestampMs, dropped })
       if (dropped) droppedFrameCount += 1
       deltaTimeSumMs += deltaTimeMs
       deltaTimeCount += 1
 
       // Evict old samples that fall outside the rolling window.
       const cutoffTimestampMs = timestampMs - windowDurationMs
-      while (samples.length && samples[0].timestampMs < cutoffTimestampMs) {
-        const removed = samples.shift()
-        if (!removed) break
+      while (head < samples.length && samples[head].timestampMs < cutoffTimestampMs) {
+        const removed = samples[head]
         if (removed.dropped) droppedFrameCount -= 1
+        head += 1
+      }
+      if (head > 1000) {
+        samples.splice(0, head)
+        head = 0
       }
     }
 
@@ -92,7 +96,7 @@ export function useFrameDropStats(options?: Options) {
     // UI update loop: decouples per-frame sampling from React state updates.
     // This keeps React render frequency low while still showing "real-time" stats.
     const updateIntervalId = window.setInterval(() => {
-      const sampleCount = samples.length
+      const sampleCount = samples.length - head
       if (!sampleCount) return
 
       // Dropped frame % uses a rolling window to avoid jitter.

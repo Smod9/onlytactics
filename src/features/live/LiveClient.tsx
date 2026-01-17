@@ -11,6 +11,7 @@ import { appEnv } from '@/config/env'
 import { PixiStage } from '@/view/PixiStage'
 import { useInputTelemetry, useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
+import { roomService, RoomNotFoundError } from '@/net/roomService'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
@@ -24,7 +25,7 @@ import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
 import { RosterPanel } from './RosterPanel'
 import type { CameraMode } from '@/view/scene/RaceScene'
-import { ZoomIcon } from '@/view/icons'
+import { LobbyIcon, ZoomIcon } from '@/view/icons'
 import { angleDiff } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
 import { useFrameDropStats } from '@/state/useFrameDropStats'
@@ -64,12 +65,21 @@ export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const telemetry = useInputTelemetry()
-  const [network] = useState(() => new GameNetwork())
+
+  // Get roomId from URL query parameter
+  const roomId = useMemo(() => {
+    if (typeof window === 'undefined') return undefined
+    const params = new URLSearchParams(window.location.search)
+    return params.get('roomId') ?? undefined
+  }, [])
+
+  const [network] = useState(() => new GameNetwork(roomId))
   const [showDebug, setShowDebug] = useState(false)
   const [nameEntry, setNameEntry] = useState(identity.clientName ?? '')
   const [joinRole, setJoinRole] = useState<NonHostRole>('player')
   const [needsName, setNeedsName] = useState(!identity.clientName)
   const [idleSuspended, setIdleSuspended] = useState(false)
+  const [rejoinPending, setRejoinPending] = useState(false)
   const [cameraMode, setCameraMode] = useState<CameraMode>('follow')
   const [followBoatId, setFollowBoatId] = useState<string | null>(null)
   const [selectedBoatId, setSelectedBoatId] = useState<string | null>(null)
@@ -82,6 +92,8 @@ export const LiveClient = () => {
   const [userNameDraft, setUserNameDraft] = useState(identity.clientName ?? '')
   const [userRoleDraft, setUserRoleDraft] = useState<NonHostRole>('player')
   const [userSettingsError, setUserSettingsError] = useState<string | null>(null)
+  const [roomDisplayName, setRoomDisplayName] = useState<string | null>(null)
+  const [roomResolved, setRoomResolved] = useState(!roomId)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(
     null,
@@ -103,11 +115,97 @@ export const LiveClient = () => {
     void startRosterWatcher()
   }, [])
 
+  useEffect(() => {
+    if (!roomId) return
+    let active = true
+    let attempts = 0
+    let retryTimer: number | undefined
+    const retryDelayMs = 500
+    const maxRetries = 6
+
+    const fetchDetails = async () => {
+      try {
+        const room = await roomService.getRoomDetails(roomId)
+        if (!active) return
+        setRoomDisplayName(room.roomName)
+        setRoomResolved(true)
+      } catch (err) {
+        if (!active) return
+        if (err instanceof RoomNotFoundError) {
+          attempts += 1
+          if (attempts <= maxRetries) {
+            retryTimer = window.setTimeout(fetchDetails, retryDelayMs)
+            return
+          }
+          const search = new URLSearchParams({ invalidRoomId: roomId })
+          window.location.href = `/lobby?${search.toString()}`
+          return
+        }
+        console.warn('[LiveClient] failed to load room details', err)
+        setRoomResolved(true)
+      }
+    }
+
+    setRoomResolved(false)
+    void fetchDetails()
+    return () => {
+      active = false
+      if (retryTimer) {
+        window.clearTimeout(retryTimer)
+      }
+    }
+  }, [roomId])
+
+  useEffect(() => {
+    if (!roomId) return
+    return network.onRoomClosed((payload) => {
+      const reason = payload?.reason ?? 'closed'
+      const search = new URLSearchParams({ closed: reason, roomId })
+      window.location.href = `/lobby?${search.toString()}`
+    })
+  }, [network, roomId])
+
+  // Throttle leaderboard speed updates to avoid noisy UI churn.
+  // We update roughly once per 10 sim/store updates (tracked by `race.t` changes),
+  // but also refresh immediately for newly-seen boats.
+  const raceRef = useRef(race)
+  raceRef.current = race
+  const leaderboardSpeedsRef = useRef<Record<string, string>>({})
+  const [leaderboardSpeeds, setLeaderboardSpeeds] = useState<Record<string, string>>({})
+  const leaderboardTickRef = useRef(0)
+  const lastRaceTRef = useRef<number | null>(null)
+  useEffect(() => {
+    const snapshot = raceRef.current
+    if (lastRaceTRef.current === snapshot.t) return
+    lastRaceTRef.current = snapshot.t
+    leaderboardTickRef.current += 1
+
+    const existing = leaderboardSpeedsRef.current
+    const hasMissing = snapshot.leaderboard.some((boatId) => {
+      if (existing[boatId]) return false
+      return Boolean(snapshot.boats[boatId])
+    })
+
+    if (!hasMissing && leaderboardTickRef.current % 10 !== 0) return
+
+    const next: Record<string, string> = { ...existing }
+    snapshot.leaderboard.forEach((boatId) => {
+      const boat = snapshot.boats[boatId]
+      if (!boat) return
+      next[boatId] = `${boat.speed.toFixed(2)} kts`
+    })
+    leaderboardSpeedsRef.current = next
+    setLeaderboardSpeeds(next)
+  }, [race.t])
+
   const skipDevCleanupRef = useRef(import.meta.env.DEV)
 
   useEffect(() => {
     if (needsName) return
-    void network.start()
+    if (roomId && !roomResolved) return
+    void network.start().catch((err) => {
+      console.warn('[LiveClient] network start failed', err)
+    })
     return () => {
       if (skipDevCleanupRef.current) {
         skipDevCleanupRef.current = false
@@ -115,7 +213,7 @@ export const LiveClient = () => {
       }
       network.stop()
     }
-  }, [network, needsName])
+  }, [network, needsName, roomId, roomResolved])
 
   useEffect(() => {
     if (needsName || idleSuspended) return
@@ -213,6 +311,32 @@ export const LiveClient = () => {
     return Number.isInteger(minutes) ? `${minutes}min` : `${minutes.toFixed(1)}min`
   }
 
+  const formatRaceTime = (seconds: number, decimals = 2) => {
+    const safeSeconds = Math.max(0, seconds)
+    const wholeSeconds = Math.floor(safeSeconds)
+    const fraction = safeSeconds - wholeSeconds
+    const hours = Math.floor(wholeSeconds / 3600)
+    const minutes = Math.floor((wholeSeconds % 3600) / 60)
+    const secs = wholeSeconds % 60
+    const fractionValue = Math.floor(fraction * Math.pow(10, decimals))
+    const fractionLabel =
+      decimals > 0 ? `.${fractionValue.toString().padStart(decimals, '0')}` : ''
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs
+        .toString()
+        .padStart(2, '0')}${fractionLabel}`
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}${fractionLabel}`
+  }
+
+  const formatSplit = (deltaSeconds: number) => {
+    const sign = deltaSeconds >= 0 ? '+' : '-'
+    const totalSeconds = Math.round(Math.abs(deltaSeconds))
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${sign}${minutes}:${seconds.toString().padStart(2, '0')}s`
+  }
+
   const roster = useRoster()
   const rosterHostName =
     roster.hostId &&
@@ -238,6 +362,12 @@ export const LiveClient = () => {
   const showWaitingOverlay =
     role !== 'host' && race.phase === 'prestart' && !race.countdownArmed
 
+  const elapsedRaceLabel = formatRaceTime(Math.max(0, race.t))
+  const finishedTimes = race.leaderboard
+    .map((boatId) => race.boats[boatId]?.finishTime)
+    .filter((time): time is number => typeof time === 'number')
+  const firstFinishTime = finishedTimes.length ? Math.min(...finishedTimes) : null
+
   const submitName = (event: FormEvent) => {
     event.preventDefault()
     const trimmed = nameEntry.trim()
@@ -247,10 +377,36 @@ export const LiveClient = () => {
     void network.switchRole(joinRole)
   }
 
-  const resumeFromIdle = () => {
+  const ensureRoomAvailable = async () => {
+    if (!roomId) return true
+    try {
+      await roomService.getRoomDetails(roomId)
+      return true
+    } catch (err) {
+      if (err instanceof RoomNotFoundError) {
+        const search = new URLSearchParams({ invalidRoomId: roomId })
+        window.location.href = `/lobby?${search.toString()}`
+        return false
+      }
+      console.warn('[LiveClient] room availability check failed', err)
+      return true
+    }
+  }
+
+  const resumeFromIdle = async () => {
     if (!idleSuspended) return
-    setIdleSuspended(false)
-    void network.start()
+    if (rejoinPending) return
+    setRejoinPending(true)
+    try {
+      const isAvailable = await ensureRoomAvailable()
+      if (!isAvailable) return
+      setIdleSuspended(false)
+      void network.start().catch((err) => {
+        console.warn('[LiveClient] network rejoin failed', err)
+      })
+    } finally {
+      setRejoinPending(false)
+    }
   }
 
   const openUserModal = () => {
@@ -294,25 +450,29 @@ export const LiveClient = () => {
     }
   }
 
+  const truncatedRoomName =
+    roomDisplayName && roomDisplayName.length > 14
+      ? `${roomDisplayName.slice(0, 14)}...`
+      : roomDisplayName
+
   const headerPortal = headerCtaEl
     ? createPortal(
         <div
           className="header-controls"
           style={{ display: 'flex', gap: 10, alignItems: 'center' }}
         >
+          {!needsName && truncatedRoomName && (
+            <div className="header-room-group">
+              <span className="header-room-name" title={roomDisplayName ?? 'Race'}>
+                {truncatedRoomName}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'none' }}>
             <ReplaySaveButton />
           </div>
           {role === 'host' && (
             <>
-              <button
-                type="button"
-                className="start-sequence"
-                onClick={() => network.setWindFieldEnabled(!race.windField?.enabled)}
-                title="Toggle puffs/lulls (wind field)"
-              >
-                Puffs: {race.windField?.enabled ? 'On' : 'Off'}
-              </button>
               <button
                 type="button"
                 className="start-sequence"
@@ -412,8 +572,8 @@ export const LiveClient = () => {
           <div className="username-card">
             <h2>You went idle</h2>
             <p>We paused your connection so someone else can host while you’re away.</p>
-            <button type="button" onClick={resumeFromIdle}>
-              Rejoin Race
+            <button type="button" onClick={resumeFromIdle} disabled={rejoinPending}>
+              {rejoinPending ? 'Rejoining...' : 'Rejoin Race'}
             </button>
           </div>
         </div>
@@ -666,6 +826,20 @@ export const LiveClient = () => {
                                 <span className="hud-label">SPD</span>
                                 <span className="hud-value">
                                   {windSpeedAtBoat.toFixed(1)} kts
+                                  {(() => {
+                                    const delta = windSpeedAtBoat - race.wind.speed
+                                    if (Math.abs(delta) < 0.1) return null
+                                    const sign = delta > 0 ? '+' : ''
+                                    return (
+                                      <span
+                                        className={`wind-speed-delta ${delta >= 0 ? 'positive' : 'negative'}`}
+                                        title="Local wind delta from puffs/lulls"
+                                      >
+                                        {sign}
+                                        {delta.toFixed(1)}
+                                      </span>
+                                    )
+                                  })()}
                                 </span>
                               </div>
                               <div className="hud-metric hud-metric-windshift">
@@ -715,6 +889,10 @@ export const LiveClient = () => {
                   )
                 })()}
               </div>
+              <WindIntensityLegend
+                enabled={race.windField?.enabled}
+                intensityKts={race.windField?.intensityKts}
+              />
               {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
                 <div className="spin-under-hud">
                   <button
@@ -800,6 +978,10 @@ export const LiveClient = () => {
                   </button>
                 )}
               </div>
+              <div className="race-time-panel" aria-label="Elapsed race time">
+                <span className="race-time-label">Race time</span>
+                <span className="race-time-value">{elapsedRaceLabel}</span>
+              </div>
               <div className="leaderboard-overlay">
                 <div className="leaderboard-panel">
                   <h3>Leaderboard</h3>
@@ -827,15 +1009,40 @@ export const LiveClient = () => {
                               : finished && index === 2
                                 ? '🥉'
                                 : ''
+                        const pickle =
+                          finished &&
+                          race.leaderboard.length > 1 &&
+                          index === race.leaderboard.length - 1
+                            ? '🥒'
+                            : ''
 
                         let statusText = `Lap ${displayLap}/${race.lapsToFinish}`
+                        let splitText: string | null = null
                         if (finished) {
-                          statusText = 'Finished'
+                          if (typeof boat.finishTime === 'number') {
+                            const finishLabel = formatRaceTime(boat.finishTime)
+                            if (
+                              firstFinishTime !== null &&
+                              Number.isFinite(firstFinishTime) &&
+                              Number.isFinite(boat.finishTime)
+                            ) {
+                              const deltaSeconds = boat.finishTime - firstFinishTime
+                              const normalizedDelta =
+                                Math.abs(deltaSeconds) < 0.005 ? 0 : deltaSeconds
+                              splitText = formatSplit(normalizedDelta)
+                            }
+                            statusText = finishLabel
+                          } else {
+                            statusText = 'Finished'
+                          }
                         } else if (atLine && !onFinalLap) {
                           statusText = 'Pre-start'
                         } else if (atLine && onFinalLap) {
                           statusText = 'Finish'
                         }
+
+                        const speedText = leaderboardSpeeds[boatId] ?? '—'
+                        const metaBottomText = finished ? (splitText ?? '—') : speedText
 
                         return (
                           <li key={boatId}>
@@ -843,6 +1050,7 @@ export const LiveClient = () => {
                             <span className="leaderboard-name">
                               <span className="leaderboard-badges" aria-hidden="true">
                                 <span className="leaderboard-badge">{medal || ''}</span>
+                                <span className="leaderboard-badge">{pickle || ''}</span>
                                 <span className="leaderboard-badge">
                                   {protested ? '🚩' : ''}
                                 </span>
@@ -850,7 +1058,12 @@ export const LiveClient = () => {
                               <span className="leaderboard-name-text">{boat.name}</span>
                               {isHost && ' (RC)'}
                             </span>
-                            <span className="leaderboard-meta">{statusText}</span>
+                            <span className="leaderboard-meta">
+                              <span className="leaderboard-meta-top">{statusText}</span>
+                              <span className="leaderboard-meta-bottom">
+                                {metaBottomText}
+                              </span>
+                            </span>
                           </li>
                         )
                       })}
@@ -987,7 +1200,19 @@ export const LiveClient = () => {
           rttText={myLatency ? `RTT ${myLatency.latencyMs.toFixed(0)}ms` : 'RTT —'}
         />
       )}
-      <TacticianPopout />
+      <TacticianPopout
+        windIntensityEnabled={race.windField?.enabled}
+        windIntensityKts={race.windField?.intensityKts}
+      />
+      {appEnv.debugHud && (
+        <button
+          type="button"
+          className="debug-toggle"
+          onClick={() => setShowDebug((prev) => !prev)}
+        >
+          {showDebug ? 'Hide Debug' : 'Show Debug'}
+        </button>
+      )}
       {showDebug && (
         <div className="debug-dock">
           <DebugPanel onClose={() => setShowDebug(false)} network={network} />
@@ -1034,7 +1259,7 @@ export const LiveClient = () => {
                 </a>
                 <a
                   className="icon-link"
-                  href="https://discord.gg/eEstr6ZH"
+                  href="https://discord.gg/gYPkWPhg"
                   target="_blank"
                   rel="noreferrer"
                   title="Join our Discord community"
@@ -1097,6 +1322,16 @@ export const LiveClient = () => {
               <div className="username-form-actions">
                 <button
                   type="button"
+                  className="user-menu-lobby"
+                  onClick={() => {
+                    window.location.href = '/lobby'
+                  }}
+                >
+                  <LobbyIcon />
+                  Lobby
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setShowUserModal(false)
                     setUserSettingsError(null)
@@ -1118,19 +1353,40 @@ export const LiveClient = () => {
 }
 
 const BottomLeftOverlays = ({ rttText }: { rttText: string }) => {
-  const showPerf = appEnv.debugHud || appEnv.perfHud
-  const { label } = useFrameDropStats({ enabled: showPerf })
+  const { label } = useFrameDropStats()
 
   return (
     <div className="bottom-left-overlays" aria-label="Network and performance overlays">
       <div className="rtt-overlay" aria-label="Input RTT">
         {rttText}
       </div>
-      {showPerf && (
-        <div className="perf-overlay" aria-label="Frame drop percentage">
-          {label}
+      <div className="perf-overlay" aria-label="Frame drop percentage">
+        {label}
+      </div>
+    </div>
+  )
+}
+
+const WindIntensityLegend = ({
+  enabled,
+  intensityKts,
+}: {
+  enabled?: boolean
+  intensityKts?: number
+}) => {
+  if (!enabled || !intensityKts || !Number.isFinite(intensityKts)) return null
+  const absIntensity = Math.abs(intensityKts)
+  if (absIntensity <= 0) return null
+
+  return (
+    <div className="wind-intensity-legend" aria-label="Wind intensity scale">
+      <div className="wind-intensity-track-wrap" aria-hidden="true">
+        <div className="wind-intensity-track-labels">
+          <span>-{absIntensity.toFixed(1)} kts</span>
+          <span>+{absIntensity.toFixed(1)} kts</span>
         </div>
-      )}
+        <div className="wind-intensity-track" />
+      </div>
     </div>
   )
 }

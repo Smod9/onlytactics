@@ -38,6 +38,7 @@ export class ColyseusBridge {
   private statusListeners = new Set<(status: ColyseusStatus) => void>()
   private chatListeners = new Set<(message: ChatMessage) => void>()
   private roleListeners = new Set<(role: Exclude<RaceRole, 'host'>) => void>()
+  private roomClosedListeners = new Set<(payload: { reason?: string }) => void>()
 
   private sessionId?: string
 
@@ -74,23 +75,65 @@ export class ColyseusBridge {
     return () => this.roleListeners.delete(listener)
   }
 
-  async connect(options?: { role?: Exclude<RaceRole, 'host'> }) {
+  onRoomClosed(listener: (payload: { reason?: string }) => void) {
+    this.roomClosedListeners.add(listener)
+    return () => {
+      this.roomClosedListeners.delete(listener)
+    }
+  }
+
+  async connect(options?: { role?: Exclude<RaceRole, 'host'>; joinExisting?: boolean }) {
     this.emitStatus('connecting')
     this.intentionalLeave = false
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'connect()', {
         endpoint: this.endpoint,
         roomId: this.roomId,
+        joinExisting: options?.joinExisting,
       })
     }
-    this.room = await this.client.joinOrCreate<RaceRoomSchema>(this.roomId, {
+    const joinOptions = {
       name: identity.clientName ?? 'Visitor',
       clientId: identity.clientId,
       role: options?.role,
-    })
+    }
+    // Use joinById for existing rooms, joinOrCreate for creating new rooms
+    if (options?.joinExisting !== false && this.roomId && this.roomId !== 'race_room') {
+      // Try to join existing room by ID, with a few retries for matchmaker propagation.
+      const maxAttempts = 5
+      const retryDelayMs = 400
+      let lastError: unknown
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          this.room = await this.client.joinById<RaceRoomSchema>(this.roomId, joinOptions)
+          lastError = undefined
+          break
+        } catch (err) {
+          lastError = err
+          if (appEnv.debugNetLogs) {
+            console.info('[ColyseusBridge]', 'joinById failed', {
+              roomId: this.roomId,
+              attempt,
+              err,
+            })
+          }
+          if (attempt < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+          }
+        }
+      }
+      if (!this.room) {
+        this.emitStatus('error')
+        throw lastError
+      }
+    } else {
+      // Create or join room type directly
+      this.room = await this.client.joinOrCreate<RaceRoomSchema>('race_room', joinOptions)
+    }
     this.sessionId = this.room.sessionId
-    this.reconnectionToken = (this.room as unknown as { reconnectionToken?: string })
-      .reconnectionToken
+    this.reconnectionToken = (
+      this.room as unknown as { reconnectionToken?: string }
+    ).reconnectionToken
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'joined room', {
         sessionId: this.sessionId,
@@ -192,6 +235,9 @@ export class ColyseusBridge {
       }
       this.roleListeners.forEach((listener) => listener(role))
     })
+    room.onMessage('room_closed', (payload: { reason?: string }) => {
+      this.roomClosedListeners.forEach((listener) => listener(payload ?? {}))
+    })
     room.onLeave(() => {
       if (appEnv.debugNetLogs) {
         console.info('[ColyseusBridge]', 'room leave event')
@@ -234,14 +280,17 @@ export class ColyseusBridge {
         }
         this.emitStatus('connecting')
         try {
-          const nextRoom = (await (this.client as unknown as {
-            reconnect: <T>(reconnectionToken: string) => Promise<Room<T>>
-          }).reconnect<RaceRoomSchema>(token)) as Room<RaceRoomSchema>
+          const nextRoom = (await (
+            this.client as unknown as {
+              reconnect: <T>(reconnectionToken: string) => Promise<Room<T>>
+            }
+          ).reconnect<RaceRoomSchema>(token)) as Room<RaceRoomSchema>
 
           this.room = nextRoom
           this.sessionId = nextRoom.sessionId
-          this.reconnectionToken = (nextRoom as unknown as { reconnectionToken?: string })
-            .reconnectionToken ?? this.reconnectionToken
+          this.reconnectionToken =
+            (nextRoom as unknown as { reconnectionToken?: string }).reconnectionToken ??
+            this.reconnectionToken
           this.attachHandlers(nextRoom)
           this.emitStatus('connected')
           return

@@ -58,16 +58,17 @@ import {
   TACK_MIN_ANGLE_DEG,
   TACK_MIN_TIME_SECONDS,
   TACK_SPEED_PENALTY,
-  WAKE_CONE_HALF_ANGLE_DEG,
-  WAKE_HALF_WIDTH_END,
-  WAKE_HALF_WIDTH_START,
-  WAKE_LENGTH,
-  WAKE_MAX_SLOWDOWN,
-  WAKE_MIN_STRENGTH,
+  WAKE_FORWARD_OFFSET_MAX,
   TURN_RATE_DEG,
+  MAX_REVERSE_SPEED_KTS,
+  LEEWARD_DRIFT_SPEED_KTS,
+  COLLISION_SLOWDOWN_AT_FAULT,
 } from './constants'
+import { getEffectiveWakeTuning } from '@/logic/wakeTuning'
 import { appEnv } from '@/config/env'
 import { sampleWindSpeed } from '@/logic/windField'
+import { resolveBoatMarkCollisions } from '@/logic/collision/rapier'
+import type { CollisionOutcome } from '@/logic/rules'
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -86,6 +87,13 @@ export const radToDeg = (rad: number) => (rad * 180) / Math.PI
 const dirToUnit = (deg: number) => {
   const rad = degToRad(deg)
   return { x: Math.sin(rad), y: -Math.cos(rad) }
+}
+
+const rotateVec = (vec: { x: number; y: number }, deg: number) => {
+  const rad = degToRad(deg)
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  return { x: vec.x * cos - vec.y * sin, y: vec.x * sin + vec.y * cos }
 }
 
 /**
@@ -305,15 +313,36 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
   const boats = Object.values(state.boats)
   const factors: Record<string, number> = {}
 
-  const downwindDeg = normalizeDeg(state.wind.directionDeg + 180)
-  const downwindVec = dirToUnit(downwindDeg)
-  const crossVec = { x: -downwindVec.y, y: downwindVec.x }
-  const maxRadius = WAKE_LENGTH + WAKE_HALF_WIDTH_END * 2
+  const wake = getEffectiveWakeTuning()
+  const windDownwindDeg = normalizeDeg(state.wind.directionDeg + 180)
+  const windDownwindVec = dirToUnit(windDownwindDeg)
+  const maxSideMult = Math.max(wake.leewardWidthMult, wake.windwardWidthMult)
+  const maxHalfWidth = Math.max(wake.widthStart, wake.widthEnd) * maxSideMult
+  const maxRadius = wake.length + maxHalfWidth * 2
   const maxRadiusSq = maxRadius * maxRadius
-  const coneCos = Math.cos(degToRad(WAKE_CONE_HALF_ANGLE_DEG))
+  const turbConeCos = Math.cos(degToRad(wake.turbHalfAngleDeg))
+  const coreToTurbRatio =
+    Math.tan(degToRad(wake.coreHalfAngleDeg)) / Math.tan(degToRad(wake.turbHalfAngleDeg))
+  const leewardSideByBoatId: Record<string, 1 | -1> = {}
+
+  const widthAt = (alongNorm: number, sideMult: number) => {
+    const baseWidth =
+      wake.widthEnd +
+      (wake.widthStart - wake.widthEnd) * Math.pow(1 - alongNorm, wake.widthCurve)
+    return baseWidth * sideMult
+  }
 
   boats.forEach((boat) => {
     factors[boat.id] = boat.wakeFactor ?? 1
+    const awa = angleDiff(boat.headingDeg, state.wind.directionDeg)
+    const headingVec = dirToUnit(boat.headingDeg)
+    const leewardVec =
+      awa >= 0
+        ? { x: -headingVec.y, y: headingVec.x }
+        : { x: headingVec.y, y: -headingVec.x }
+    const leewardCross =
+      windDownwindVec.x * leewardVec.y - windDownwindVec.y * leewardVec.x
+    leewardSideByBoatId[boat.id] = leewardCross >= 0 ? 1 : -1
   })
 
   for (let ti = 0; ti < boats.length; ti += 1) {
@@ -323,8 +352,24 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
     for (let si = 0; si < boats.length; si += 1) {
       if (si === ti) continue
       const source = boats[si]
-      const dx = target.pos.x - source.pos.x
-      const dy = target.pos.y - source.pos.y
+      const twa = angleDiff(source.headingDeg, state.wind.directionDeg)
+      const biasDeg = leewardSideByBoatId[source.id] * wake.biasDeg
+      const absTwa = Math.abs(twa)
+      const downwindT = clamp((absTwa - 110) / 50, 0, 1)
+      const downwindVec = rotateVec(
+        windDownwindVec,
+        twa *
+          (wake.twaRotationScaleUpwind +
+            (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT) +
+          biasDeg,
+      )
+      const crossVec = { x: -downwindVec.y, y: downwindVec.x }
+      const forwardOffset = WAKE_FORWARD_OFFSET_MAX * downwindT
+      const headingVec = dirToUnit(source.headingDeg)
+      const sourceX = source.pos.x + headingVec.x * forwardOffset
+      const sourceY = source.pos.y + headingVec.y * forwardOffset
+      const dx = target.pos.x - sourceX
+      const dy = target.pos.y - sourceY
       const distSq = dx * dx + dy * dy
       if (distSq > maxRadiusSq) continue
       if (distSq === 0) continue
@@ -333,26 +378,35 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
       const relUnitX = dx / dist
       const relUnitY = dy / dist
       const align = relUnitX * downwindVec.x + relUnitY * downwindVec.y
-      if (align <= 0 || align < coneCos) continue
+      if (align <= 0 || align < turbConeCos) continue
 
-      const along = dx * downwindVec.x + dy * downwindVec.y
-      if (along <= 0 || along > WAKE_LENGTH) continue
+      const along = dist * align
+      if (along <= 0 || along > wake.length) continue
 
       const cross = dx * crossVec.x + dy * crossVec.y
-      const alongNorm = along / WAKE_LENGTH
-      const halfWidth =
-        WAKE_HALF_WIDTH_START + (WAKE_HALF_WIDTH_END - WAKE_HALF_WIDTH_START) * alongNorm
-      const lateral = Math.abs(cross)
+      const alongNorm = along / wake.length
+      const sideSign: 1 | -1 = cross >= 0 ? 1 : -1
+      const isLeewardSide = sideSign === leewardSideByBoatId[source.id]
+      const sideMult = isLeewardSide ? wake.leewardWidthMult : wake.windwardWidthMult
+      const turbHalfWidth = widthAt(alongNorm, sideMult)
+      const coreHalfWidth = turbHalfWidth * coreToTurbRatio
+      const sinAngle = Math.sqrt(Math.max(0, 1 - align * align))
+      const lateral = dist * sinAngle
       // Gaussian falloff for lateral distance
-      const lateralFactor = Math.exp(-(lateral * lateral) / (halfWidth * halfWidth))
+      const coreLateral = Math.exp(-(lateral * lateral) / (coreHalfWidth * coreHalfWidth))
+      const turbLateral = Math.exp(-(lateral * lateral) / (turbHalfWidth * turbHalfWidth))
       // Linear falloff along the wake (stronger near the boat, weaker farther away)
       const alongFactor = 1 - alongNorm
-      const contribution = WAKE_MAX_SLOWDOWN * alongFactor * lateralFactor
-      if (contribution < WAKE_MIN_STRENGTH) continue
-      slowdown = Math.min(WAKE_MAX_SLOWDOWN, slowdown + contribution)
+      const coreContribution =
+        wake.coreMaxSlowdown * wake.coreStrength * alongFactor * coreLateral
+      const turbContribution =
+        wake.turbMaxSlowdown * wake.turbStrength * alongFactor * turbLateral
+      const contribution = coreContribution + turbContribution
+      if (contribution < wake.minStrength) continue
+      slowdown = Math.min(wake.maxSlowdown, slowdown + contribution)
     }
 
-    const wakeFactor = clamp(1 - slowdown, 1 - WAKE_MAX_SLOWDOWN, 1)
+    const wakeFactor = clamp(1 - slowdown, 1 - wake.maxSlowdown, 1)
     factors[target.id] = wakeFactor
   }
 
@@ -379,7 +433,12 @@ export type InputMap = Record<string, PlayerInput>
  * @param inputs - Map of player inputs by boat ID
  * @param dt - Time step in seconds (typically 1/60 for 60fps)
  */
-export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) => {
+export const stepRaceState = (
+  state: RaceState,
+  inputs: InputMap,
+  dt: number,
+  collisionOutcome?: CollisionOutcome,
+) => {
   // Advance simulation time
   state.t += dt
 
@@ -477,14 +536,16 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
       polarTargetSpeed(awa, localWindSpeed, DEFAULT_SHEET) * appEnv.speedMultiplier
 
     // Slow-down / depower handling:
-    // - Blowing sails (held control) should reduce speed to ~10% of TWS.
-    // - Near the maximum upwind angle (NO_GO boundary), speed should also be ~10% of TWS
+    // - Blowing sails (held control) allows reversing down to -0.2 kts.
+    // - Near the maximum upwind angle (NO_GO boundary), speed should be ~10% of TWS
     //   (this keeps "parking" and prestart control consistent and avoids being too fast at max upwind).
     const absAwa = Math.abs(awa)
     const slowCap = localWindSpeed * 0.1 * appEnv.speedMultiplier
+    const reverseSpeedKts = MAX_REVERSE_SPEED_KTS * appEnv.speedMultiplier
     const nearMaxUpwind = absAwa <= NO_GO_ANGLE_DEG + 1
-    const shouldSlow = boat.blowSails || boat.stallTimer > 0 || nearMaxUpwind
-    if (shouldSlow) {
+    if (boat.blowSails) {
+      targetSpeed = Math.min(targetSpeed, reverseSpeedKts)
+    } else if (boat.stallTimer > 0 || nearMaxUpwind) {
       targetSpeed = Math.min(targetSpeed, slowCap)
     }
 
@@ -519,6 +580,12 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     // Smoothly interpolate toward target speed
     boat.speed = smoothSpeed(boat.speed, targetSpeed, dt)
 
+    const fault = collisionOutcome?.faults[boat.id]
+    const hasBoatCollision = collisionOutcome?.collidedBoatIds.has(boat.id)
+    if (fault === 'at_fault' && hasBoatCollision) {
+      boat.speed *= COLLISION_SLOWDOWN_AT_FAULT
+    }
+
     // Update position based on heading and speed
     // Coordinate system: +X = East, +Y = South (y inverted because North is "up" on screen)
     const courseRad = degToRad(boat.headingDeg)
@@ -528,6 +595,25 @@ export const stepRaceState = (state: RaceState, inputs: InputMap, dt: number) =>
     boat.prevPos.y = boat.pos.y
     boat.pos.x += Math.sin(courseRad) * speedMs * dt
     boat.pos.y -= Math.cos(courseRad) * speedMs * dt // Negative because North is up
+
+    if (boat.speed <= 0) {
+      const headingVec = dirToUnit(boat.headingDeg)
+      const leewardVec =
+        awa >= 0
+          ? { x: -headingVec.y, y: headingVec.x }
+          : { x: headingVec.y, y: -headingVec.x }
+      const driftMs = LEEWARD_DRIFT_SPEED_KTS * KNOTS_TO_MS * appEnv.speedMultiplier
+      boat.pos.x += leewardVec.x * driftMs * dt
+      boat.pos.y += leewardVec.y * driftMs * dt
+    }
+  })
+
+  const { correctedPositions } = resolveBoatMarkCollisions(state)
+  correctedPositions.forEach((pos, boatId) => {
+    const boat = state.boats[boatId]
+    if (!boat) return
+    boat.pos.x = pos.x
+    boat.pos.y = pos.y
   })
 }
 

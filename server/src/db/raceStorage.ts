@@ -154,5 +154,3 @@ export const queryRaces = async (filters: RaceQueryFilters): Promise<RaceSummary
     leaderboard: row.leaderboard ?? [],
   }))
 }
-
-

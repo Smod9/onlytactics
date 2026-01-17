@@ -79,7 +79,7 @@ type RosterEntryPayload = {
   boatId: string | null
 }
 
-export class RaceRoom extends Room<RaceRoomState> {
+export class RaceRoom extends Room<{ state: RaceRoomState }> {
   maxClients = 32
 
   private raceStore?: RaceStore
@@ -101,11 +101,53 @@ export class RaceRoom extends Room<RaceRoomState> {
   private replaySaved = false
   private persistingReplay = false
   private lastCountdownLogAtMs = 0
+  private lastLobbyUpdateAtMs = 0
+  private lastLobbyStatus?: string
+  private lastLobbyTimeToStart?: number | null
+  private timeoutTriggered = false
+
+  // Room metadata
+  public metadataRoomName: string = 'Unnamed Race'
+  public description: string = ''
+  public createdAt: number = Date.now()
+  public createdBy?: string
+  private lastPlayerLeaveTime?: number
+  private cleanupTimer?: NodeJS.Timeout
 
   onCreate(options: Record<string, unknown>) {
+    // Set patch rate to match configured publish interval (must be called before setState)
+    this.setPatchRate(appEnv.hostPublishIntervalMs)
     this.setState(new RaceRoomState())
-    console.info('[RaceRoom] created', { options, roomId: this.roomId })
-    roomDebug('onCreate', { options, roomId: this.roomId })
+
+    // Initialize room metadata from options
+    const fallbackName = `Race ${this.roomId.slice(0, 4).toUpperCase()}`
+    const normalizedName = this.normalizeRoomName(options.roomName)
+    this.metadataRoomName = normalizedName ?? fallbackName
+    this.description = this.normalizeRoomDescription(options.description)
+    this.createdAt = Date.now()
+    this.createdBy = typeof options.createdBy === 'string' ? options.createdBy : undefined
+
+    // Expose metadata to matchMaker listings if needed.
+    this.setMetadata({
+      roomName: this.metadataRoomName,
+      description: this.description,
+      createdAt: this.createdAt,
+      createdBy: this.createdBy ?? '',
+      status: 'waiting',
+      timeToStartSeconds: null,
+      phase: 'prestart',
+    })
+
+    console.info('[RaceRoom] created', {
+      options,
+      roomId: this.roomId,
+      roomName: this.metadataRoomName,
+    })
+    roomDebug('onCreate', {
+      options,
+      roomId: this.roomId,
+      roomName: this.metadataRoomName,
+    })
     const initialRaceId = createId(`race-${this.roomId}`)
     const initialState = createInitialRaceState(initialRaceId)
     this.raceStore = new RaceStore(initialState)
@@ -120,6 +162,7 @@ export class RaceRoom extends Room<RaceRoomState> {
           this.replayRecorder.recordFrame(latestState, events, true)
         }
       },
+      onTimeout: () => this.handleTimeout(),
       onTick: (state) => {
         this.replayRecorder.recordFrame(state, [])
         const anyFinished = Object.values(state.boats ?? {}).some((boat) => boat.finished)
@@ -152,6 +195,7 @@ export class RaceRoom extends Room<RaceRoomState> {
         }
         state.hostId = this.hostClientId ?? state.hostId ?? ''
         applyRaceStateToSchema(this.state.race, state)
+        this.updateLobbyMetadata(state)
       },
     })
     this.loop.start()
@@ -286,6 +330,25 @@ export class RaceRoom extends Room<RaceRoomState> {
     })
   }
 
+  private normalizeRoomName(value: unknown) {
+    if (typeof value !== 'string') return undefined
+    const cleaned = value
+      .replace(/[\u0000-\u001f\u007f]+/g, '')
+      .trim()
+      .replace(/\s+/g, ' ')
+    if (!cleaned) return undefined
+    return cleaned.slice(0, 40)
+  }
+
+  private normalizeRoomDescription(value: unknown) {
+    if (typeof value !== 'string') return ''
+    const cleaned = value
+      .replace(/[\u0000-\u001f\u007f]+/g, '')
+      .trim()
+      .replace(/\s+/g, ' ')
+    return cleaned.slice(0, 160)
+  }
+
   private buildRosterEntries(): RosterEntryPayload[] {
     const entries: RosterEntryPayload[] = []
     for (const sessionId of this.clientIdentityMap.keys()) {
@@ -315,6 +378,9 @@ export class RaceRoom extends Room<RaceRoomState> {
     const clientId = this.resolveClientIdentity(client, options)
     const joinRole = this.resolveJoinRole(options)
     client.send('role_assignment', { role: joinRole })
+
+    // Cancel cleanup timer if room was empty
+    this.cancelCleanup()
 
     // De-dupe: if the same clientId is already connected, evict the previous session.
     const existingSessionId = this.findExistingSessionId(clientId, client.sessionId)
@@ -372,10 +438,11 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.broadcastRoster()
   }
 
-  async onLeave(client: Client, consented: boolean) {
+  async onLeave(client: Client, code?: number) {
+    const didConsent = code === 1000 || code === 1001
     // If a client disconnects unexpectedly, allow a brief reconnection window.
     // This prevents "freeze -> refresh -> new boat" churn for transient network drops.
-    if (!consented) {
+    if (!didConsent) {
       try {
         await this.allowReconnection(client, 30)
         roomDebug('onLeave:reconnected', { clientId: client.sessionId })
@@ -388,27 +455,152 @@ export class RaceRoom extends Room<RaceRoomState> {
     this.state.playerCount = Math.max(0, this.state.playerCount - 1)
     console.info('[RaceRoom] client left', {
       clientId: client.sessionId,
-      consented,
+      consented: didConsent,
       playerCount: this.state.playerCount,
     })
     this.releaseBoat(client)
     this.broadcastRoster()
+
+    // Track when room becomes empty for cleanup
+    if (this.clients.length === 0) {
+      this.lastPlayerLeaveTime = Date.now()
+      this.scheduleCleanup()
+    } else {
+      // Cancel cleanup if someone joins
+      this.cancelCleanup()
+    }
+
     roomDebug('onLeave', {
       clientId: client.sessionId,
-      consented,
+      consented: didConsent,
       nextHost: this.hostSessionId,
     })
   }
 
   onDispose() {
-    console.info('[RaceRoom] disposed', { roomId: this.roomId })
+    console.info('[RaceRoom] disposed', {
+      roomId: this.roomId,
+      roomName: this.metadataRoomName,
+    })
     void this.persistReplay('room_dispose')
     this.loop?.stop()
     // Clean up any active spins when room is disposed
     this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
     this.activeSpins.clear()
+    this.cancelCleanup()
   }
 
+  private handleTimeout() {
+    if (this.timeoutTriggered) return
+    this.timeoutTriggered = true
+    console.info('[RaceRoom] timeout reached, closing room', {
+      roomId: this.roomId,
+      roomName: this.metadataRoomName,
+    })
+    this.broadcast('room_closed', { reason: 'timeout' })
+    this.loop?.stop()
+    setTimeout(() => {
+      try {
+        this.disconnect()
+      } catch (err) {
+        console.warn('[RaceRoom] failed to disconnect after timeout', err)
+      }
+    }, 250)
+  }
+
+  /**
+   * Get room status based on race phase
+   */
+  getStatus(): 'waiting' | 'in-progress' | 'finished' {
+    if (!this.raceStore) return 'waiting'
+    const state = this.raceStore.getState()
+    // Check if all boats finished
+    const allFinished = Object.values(state.boats).every((boat) => boat.finished)
+    if (allFinished && Object.keys(state.boats).length > 0) return 'finished'
+    if (
+      state.phase === 'running' ||
+      (state.phase === 'prestart' &&
+        (state.countdownArmed || state.clockStartMs !== null))
+    ) {
+      return 'in-progress'
+    }
+    return 'waiting'
+  }
+
+  /**
+   * Get time-to-start in seconds for pre-start countdowns.
+   */
+  getTimeToStartSeconds(): number | null {
+    if (!this.raceStore) return null
+    const state = this.raceStore.getState()
+    if (state.phase !== 'prestart' || !state.countdownArmed) return null
+    if (!Number.isFinite(state.t)) return null
+    if (state.t >= 0) return 0
+    return Math.max(0, Math.ceil(-state.t))
+  }
+
+  private updateLobbyMetadata(state: RaceState) {
+    const now = Date.now()
+    if (now - this.lastLobbyUpdateAtMs < 1000) return
+    this.lastLobbyUpdateAtMs = now
+    const status = this.getStatus()
+    const timeToStartSeconds = this.getTimeToStartSeconds()
+    if (
+      status === this.lastLobbyStatus &&
+      timeToStartSeconds === this.lastLobbyTimeToStart
+    ) {
+      return
+    }
+    this.lastLobbyStatus = status
+    this.lastLobbyTimeToStart = timeToStartSeconds
+    void this.setMetadata({
+      roomName: this.metadataRoomName,
+      description: this.description,
+      createdAt: this.createdAt,
+      createdBy: this.createdBy ?? '',
+      status,
+      phase: state.phase,
+      timeToStartSeconds,
+    })
+  }
+
+  /**
+   * Get host name for display
+   */
+  getHostName(): string | undefined {
+    if (!this.hostSessionId) return undefined
+    const hostBoatId = this.clientBoatMap.get(this.hostSessionId)
+    if (hostBoatId && this.raceStore) {
+      return this.raceStore.getState().boats[hostBoatId]?.name
+    }
+    return this.clientNameMap.get(this.hostSessionId)
+  }
+
+  /**
+   * Schedule cleanup timer for empty room (5 minutes)
+   */
+  private scheduleCleanup() {
+    this.cancelCleanup()
+    const CLEANUP_DELAY_MS = 5 * 60 * 1000 // 5 minutes
+    this.cleanupTimer = setTimeout(() => {
+      console.info('[RaceRoom] cleanup timer fired, disposing empty room', {
+        roomId: this.roomId,
+        roomName: this.metadataRoomName,
+      })
+      this.disconnect()
+    }, CLEANUP_DELAY_MS)
+  }
+
+  /**
+   * Cancel cleanup timer
+   */
+  private cancelCleanup() {
+    if (this.cleanupTimer) {
+      clearTimeout(this.cleanupTimer)
+      this.cleanupTimer = undefined
+    }
+    this.lastPlayerLeaveTime = undefined
+  }
   /**
    * Queue a 360° spin sequence for a boat.
    * The spin consists of three heading changes: +120°, +240°, then back to origin.

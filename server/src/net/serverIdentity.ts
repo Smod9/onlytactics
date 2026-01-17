@@ -11,4 +11,3 @@ export const setBoatId = () => {
 export const setClientName = () => {
   // no-op on server
 }
-

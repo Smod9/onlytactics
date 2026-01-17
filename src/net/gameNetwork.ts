@@ -21,6 +21,7 @@ export class GameNetwork {
   private colyseusChatUnsub?: () => void
   private colyseusRoleAssignmentUnsub?: () => void
   private colyseusAssignedRole?: Exclude<RaceRole, 'host'>
+  private colyseusRoomClosedUnsub?: () => void
 
   private currentRole: RaceRole = 'spectator'
 
@@ -31,13 +32,17 @@ export class GameNetwork {
   private status: NetworkStatus = 'idle'
 
   private statusListeners = new Set<(status: NetworkStatus) => void>()
+  private roomClosedListeners = new Set<(payload: { reason?: string }) => void>()
 
   private startPromise?: Promise<void>
   private stopRequested = false
   private lastLoggedHostId?: string
   private chatListeners = new Set<(message: ChatMessage) => void>()
 
-  constructor() {
+  private roomId?: string
+
+  constructor(roomId?: string) {
+    this.roomId = roomId
     // Allow simple role selection via URL, e.g. `/app?role=judge` or `/app?role=spectator`.
     // If no URL override, fall back to a persisted preference.
     this.desiredRoleOverride =
@@ -56,9 +61,9 @@ export class GameNetwork {
     // Persist preference. We store only spectator/judge; player is the default (clear).
     if (typeof window !== 'undefined') {
       if (next === 'spectator' || next === 'judge' || next === 'god') {
-        window.sessionStorage.setItem(ROLE_PREFERENCE_KEY, next)
+        window.localStorage.setItem(ROLE_PREFERENCE_KEY, next)
       } else {
-        window.sessionStorage.removeItem(ROLE_PREFERENCE_KEY)
+        window.localStorage.removeItem(ROLE_PREFERENCE_KEY)
       }
     }
 
@@ -74,7 +79,12 @@ export class GameNetwork {
     this.stopRequested = false
     this.startPromise = (async () => {
       this.setStatus('connecting')
-      await this.startColyseus()
+      try {
+        await this.startColyseus()
+      } catch (err) {
+        this.setStatus('idle')
+        throw err
+      }
     })()
     try {
       await this.startPromise
@@ -105,6 +115,13 @@ export class GameNetwork {
   onStatusChange(listener: (status: NetworkStatus) => void) {
     this.statusListeners.add(listener)
     return () => this.statusListeners.delete(listener)
+  }
+
+  onRoomClosed(listener: (payload: { reason?: string }) => void) {
+    this.roomClosedListeners.add(listener)
+    return () => {
+      this.roomClosedListeners.delete(listener)
+    }
   }
 
   onChatMessage(listener: (message: ChatMessage) => void) {
@@ -241,12 +258,17 @@ export class GameNetwork {
     })
   }
 
+  /**
+   * Set the room ID to connect to
+   */
+  setRoomId(roomId: string | undefined) {
+    this.roomId = roomId
+  }
+
   private async startColyseus() {
     if (!this.colyseusBridge) {
-      this.colyseusBridge = new ColyseusBridge(
-        appEnv.colyseusEndpoint,
-        appEnv.colyseusRoomId,
-      )
+      const roomId = this.roomId ?? 'race_room'
+      this.colyseusBridge = new ColyseusBridge(appEnv.colyseusEndpoint, roomId)
       this.colyseusBridge.onStatusChange((status) => {
         netLog('colyseus status', { status })
         if (status === 'connected') {
@@ -260,11 +282,16 @@ export class GameNetwork {
         }
       })
     }
+    const roomId = this.roomId ?? 'race_room'
     netLog('colyseus connect()', {
       endpoint: appEnv.colyseusEndpoint,
-      roomId: appEnv.colyseusRoomId,
+      roomId,
+      joinExisting: Boolean(this.roomId),
     })
-    await this.colyseusBridge.connect({ role: this.desiredRoleOverride })
+    await this.colyseusBridge.connect({
+      role: this.desiredRoleOverride,
+      joinExisting: Boolean(this.roomId),
+    })
     if (this.stopRequested || !this.colyseusBridge) {
       this.teardownColyseus()
       return
@@ -282,6 +309,10 @@ export class GameNetwork {
     this.colyseusChatUnsub = this.colyseusBridge.onChatMessage((message) =>
       this.emitChat(message),
     )
+    this.colyseusRoomClosedUnsub?.()
+    this.colyseusRoomClosedUnsub = this.colyseusBridge.onRoomClosed((payload) =>
+      this.emitRoomClosed(payload),
+    )
     this.syncColyseusRole()
     this.setStatus('ready')
   }
@@ -297,6 +328,8 @@ export class GameNetwork {
     this.colyseusRoleAssignmentUnsub?.()
     this.colyseusRoleAssignmentUnsub = undefined
     this.colyseusAssignedRole = undefined
+    this.colyseusRoomClosedUnsub?.()
+    this.colyseusRoomClosedUnsub = undefined
     this.setStatus('idle')
   }
 
@@ -344,6 +377,10 @@ export class GameNetwork {
     this.statusListeners.forEach((listener) => listener(status))
   }
 
+  private emitRoomClosed(payload: { reason?: string }) {
+    this.roomClosedListeners.forEach((listener) => listener(payload))
+  }
+
   private readRoleOverrideFromUrl(): Exclude<RaceRole, 'host'> | undefined {
     if (typeof window === 'undefined') return undefined
     const params = new URLSearchParams(window.location.search)
@@ -356,7 +393,7 @@ export class GameNetwork {
 
   private readRoleOverrideFromStorage(): Exclude<RaceRole, 'host'> | undefined {
     if (typeof window === 'undefined') return undefined
-    const raw = (window.sessionStorage.getItem(ROLE_PREFERENCE_KEY) ?? '')
+    const raw = (window.localStorage.getItem(ROLE_PREFERENCE_KEY) ?? '')
       .trim()
       .toLowerCase()
     if (raw === 'judge') return 'judge'

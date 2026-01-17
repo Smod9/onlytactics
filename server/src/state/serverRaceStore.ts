@@ -48,4 +48,3 @@ export class RaceStore {
 }
 
 export const raceStore = new RaceStore()
-

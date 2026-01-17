@@ -32,7 +32,9 @@ export const saveRecording = async (recording: ReplayRecording) => {
 
 export const loadRecording = async (raceId: string) => {
   const db = await getDb()
-  const local = (await db.get(STORE_NAME, keyForRace(raceId))) as ReplayRecording | undefined
+  const local = (await db.get(STORE_NAME, keyForRace(raceId))) as
+    | ReplayRecording
+    | undefined
   if (local) return local
 
   const remote = await fetchRemoteRecording(raceId)
@@ -99,7 +101,9 @@ export const refreshReplayIndex = async () => {
     }
   })
 
-  const merged = Array.from(mergedById.values()).sort((a, b) => b.savedAt - a.savedAt).slice(0, 100)
+  const merged = Array.from(mergedById.values())
+    .sort((a, b) => b.savedAt - a.savedAt)
+    .slice(0, 100)
   writeJson(INDEX_KEY, merged)
   return merged
 }

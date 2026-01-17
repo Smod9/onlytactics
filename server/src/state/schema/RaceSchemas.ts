@@ -1,9 +1,4 @@
-import {
-  ArraySchema,
-  MapSchema,
-  Schema,
-  type,
-} from '@colyseus/schema'
+import { ArraySchema, MapSchema, Schema, type } from '@colyseus/schema'
 
 export class Vec2Schema extends Schema {
   @type('number')
@@ -227,8 +222,4 @@ export class RaceStateSchema extends Schema {
   paused = false
 }
 
-export type {
-  ArraySchema,
-  MapSchema,
-}
-
+export type { ArraySchema, MapSchema }

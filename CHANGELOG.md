@@ -1,3 +1,116 @@
+## [1.34.6](https://github.com/Smod9/onlytactics/compare/v1.34.5...v1.34.6) (2026-01-16)
+
+
+### Bug Fixes
+
+* Room duplication issue - tries to simplify the join process and remove the cookie stuff ([#101](https://github.com/Smod9/onlytactics/issues/101)) ([4e124b4](https://github.com/Smod9/onlytactics/commit/4e124b4e8eb3f6e964af9eeacbae25b156bfdb82))
+
+## [1.34.5](https://github.com/Smod9/onlytactics/compare/v1.34.4...v1.34.5) (2026-01-16)
+
+
+### Bug Fixes
+
+* Room duplication issue - tries to simplify the join process and remove the cookie stuff ([#98](https://github.com/Smod9/onlytactics/issues/98)) ([c336749](https://github.com/Smod9/onlytactics/commit/c336749c7db1c2e2bfbd03b306a7b826dabee87e))
+
+## [1.34.4](https://github.com/Smod9/onlytactics/compare/v1.34.3...v1.34.4) (2026-01-15)
+
+
+### Bug Fixes
+
+* Resolves more room connection shenanigans ([#97](https://github.com/Smod9/onlytactics/issues/97)) ([de98e9d](https://github.com/Smod9/onlytactics/commit/de98e9d5496541701438371f4b193b8cac8bfe37))
+
+## [1.34.3](https://github.com/Smod9/onlytactics/compare/v1.34.2...v1.34.3) (2026-01-15)
+
+
+### Bug Fixes
+
+* devdependency fix in dockerfile ([d7c9056](https://github.com/Smod9/onlytactics/commit/d7c905676837246b97015a16983704622bb8d72c))
+
+## [1.34.2](https://github.com/Smod9/onlytactics/compare/v1.34.1...v1.34.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* devdependency fix ([94cc682](https://github.com/Smod9/onlytactics/commit/94cc68230f3258967887ab46d7f48544f3787824))
+
+## [1.34.1](https://github.com/Smod9/onlytactics/compare/v1.34.0...v1.34.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* devdependency fix ([2746e5f](https://github.com/Smod9/onlytactics/commit/2746e5faf22e77134f7a547f8d17f6615d4340f4))
+
+# [1.34.0](https://github.com/Smod9/onlytactics/compare/v1.33.2...v1.34.0) (2026-01-15)
+
+
+### Features
+
+* **solid_boats:** Makes the boats at least semi solid. The give way boat is heavily penalized (basically stop) in a collision ([#96](https://github.com/Smod9/onlytactics/issues/96)) ([5e3aae5](https://github.com/Smod9/onlytactics/commit/5e3aae53750b38fb6674ae645a0a76135fa6c42c))
+
+## [1.33.2](https://github.com/Smod9/onlytactics/compare/v1.33.1...v1.33.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* polishes emoji picker ([dde06e4](https://github.com/Smod9/onlytactics/commit/dde06e42d7a87d1151094b2a4549ba867ea7c11c))
+* Reverts .env ([f3aa25b](https://github.com/Smod9/onlytactics/commit/f3aa25b32a737e49d7f14897bbfa6e0c13cafbe4))
+
+## [1.33.1](https://github.com/Smod9/onlytactics/compare/v1.33.0...v1.33.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* Reverts .env - face-palm-emoji ([d111a50](https://github.com/Smod9/onlytactics/commit/d111a501dc806f2b0ef986dfa710e5fe075b69c9))
+
+# [1.33.0](https://github.com/Smod9/onlytactics/compare/v1.32.0...v1.33.0) (2026-01-15)
+
+
+### Features
+
+* Add wind intensity features to TacticianPopout and LiveClient ([984a710](https://github.com/Smod9/onlytactics/commit/984a710dfd95bdb93cdc1280117c27d6b8ea447d))
+
+# [1.32.0](https://github.com/Smod9/onlytactics/compare/v1.31.0...v1.32.0) (2026-01-15)
+
+
+### Features
+
+* Enhance rules engine with stern rammer logic and update boat display names ([0c31547](https://github.com/Smod9/onlytactics/commit/0c315477ac791f2f06fc80cb47bd5f3b9b229111))
+* Introduce reverse speed and leeward drift mechanics ([32d2ed1](https://github.com/Smod9/onlytactics/commit/32d2ed146e3196b6c3565341b4454c58a3e527d6))
+
+# [1.31.0](https://github.com/Smod9/onlytactics/compare/v1.30.0...v1.31.0) (2026-01-15)
+
+
+### Features
+
+* Enhance wake dynamics with new parameters and visualizations ([91502c6](https://github.com/Smod9/onlytactics/commit/91502c6739ceb3b1affe6770a6845293d1277ba0))
+
+# [1.30.0](https://github.com/Smod9/onlytactics/compare/v1.29.7...v1.30.0) (2026-01-14)
+
+
+### Bug Fixes
+
+* Adjusts the y-coordinate of the start line pin from 120 to 110 ([7f57a39](https://github.com/Smod9/onlytactics/commit/7f57a395ae00897cae7be04cb0dff90ef215ce4d))
+
+
+### Features
+
+* Add pickle badge to leaderboard for last place finishers and remove wind field toggle button for hosts ([c914313](https://github.com/Smod9/onlytactics/commit/c91431350e44746ec3d4f05fe18023bcb613d69d))
+
+## [1.29.7](https://github.com/Smod9/onlytactics/compare/v1.29.6...v1.29.7) (2026-01-14)
+
+
+### Bug Fixes
+
+* Changes where patch rate is set on the server ([e397427](https://github.com/Smod9/onlytactics/commit/e3974274011438524b24a751eb9866feb321132f))
+* Increases tick rate on server side to 33ms (30hz) from 10hz. hopefully we can go even faster and but also hopefully at the scale of 10 boats, this resolves our issues. ([ba0d7f1](https://github.com/Smod9/onlytactics/commit/ba0d7f1ced7283c2731fd0cb75172d65d71a0845))
+
+## [1.29.6](https://github.com/Smod9/onlytactics/compare/v1.29.5...v1.29.6) (2026-01-05)
+
+
+### Bug Fixes
+
+* Puts right shift key back for hard turns and removes baggage from when i tried to split them out. ([27cdb4a](https://github.com/Smod9/onlytactics/commit/27cdb4a42e0f66d79c69b3b1dd731aa341406aa5))
+
 ## [1.29.5](https://github.com/Smod9/onlytactics/compare/v1.29.4...v1.29.5) (2026-01-02)
 
 

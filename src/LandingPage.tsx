@@ -48,7 +48,7 @@ export const LandingPage = () => {
               <span className="sr-only">GitHub</span>
             </a>
             <a
-              href="https://discord.gg/eEstr6ZH"
+              href="https://discord.gg/gYPkWPhg"
               target="_blank"
               rel="noreferrer"
               aria-label="Discord"
@@ -84,7 +84,7 @@ export const LandingPage = () => {
           <div className="landing-actions">
             <a
               className="cta"
-              href="/app"
+              href="/lobby"
               aria-label="Launch the Only Tactics game client"
               onClick={handleLaunch}
             >
@@ -92,7 +92,7 @@ export const LandingPage = () => {
             </a>
             <a
               className="secondary"
-              href="https://discord.gg/eEstr6ZH"
+              href="https://discord.gg/gYPkWPhg"
               target="_blank"
               rel="noreferrer"
             >

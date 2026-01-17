@@ -15,7 +15,7 @@ export const appEnv = {
   raceId: rawEnv.RACE_ID ?? rawEnv.VITE_RACE_ID ?? 'colyseus-dev',
   clientRole: 'host',
   clientName: rawEnv.HOST_NAME ?? 'Colyseus Host',
-  tickRateHz: toNumber(rawEnv.TICK_RATE_HZ ?? rawEnv.VITE_TICK_RATE, 10),
+  tickRateHz: toNumber(rawEnv.TICK_RATE_HZ ?? rawEnv.VITE_TICK_RATE, 30),
   hostFailoverMs: toNumber(rawEnv.HOST_FAILOVER_MS ?? rawEnv.VITE_HOST_FAILOVER_MS, 4000),
   hostHeartbeatMs: toNumber(
     rawEnv.HOST_HEARTBEAT_MS ?? rawEnv.VITE_HOST_HEARTBEAT_MS,
