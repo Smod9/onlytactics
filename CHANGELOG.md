@@ -1,3 +1,10 @@
+## [1.35.1](https://github.com/Smod9/onlytactics/compare/v1.35.0...v1.35.1) (2026-01-17)
+
+
+### Bug Fixes
+
+* join by room id to get joins to work ([#106](https://github.com/Smod9/onlytactics/issues/106)) ([365b9fd](https://github.com/Smod9/onlytactics/commit/365b9fd98f41feabae97794753890f7c6cb923ea))
+
 # [1.35.0](https://github.com/Smod9/onlytactics/compare/v1.34.6...v1.35.0) (2026-01-17)
 
 
