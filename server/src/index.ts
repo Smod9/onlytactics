@@ -23,14 +23,14 @@ attachGlobalPolyfills()
 
 const expressApp = express()
 
-const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173']
 const applyCorsHeaders = (
   req: express.Request | import('http').IncomingMessage,
   res: express.Response | import('http').ServerResponse,
 ) => {
   if (res.headersSent) return
   const origin = typeof req.headers.origin === 'string' ? req.headers.origin : ''
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin) {
+    // Echo origin to support credentialed matchmaker requests (wildcard is rejected by browsers).
     res.setHeader('Access-Control-Allow-Origin', origin)
     res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('Vary', 'Origin')
