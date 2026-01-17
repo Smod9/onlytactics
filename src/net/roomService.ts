@@ -93,4 +93,3 @@ export const roomService = {
     return response.json()
   },
 }
-

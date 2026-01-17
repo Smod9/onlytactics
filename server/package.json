@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "main": "dist/server/src/index.js",
   "scripts": {
@@ -16,12 +16,11 @@
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
+    "@colyseus/schema": "^4.0.4",
     "@dimforge/rapier2d-compat": "^0.14.0",
-    "@colyseus/schema": "^3.0.69",
-    "colyseus": "^0.16.5",
+    "colyseus": "^0.17.4",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "fly": "^4.6.16",
     "tsconfig-paths": "^4.2.0"
   },
   "devDependencies": {
@@ -31,5 +30,9 @@
     "tsc-alias": "^1.8.16",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "qs": "^6.14.1",
+    "diff": "^8.0.3"
   }
 }

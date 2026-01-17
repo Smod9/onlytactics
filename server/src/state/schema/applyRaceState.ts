@@ -29,8 +29,8 @@ const upsertBoat = (target: BoatStateSchema, source: BoatState) => {
   target.distanceToNextMark = source.distanceToNextMark ?? 0
   target.penalties = source.penalties ?? 0
   target.protestPenalties = source.protestPenalties ?? 0
-    target.stallTimer = source.stallTimer ?? 0
-    target.tackTimer = source.tackTimer ?? 0
+  target.stallTimer = source.stallTimer ?? 0
+  target.tackTimer = source.tackTimer ?? 0
   target.overEarly = Boolean(source.overEarly)
   target.fouled = Boolean(source.fouled)
   target.lastInputSeq = source.lastInputSeq ?? 0
@@ -138,4 +138,3 @@ export const applyRaceStateToSchema = (target: RaceStateSchema, source: RaceStat
   target.leaderboard.splice(0, target.leaderboard.length)
   source.leaderboard.forEach((boatId) => target.leaderboard.push(boatId))
 }
-

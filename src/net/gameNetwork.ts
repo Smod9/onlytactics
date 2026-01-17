@@ -268,10 +268,7 @@ export class GameNetwork {
   private async startColyseus() {
     if (!this.colyseusBridge) {
       const roomId = this.roomId ?? 'race_room'
-      this.colyseusBridge = new ColyseusBridge(
-        appEnv.colyseusEndpoint,
-        roomId,
-      )
+      this.colyseusBridge = new ColyseusBridge(appEnv.colyseusEndpoint, roomId)
       this.colyseusBridge.onStatusChange((status) => {
         netLog('colyseus status', { status })
         if (status === 'connected') {

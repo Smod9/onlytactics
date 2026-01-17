@@ -15,7 +15,10 @@ export const headingForward = (headingDeg: number) => {
   return { x: Math.sin(rad), y: -Math.cos(rad) }
 }
 
-export const boatCapsuleCircles = (boat: BoatState, pos: Vec2 = boat.pos): BoatCircle[] => {
+export const boatCapsuleCircles = (
+  boat: BoatState,
+  pos: Vec2 = boat.pos,
+): BoatCircle[] => {
   const dir = headingForward(boat.headingDeg)
   const bow: BoatCircle = {
     x: pos.x + dir.x * BOAT_BOW_OFFSET,
@@ -29,5 +32,3 @@ export const boatCapsuleCircles = (boat: BoatState, pos: Vec2 = boat.pos): BoatC
   }
   return [bow, stern]
 }
-
-
