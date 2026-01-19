@@ -16,7 +16,7 @@ export const TACK_LOCK_ENABLED = false //Whether a boat can tack while it is loc
 export const TACK_MIN_TIME_SECONDS = 1.0 //Minimum tack time in seconds
 export const TACK_SPEED_PENALTY = 0.7 //Speed Multiplier:lower = slower, 1.0 = no penalty
 export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be considered a tack and apply speed penalty
-export const MAX_REVERSE_SPEED_KTS = -0.25 //Max reverse speed when blowing sails (L key)
+export const MAX_REVERSE_SPEED_KTS = 0 //Max reverse speed when blowing sails (L key)
 export const LEEWARD_DRIFT_SPEED_KTS = 0.6 //Leeward drift when speed is zero or less
 
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
