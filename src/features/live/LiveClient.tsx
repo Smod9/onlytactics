@@ -43,6 +43,8 @@ const isInteractiveElement = (target: EventTarget | null) => {
 
 type NonHostRole = Exclude<RaceRole, 'host'>
 
+const PENDING_ROOM_ID_KEY = 'sgame:pendingRoomId'
+
 const GitHubIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
     <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48l-.01-1.68c-2.78.61-3.37-1.34-3.37-1.34-.45-1.17-1.1-1.48-1.1-1.48-.9-.61.07-.6.07-.6 1 .07 1.52 1.02 1.52 1.02.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.55-1.11-4.55-4.95 0-1.09.39-1.99 1.02-2.69-.1-.25-.44-1.28.1-2.68 0 0 .83-.27 2.73 1.02a9.45 9.45 0 0 1 4.97 0c1.9-1.29 2.72-1.02 2.72-1.02.55 1.4.21 2.43.1 2.68.63.7 1.02 1.6 1.02 2.69 0 3.85-2.33 4.7-4.56 4.95.36.31.67.92.67 1.86l-.01 2.76c0 .26.18.58.69.48A10 10 0 0 0 12 2z" />
@@ -70,7 +72,13 @@ export const LiveClient = () => {
   const roomId = useMemo(() => {
     if (typeof window === 'undefined') return undefined
     const params = new URLSearchParams(window.location.search)
-    return params.get('roomId') ?? undefined
+    const urlRoomId = params.get('roomId') ?? undefined
+    if (urlRoomId) return urlRoomId
+    const pendingRoomId = window.sessionStorage.getItem(PENDING_ROOM_ID_KEY) ?? undefined
+    if (pendingRoomId) {
+      window.sessionStorage.removeItem(PENDING_ROOM_ID_KEY)
+    }
+    return pendingRoomId
   }, [])
 
   const [network] = useState(() => new GameNetwork(roomId))

@@ -184,7 +184,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         {renderControl(
           'TWA rot upwind',
           wake.twaRotationScaleUpwind,
-          0,
+          -1,
           1,
           0.02,
           (value) => setWakeValue('twaRotationScaleUpwind', value),
@@ -192,8 +192,8 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         {renderControl(
           'TWA rot downwind',
           wake.twaRotationScaleDownwind,
-          0,
-          1,
+          -2,
+          2,
           0.02,
           (value) => setWakeValue('twaRotationScaleDownwind', value),
         )}

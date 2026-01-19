@@ -82,8 +82,12 @@ const sanitize = (next: WakeTuningParams): WakeTuningParams => ({
   widthCurve: clampPositive(next.widthCurve, 0.1),
   leewardWidthMult: clampPositive(next.leewardWidthMult, 0.1),
   windwardWidthMult: clampPositive(next.windwardWidthMult, 0.1),
-  twaRotationScaleUpwind: Math.max(0, next.twaRotationScaleUpwind),
-  twaRotationScaleDownwind: Math.max(0, next.twaRotationScaleDownwind),
+  twaRotationScaleUpwind: Number.isFinite(next.twaRotationScaleUpwind)
+    ? next.twaRotationScaleUpwind
+    : wakeTuningDefaults.twaRotationScaleUpwind,
+  twaRotationScaleDownwind: Number.isFinite(next.twaRotationScaleDownwind)
+    ? next.twaRotationScaleDownwind
+    : wakeTuningDefaults.twaRotationScaleDownwind,
   coreHalfAngleDeg: clampPositive(next.coreHalfAngleDeg, 1),
   turbHalfAngleDeg: clampPositive(next.turbHalfAngleDeg, 1),
   coreStrength: Math.max(0, next.coreStrength),

@@ -5,6 +5,7 @@ import { removeKey } from '@/utils/storage'
 import { KeyboardIcon } from '@/view/icons'
 
 const LOBBY_RESET_KEYS = ['sgame:boatId', 'sgame:rolePreference']
+const PENDING_ROOM_ID_KEY = 'sgame:pendingRoomId'
 
 export const LobbyClient = () => {
   const [rooms, setRooms] = useState<RoomInfo[]>([])
@@ -116,6 +117,9 @@ export const LobbyClient = () => {
         createdBy: identity.clientId,
       }
       const response = await roomService.createRoom(request)
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(PENDING_ROOM_ID_KEY, response.roomId)
+      }
       // Navigate to the new room
       window.location.href = `/app?roomId=${encodeURIComponent(response.roomId)}`
     } catch (err) {
@@ -126,6 +130,9 @@ export const LobbyClient = () => {
   }
 
   const handleJoinRoom = (roomId: string) => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(PENDING_ROOM_ID_KEY, roomId)
+    }
     window.location.href = `/app?roomId=${encodeURIComponent(roomId)}`
   }
 
