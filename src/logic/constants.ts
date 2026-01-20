@@ -18,6 +18,7 @@ export const TACK_SPEED_PENALTY = 0.7 //Speed Multiplier:lower = slower, 1.0 = n
 export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be considered a tack and apply speed penalty
 export const MAX_REVERSE_SPEED_KTS = 0 //Max reverse speed when blowing sails (L key)
 export const LEEWARD_DRIFT_SPEED_KTS = 1.3 //Leeward drift when speed is zero or less
+export const LEEWARD_DRIFT_THRESHOLD_KTS = 0.8 //Leeward drift below this speed
 
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
 export const BOAT_BOW_RADIUS = 4.5

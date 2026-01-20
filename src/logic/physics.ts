@@ -62,6 +62,7 @@ import {
   TURN_RATE_DEG,
   MAX_REVERSE_SPEED_KTS,
   LEEWARD_DRIFT_SPEED_KTS,
+  LEEWARD_DRIFT_THRESHOLD_KTS,
   COLLISION_SLOWDOWN_AT_FAULT,
 } from './constants'
 import { getEffectiveWakeTuning } from '@/logic/wakeTuning'
@@ -596,7 +597,7 @@ export const stepRaceState = (
     boat.pos.x += Math.sin(courseRad) * speedMs * dt
     boat.pos.y -= Math.cos(courseRad) * speedMs * dt // Negative because North is up
 
-    if (boat.speed <= 0) {
+    if (boat.speed <= LEEWARD_DRIFT_THRESHOLD_KTS) {
       const headingVec = dirToUnit(boat.headingDeg)
       const leewardVec =
         awa >= 0

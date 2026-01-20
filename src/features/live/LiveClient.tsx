@@ -912,7 +912,10 @@ export const LiveClient = () => {
                     onClick={() => network.requestSpin()}
                     title="Perform a 360° spin (also clears one penalty if you have any)"
                   >
-                    Spin to clear your penalty (360)
+                    <span className="spin-button-title">Do your 360</span>
+                    <span className="spin-button-subtitle">
+                      Hit the P key if you dont believe you deserve the penalty
+                    </span>
                   </button>
                 </div>
               )}
