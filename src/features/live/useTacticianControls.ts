@@ -234,6 +234,10 @@ export const useTacticianControls = (
           break
         }
         case 'KeyS': {
+          if (!boat.penalties || boat.penalties <= 0) {
+            debugInputLog('keyS:ignored', { reason: 'no-penalties' })
+            break
+          }
           exitVmgMode()
           const seq = (seqRef.current += 1)
           pendingRef.current.set(seq, performance.now())
@@ -258,13 +262,15 @@ export const useTacticianControls = (
       if (
         !networkRef.current ||
         roleRef.current === 'spectator' ||
-        roleRef.current === 'judge' ||
-        isInteractiveElement(event.target)
+        roleRef.current === 'judge'
       ) {
         return
       }
 
       const key = normalizeKey(event)
+      if (isInteractiveElement(event.target) && key !== 'KeyL') {
+        return
+      }
       debugInputLog('keyup', {
         key,
         raw: { code: event.code, key: event.key, location: event.location },

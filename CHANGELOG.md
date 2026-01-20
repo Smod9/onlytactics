@@ -1,3 +1,28 @@
+## [1.35.2](https://github.com/Smod9/onlytactics/compare/v1.35.1...v1.35.2) (2026-01-20)
+
+
+### Bug Fixes
+
+* Makes min speed 0knts (no backwards), increases leeward drift (2x) and leeward drift starts below 0.8knts ([a9bd7d0](https://github.com/Smod9/onlytactics/commit/a9bd7d059dd45bd475f8cf8a56b0ef34ba1b01c8))
+* No backwards, but double leeward drift ([74e6aaf](https://github.com/Smod9/onlytactics/commit/74e6aaf30c7ab7563b65d7974a996f296f2cbcd2))
+* Resolves miscalculated splits. ([07b2ede](https://github.com/Smod9/onlytactics/commit/07b2ede7a7bdf8c89d678cd240ba067b4a9f2c62))
+* spins blocked unless you have a penalty ([e5edb7e](https://github.com/Smod9/onlytactics/commit/e5edb7e91ec124212c0c0739a568220f3519efc7))
+* stuck l key when jumping to messages ([2aa85c1](https://github.com/Smod9/onlytactics/commit/2aa85c109c755e110b264537ab894b6c60548d0b))
+
+## [1.35.1](https://github.com/Smod9/onlytactics/compare/v1.35.0...v1.35.1) (2026-01-17)
+
+
+### Bug Fixes
+
+* join by room id to get joins to work ([#106](https://github.com/Smod9/onlytactics/issues/106)) ([365b9fd](https://github.com/Smod9/onlytactics/commit/365b9fd98f41feabae97794753890f7c6cb923ea))
+
+# [1.35.0](https://github.com/Smod9/onlytactics/compare/v1.34.6...v1.35.0) (2026-01-17)
+
+
+### Features
+
+* fixes .env :( ([7200dee](https://github.com/Smod9/onlytactics/commit/7200deed088dc9cf0d9090e09faa26c780c30ad1))
+
 ## [1.34.6](https://github.com/Smod9/onlytactics/compare/v1.34.5...v1.34.6) (2026-01-16)
 
 

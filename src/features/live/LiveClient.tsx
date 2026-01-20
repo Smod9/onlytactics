@@ -331,10 +331,14 @@ export const LiveClient = () => {
 
   const formatSplit = (deltaSeconds: number) => {
     const sign = deltaSeconds >= 0 ? '+' : '-'
-    const totalSeconds = Math.round(Math.abs(deltaSeconds))
+    const totalHundredths = Math.round(Math.abs(deltaSeconds) * 100)
+    const totalSeconds = Math.floor(totalHundredths / 100)
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
-    return `${sign}${minutes}:${seconds.toString().padStart(2, '0')}s`
+    const hundredths = totalHundredths % 100
+    return `${sign}${minutes}:${seconds
+      .toString()
+      .padStart(2, '0')}.${hundredths.toString().padStart(2, '0')}s`
   }
 
   const roster = useRoster()
@@ -363,10 +367,17 @@ export const LiveClient = () => {
     role !== 'host' && race.phase === 'prestart' && !race.countdownArmed
 
   const elapsedRaceLabel = formatRaceTime(Math.max(0, race.t))
-  const finishedTimes = race.leaderboard
-    .map((boatId) => race.boats[boatId]?.finishTime)
-    .filter((time): time is number => typeof time === 'number')
-  const firstFinishTime = finishedTimes.length ? Math.min(...finishedTimes) : null
+  const finishSplitsByBoatId = new Map<string, number>()
+  let previousFinishTime: number | null = null
+  race.leaderboard.forEach((boatId) => {
+    const finishTime = race.boats[boatId]?.finishTime
+    if (typeof finishTime !== 'number' || !Number.isFinite(finishTime)) {
+      return
+    }
+    const deltaSeconds = previousFinishTime === null ? 0 : finishTime - previousFinishTime
+    finishSplitsByBoatId.set(boatId, deltaSeconds)
+    previousFinishTime = finishTime
+  })
 
   const submitName = (event: FormEvent) => {
     event.preventDefault()
@@ -901,7 +912,10 @@ export const LiveClient = () => {
                     onClick={() => network.requestSpin()}
                     title="Perform a 360° spin (also clears one penalty if you have any)"
                   >
-                    Spin to clear your penalty (360)
+                    <span className="spin-button-title">Do your 360</span>
+                    <span className="spin-button-subtitle">
+                      Hit the P key if you dont believe you deserve the penalty
+                    </span>
                   </button>
                 </div>
               )}
@@ -1021,12 +1035,8 @@ export const LiveClient = () => {
                         if (finished) {
                           if (typeof boat.finishTime === 'number') {
                             const finishLabel = formatRaceTime(boat.finishTime)
-                            if (
-                              firstFinishTime !== null &&
-                              Number.isFinite(firstFinishTime) &&
-                              Number.isFinite(boat.finishTime)
-                            ) {
-                              const deltaSeconds = boat.finishTime - firstFinishTime
+                            const deltaSeconds = finishSplitsByBoatId.get(boatId)
+                            if (typeof deltaSeconds === 'number') {
                               const normalizedDelta =
                                 Math.abs(deltaSeconds) < 0.005 ? 0 : deltaSeconds
                               splitText = formatSplit(normalizedDelta)
