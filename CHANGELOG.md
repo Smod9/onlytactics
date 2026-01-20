@@ -1,3 +1,10 @@
+## [1.35.3](https://github.com/Smod9/onlytactics/compare/v1.35.2...v1.35.3) (2026-01-20)
+
+
+### Bug Fixes
+
+* Windspeed tweaks. Min now 12, max is 22, max boat speed is 18 and puffs are only worth 2knts max instead of 3 ([68337f1](https://github.com/Smod9/onlytactics/commit/68337f1243728b779c03102d6238d7fc208806a4))
+
 ## [1.35.2](https://github.com/Smod9/onlytactics/compare/v1.35.1...v1.35.2) (2026-01-20)
 
 
