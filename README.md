@@ -28,6 +28,44 @@ npm run dev            # starts Vite and connects to the configured Colyseus roo
 
 The dev server now serves the landing page at `/`. To jump directly into the PixiJS client, visit [`/app`](http://localhost:5173/app) (or whatever host you deploy to). Configure your server via `VITE_COLYSEUS_ENDPOINT` + `VITE_COLYSEUS_ROOM_ID` in `.env`.
 
+## Server + Fly.io Postgres (replays)
+
+Replays are now auto-saved server-side to Postgres and exposed via HTTP.
+
+If you're connecting to Fly Postgres from your local machine, start the proxy first:
+```
+fly mpg proxy -a onlytactics-db
+```
+
+1) Set a Postgres password (on your Fly pg app, e.g., `onlytactics-db`):
+```
+fly pg connect -a onlytactics-db
+ALTER USER fly-user WITH PASSWORD 'your-strong-password';
+\q
+```
+
+2) Build the connection string (use your pgBouncer host, DB, and password):
+```
+postgresql://fly-user:<PASSWORD>@pgbouncer.z23750vx824r96d1.flympg.net:5432/fly-db?sslmode=require
+```
+
+3) Apply to the server app and redeploy:
+```
+fly secrets set DATABASE_URL="postgresql://fly-user:<PASSWORD>@pgbouncer.z23750vx824r96d1.flympg.net:5432/fly-db?sslmode=require" -a onlytactics-server
+```
+
+Notes:
+- `DATABASE_URL` uses your Postgres role (e.g., `fly-user`), not your Fly.io account login.
+- Tables are created automatically on server startup (runs migrations).
+- Optional tuning envs: `DATABASE_POOL_MAX`, `DATABASE_SSL`, `DATABASE_CONNECT_TIMEOUT_MS`, `DATABASE_IDLE_TIMEOUT_MS`.
+
+Replay APIs (served by the Colyseus server):
+- `GET /api/replays/:raceId` – fetch a full replay
+- `GET /api/replays` – recent races (pagination via `?limit=`)
+- `GET /api/replays/query` – filter by winner/course/date
+
+Client replay browser will fetch from the server if a replay isn’t in local storage.
+
 ## Tactician controls
 
 The game now models Tacticat/SailX style helm commands. You set a desired heading and the physics engine steers toward it at a fixed turn rate.
