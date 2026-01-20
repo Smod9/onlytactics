@@ -7,7 +7,7 @@ import { createSeededRandom } from '@/utils/rng'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
-import { SPIN_HOLD_SECONDS } from '@/logic/constants'
+import { SPIN_HOLD_SECONDS, WIND_SPEED_MAX_KTS, WIND_SPEED_MIN_KTS } from '@/logic/constants'
 import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import { courseLegs, radialSets, gateRadials } from '@/config/course'
 import { distanceBetween } from '@/utils/geometry'
@@ -278,8 +278,8 @@ export class HostLoop {
     const cycleSeconds = 18
     const settleSeconds = 5
     const shiftRange = 12
-    const speedMin = 8
-    const speedMax = 16
+    const speedMin = WIND_SPEED_MIN_KTS
+    const speedMax = WIND_SPEED_MAX_KTS
 
     this.windTimer += dt
     if (this.windTimer >= cycleSeconds) {

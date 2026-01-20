@@ -1,5 +1,5 @@
 export const KNOTS_TO_MS = 0.514444 * 2 //How fast a boat moves in meters per second (on the screen)
-export const MAX_SPEED_KTS = 16
+export const MAX_SPEED_KTS = 18
 export const TURN_RATE_DEG = 90 //How fast a boat turns in degrees per second
 export const ACCELERATION_RATE = 0.6 //How fast a boat accelerates in meters per second per second
 export const DECELERATION_RATE = 0.4 //How fast a boat decelerates in meters per second per second
@@ -19,6 +19,10 @@ export const TACK_MIN_ANGLE_DEG = 30 //Minimum turn angle (degrees) to be consid
 export const MAX_REVERSE_SPEED_KTS = 0 //Max reverse speed when blowing sails (L key)
 export const LEEWARD_DRIFT_SPEED_KTS = 1.3 //Leeward drift when speed is zero or less
 export const LEEWARD_DRIFT_THRESHOLD_KTS = 0.8 //Leeward drift below this speed
+
+// Wind speed envelope (kts) for oscillation in host loop
+export const WIND_SPEED_MIN_KTS = 12
+export const WIND_SPEED_MAX_KTS = 22
 
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
 export const BOAT_BOW_RADIUS = 4.5
