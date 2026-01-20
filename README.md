@@ -32,6 +32,11 @@ The dev server now serves the landing page at `/`. To jump directly into the Pix
 
 Replays are now auto-saved server-side to Postgres and exposed via HTTP.
 
+If you're connecting to Fly Postgres from your local machine, start the proxy first:
+```
+fly mpg proxy -a onlytactics-db
+```
+
 1) Set a Postgres password (on your Fly pg app, e.g., `onlytactics-db`):
 ```
 fly pg connect -a onlytactics-db
