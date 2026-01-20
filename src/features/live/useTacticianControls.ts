@@ -234,6 +234,10 @@ export const useTacticianControls = (
           break
         }
         case 'KeyS': {
+          if (!boat.penalties || boat.penalties <= 0) {
+            debugInputLog('keyS:ignored', { reason: 'no-penalties' })
+            break
+          }
           exitVmgMode()
           const seq = (seqRef.current += 1)
           pendingRef.current.set(seq, performance.now())
