@@ -1,3 +1,10 @@
+## [1.35.4](https://github.com/Smod9/onlytactics/compare/v1.35.3...v1.35.4) (2026-01-21)
+
+
+### Bug Fixes
+
+* Pin end up 10 units. lets see how it goes ([a6bfc54](https://github.com/Smod9/onlytactics/commit/a6bfc54913d56622fb0237c05307d69338b861f3))
+
 ## [1.35.3](https://github.com/Smod9/onlytactics/compare/v1.35.2...v1.35.3) (2026-01-20)
 
 
