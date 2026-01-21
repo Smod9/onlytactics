@@ -1,3 +1,10 @@
+## [1.35.5](https://github.com/Smod9/onlytactics/compare/v1.35.4...v1.35.5) (2026-01-21)
+
+
+### Bug Fixes
+
+* Moves pin even further ([efcf6aa](https://github.com/Smod9/onlytactics/commit/efcf6aaa46eb68c4392ea5f05317bf385f1cfd3e))
+
 ## [1.35.4](https://github.com/Smod9/onlytactics/compare/v1.35.3...v1.35.4) (2026-01-21)
 
 
