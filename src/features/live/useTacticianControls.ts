@@ -126,6 +126,11 @@ export const useTacticianControls = (
       }
       if (event.repeat) {
         event.preventDefault()
+        if (key === 'KeyL') {
+          // Keep L held state in sync during key repeats.
+          blowSailsByLHeldRef.current = true
+          syncBlowSails(event)
+        }
         return
       }
 
