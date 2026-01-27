@@ -638,6 +638,7 @@ export class RaceScene {
     }
     const minNormToDraw = 0.07
 
+    const showLulls = appEnv.windFieldLullsEnabled
     for (let y = startY; y < endY; y += tile) {
       for (let x = startX; x < endX; x += tile) {
         const center = this.windFieldCenter
@@ -645,6 +646,8 @@ export class RaceScene {
         center.y = y + tile / 2
         const delta = sampleWindDeltaKts(state, center)
         if (!delta) continue
+        // Skip lulls if disabled
+        if (delta < 0 && !showLulls) continue
         const norm = Math.abs(delta) / Math.max(0.001, resolved.intensityKts)
         if (norm < minNormToDraw) continue
         const b = Math.min(buckets - 1, Math.floor(norm * buckets))
@@ -667,13 +670,15 @@ export class RaceScene {
         }
         this.windFieldLayer.fill()
       }
-      const lull = lullRects[b]
-      if (lull.length) {
-        this.windFieldLayer.fill({ color: lullColor, alpha })
-        for (let i = 0; i < lull.length; i += 4) {
-          this.windFieldLayer.rect(lull[i], lull[i + 1], lull[i + 2], lull[i + 3])
+      if (showLulls) {
+        const lull = lullRects[b]
+        if (lull.length) {
+          this.windFieldLayer.fill({ color: lullColor, alpha })
+          for (let i = 0; i < lull.length; i += 4) {
+            this.windFieldLayer.rect(lull[i], lull[i + 1], lull[i + 2], lull[i + 3])
+          }
+          this.windFieldLayer.fill()
         }
-        this.windFieldLayer.fill()
       }
     }
   }
