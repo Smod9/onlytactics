@@ -783,7 +783,7 @@ export const LiveClient = () => {
                         )
                         const isStarboardTack = twaSigned >= 0
                         const absTwa = Math.abs(twaSigned)
-                        // Boat panel: keep AWA label, but show VMG mode status instead of degrees.
+                        // Boat panel: TWA label shows VMG mode status instead of degrees when active.
                         const boatWindValue = boat.vmgMode
                           ? 'VMG'
                           : `${absTwa.toFixed(0)}°`
@@ -805,7 +805,7 @@ export const LiveClient = () => {
                                   </span>
                                 </div>
                                 <div className="hud-metric hud-metric-wind">
-                                  <span className="hud-label">AWA</span>
+                                  <span className="hud-label">TWA</span>
                                   <span className="hud-value">{boatWindValue}</span>
                                 </div>
                                 <div className="hud-metric hud-metric-tack">

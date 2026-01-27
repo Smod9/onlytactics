@@ -78,6 +78,7 @@ type RosterEntryPayload = {
 
 export class RaceRoom extends Room<{ state: RaceRoomState }> {
   maxClients = 32
+  autoDispose = false // Keep room alive after last client leaves; custom cleanup timer handles disposal
 
   private raceStore?: RaceStore
 
@@ -543,7 +544,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
    */
   private scheduleCleanup() {
     this.cancelCleanup()
-    const CLEANUP_DELAY_MS = 5 * 60 * 1000 // 5 minutes
+    const CLEANUP_DELAY_MS = 30 * 1000 // 30 seconds
     this.cleanupTimer = setTimeout(() => {
       console.info('[RaceRoom] cleanup timer fired, disposing empty room', {
         roomId: this.roomId,

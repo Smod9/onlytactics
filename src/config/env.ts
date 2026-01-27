@@ -69,6 +69,9 @@ export const appEnv = {
   windFieldDomainWidthWorld: toNumber(rawEnv.VITE_WIND_FIELD_DOMAIN_WIDTH_WORLD, 900),
   windFieldAdvectionFactor: toNumber(rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR, 0.1),
   windFieldTileSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD, 36),
+  // Use AWA (apparent wind angle) for wake direction instead of TWA (true wind angle)
+  // AWA rotates shadow based on boat speed, TWA keeps shadow in true wind direction
+  wakeUseAwa: toBool(rawEnv.VITE_WAKE_USE_AWA, false),
 }
 
 export type AppEnv = typeof appEnv

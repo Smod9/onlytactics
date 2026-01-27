@@ -5,8 +5,8 @@ export type AiProfilePreset = {
   label: string
   accuracy: number
   reactionMs: number
-  upwindAwa: number
-  downwindAwa: number
+  upwindTwa: number
+  downwindTwa: number
   tackThresholdDeg: number
   gybeThresholdDeg: number
   laylineBuffer: number
@@ -18,8 +18,8 @@ const PRESETS: Record<string, AiProfilePreset> = {
     label: 'Steady VMG',
     accuracy: 0.8,
     reactionMs: 800,
-    upwindAwa: 38,
-    downwindAwa: 140,
+    upwindTwa: 38,
+    downwindTwa: 140,
     tackThresholdDeg: 18,
     gybeThresholdDeg: 20,
     laylineBuffer: 6,
@@ -29,8 +29,8 @@ const PRESETS: Record<string, AiProfilePreset> = {
     label: 'Aggressive',
     accuracy: 0.92,
     reactionMs: 600,
-    upwindAwa: 34,
-    downwindAwa: 135,
+    upwindTwa: 34,
+    downwindTwa: 135,
     tackThresholdDeg: 12,
     gybeThresholdDeg: 14,
     laylineBuffer: 4,
@@ -40,8 +40,8 @@ const PRESETS: Record<string, AiProfilePreset> = {
     label: 'Casual',
     accuracy: 0.65,
     reactionMs: 1200,
-    upwindAwa: 42,
-    downwindAwa: 150,
+    upwindTwa: 42,
+    downwindTwa: 150,
     tackThresholdDeg: 24,
     gybeThresholdDeg: 26,
     laylineBuffer: 10,
@@ -51,8 +51,8 @@ const PRESETS: Record<string, AiProfilePreset> = {
     label: 'Chill Cruiser',
     accuracy: 0.6,
     reactionMs: 1500,
-    upwindAwa: 43,
-    downwindAwa: 152,
+    upwindTwa: 43,
+    downwindTwa: 152,
     tackThresholdDeg: 28,
     gybeThresholdDeg: 30,
     laylineBuffer: 12,
@@ -67,8 +67,8 @@ export const createAiConfig = (profileId: string): BoatAiConfig => {
     profileId: preset.id,
     accuracy: preset.accuracy,
     reactionMs: preset.reactionMs,
-    upwindAwa: preset.upwindAwa,
-    downwindAwa: preset.downwindAwa,
+    upwindTwa: preset.upwindTwa,
+    downwindTwa: preset.downwindTwa,
     tackThresholdDeg: preset.tackThresholdDeg,
     gybeThresholdDeg: preset.gybeThresholdDeg,
     laylineBuffer: preset.laylineBuffer,

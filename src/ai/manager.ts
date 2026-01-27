@@ -1,7 +1,7 @@
 import type { RaceState, BoatState, Vec2 } from '@/types/race'
 import type { RaceStore } from '@/state/raceStore'
 import type { ControlUpdate } from '@/net/controlTypes'
-import { headingFromAwa, angleDiff, normalizeDeg } from '@/logic/physics'
+import { headingFromTwa, angleDiff, normalizeDeg } from '@/logic/physics'
 import { distanceBetween } from '@/utils/geometry'
 
 type Leg = 'prestart' | 'upwind' | 'downwind'
@@ -182,7 +182,7 @@ export class AiManager {
     if (Math.abs(relative) <= profile.laylineBuffer) {
       return normalizeDeg(bearing + this.noise(profile))
     }
-    const base = headingFromAwa(windDir, tackSign * profile.upwindAwa)
+    const base = headingFromTwa(windDir, tackSign * profile.upwindTwa)
     return normalizeDeg(base + this.noise(profile))
   }
 
@@ -196,7 +196,7 @@ export class AiManager {
     if (Math.abs(Math.abs(relative) - 180) <= profile.laylineBuffer) {
       return normalizeDeg(bearing + this.noise(profile))
     }
-    const base = headingFromAwa(windDir, tackSign * profile.downwindAwa)
+    const base = headingFromTwa(windDir, tackSign * profile.downwindTwa)
     return normalizeDeg(base + this.noise(profile))
   }
 
@@ -210,7 +210,7 @@ export class AiManager {
     const bearing = this.bearingTo(boat.pos, target)
     const relative = angleDiff(bearing, windDir)
     const tackSign = relative >= 0 ? 1 : -1
-    const base = headingFromAwa(windDir, tackSign * profile.upwindAwa)
+    const base = headingFromTwa(windDir, tackSign * profile.upwindTwa)
     return normalizeDeg(base + this.noise(profile))
   }
 

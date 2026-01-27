@@ -7,9 +7,9 @@ import { GameNetwork } from '@/net/gameNetwork'
 import { raceStore } from '@/state/raceStore'
 import {
   angleDiff,
-  apparentWindAngleSigned,
+  trueWindAngleSigned,
   computeVmgAngles,
-  headingFromAwa,
+  headingFromTwa,
   quantizeHeading,
 } from '@/logic/physics'
 import {
@@ -156,9 +156,9 @@ export const useTacticianControls = (
       const lastHeadingRef = raceRef.current.boats[identity.boatId]?.desiredHeadingDeg
       const lastHeading = lastHeadingRef ?? boat.desiredHeadingDeg ?? boat.headingDeg
 
-      const awa = apparentWindAngleSigned(boat.headingDeg, state.wind.directionDeg)
-      const tackSign = awa >= 0 ? 1 : -1
-      const absAwa = Math.abs(awa)
+      const twa = trueWindAngleSigned(boat.headingDeg, state.wind.directionDeg)
+      const tackSign = twa >= 0 ? 1 : -1
+      const absTwa = Math.abs(twa)
       const vmgAngles = computeVmgAngles(state.wind.speed)
 
       const sendHeading = (heading: number) => {
@@ -210,10 +210,10 @@ export const useTacticianControls = (
         }
         case 'Enter': {
           exitVmgMode()
-          const isUpwind = absAwa < 90
+          const isUpwind = absTwa < 90
           const nextSign = -tackSign || 1
-          const targetAwa = isUpwind ? vmgAngles.upwindAwa : vmgAngles.downwindAwa
-          const heading = headingFromAwa(state.wind.directionDeg, nextSign * targetAwa)
+          const targetTwa = isUpwind ? vmgAngles.upwindTwa : vmgAngles.downwindTwa
+          const heading = headingFromTwa(state.wind.directionDeg, nextSign * targetTwa)
           setLockForHeading(heading)
           sendHeading(heading)
           break
@@ -223,8 +223,8 @@ export const useTacticianControls = (
           const hardModifier = event.shiftKey || event.altKey
           debugInputLog('arrowUp', { hardModifier })
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
-          const desiredAbs = Math.max(absAwa - step, 0)
-          const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
+          const desiredAbs = Math.max(absTwa - step, 0)
+          const heading = headingFromTwa(state.wind.directionDeg, tackSign * desiredAbs)
           sendHeading(heading)
           break
         }
@@ -233,8 +233,8 @@ export const useTacticianControls = (
           const hardModifier = event.shiftKey || event.altKey
           debugInputLog('arrowDown', { hardModifier })
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
-          const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
-          const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
+          const desiredAbs = Math.min(absTwa + step, MAX_DOWNWIND_ANGLE_DEG)
+          const heading = headingFromTwa(state.wind.directionDeg, tackSign * desiredAbs)
           sendHeading(heading)
           break
         }

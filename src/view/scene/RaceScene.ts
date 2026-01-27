@@ -2,8 +2,8 @@ import { Application, Container, Graphics, Text } from 'pixi.js'
 import { appEnv } from '@/config/env'
 import type { BoatState, RaceState, Vec2, WindFieldConfig } from '@/types/race'
 import { identity } from '@/net/identity'
-import { angleDiff } from '@/logic/physics'
-import { getWindFieldConfig, sampleWindDeltaKts } from '@/logic/windField'
+import { angleDiff, apparentWindAngle } from '@/logic/physics'
+import { getWindFieldConfig, sampleWindDeltaKts, sampleWindSpeed } from '@/logic/windField'
 import {
   BOAT_BOW_OFFSET,
   BOAT_BOW_RADIUS,
@@ -14,7 +14,6 @@ import {
   MARK_COLLIDER_RADIUS,
   NO_GO_ANGLE_DEG,
   STALL_DURATION_S,
-  WAKE_FORWARD_OFFSET_MAX,
 } from '@/logic/constants'
 import { getEffectiveWakeTuning } from '@/logic/wakeTuning'
 import { boatCapsuleCircles } from '@/logic/boatGeometry'
@@ -37,11 +36,6 @@ const rotateVec = (vec: Vec2, deg: number) => {
   const cos = Math.cos(rad)
   const sin = Math.sin(rad)
   return { x: vec.x * cos - vec.y * sin, y: vec.x * sin + vec.y * cos }
-}
-const wakeForwardOffset = (headingDeg: number, windDirDeg: number) => {
-  const absTwa = Math.abs(angleDiff(headingDeg, windDirDeg))
-  const downwindT = clamp01((absTwa - 110) / 50)
-  return WAKE_FORWARD_OFFSET_MAX * downwindT
 }
 
 // Mark-zone radius in world units.
@@ -162,17 +156,17 @@ class BoatView {
   update(boat: BoatState, isPlayer = false) {
     this.container.position.set(boat.pos.x, boat.pos.y)
     this.container.rotation = degToRad(boat.headingDeg)
-    const awa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
-    const leewardSign: 1 | -1 = awa >= 0 ? -1 : 1
+    const twa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
+    const leewardSign: 1 | -1 = twa >= 0 ? -1 : 1
     if (leewardSign !== this.lastLeewardSign) {
       this.sail.scale.x = leewardSign
       this.lastLeewardSign = leewardSign
     }
-    const absAwa = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
+    const absTwa = Math.abs(angleDiff(boat.headingDeg, RaceScene.currentWindDeg))
     // NOTE: Our sail geometry starts fairly "eased" at 0° rotation, and rotating it
-    // pulls it closer to centerline (more trimmed in). So: upwind (small AWA) => more
-    // rotation, downwind (large AWA) => less rotation.
-    const easedFactor = Math.min(1, absAwa / 140)
+    // pulls it closer to centerline (more trimmed in). So: upwind (small TWA) => more
+    // rotation, downwind (large TWA) => less rotation.
+    const easedFactor = Math.min(1, absTwa / 140)
     const trimmedInFactor = 1 - easedFactor
     // Keep rotation direction consistent with the original implementation:
     // rotate the sail toward centerline on each tack.
@@ -180,7 +174,7 @@ class BoatView {
     // Ease the sail a bit more at very deep downwind angles.
     // Previously our minimum trim-in was ~8° even at 180°; make that ~50% more eased (~4°)
     // by ramping the minimum between 140° → 180°.
-    const deepDownwindT = clamp01((absAwa - 140) / 40)
+    const deepDownwindT = clamp01((absTwa - 140) / 40)
     const minRotationDeg = 8 + (4 - 8) * deepDownwindT
     const baseRotationDeg = leewardSign * (minRotationDeg + trimmedInFactor * 24)
 
@@ -190,7 +184,7 @@ class BoatView {
     //   not during normal upwind sailing (e.g. VMG ~45°).
     const LUFF_BUFFER_DEG = 12
     const luffThresholdDeg = NO_GO_ANGLE_DEG + LUFF_BUFFER_DEG
-    const nearNoGoIntensity = clamp01((luffThresholdDeg - absAwa) / LUFF_BUFFER_DEG)
+    const nearNoGoIntensity = clamp01((luffThresholdDeg - absTwa) / LUFF_BUFFER_DEG)
     const stallIntensity = clamp01(boat.stallTimer / STALL_DURATION_S)
     const luffIntensity = isBlown ? 1 : Math.max(nearNoGoIntensity, stallIntensity)
 
@@ -875,15 +869,16 @@ export class RaceScene {
     windDirDeg: number,
     downwindVec: Vec2,
   ): 1 | -1 {
-    const awa = angleDiff(boatHeadingDeg, windDirDeg)
+    const twa = angleDiff(boatHeadingDeg, windDirDeg)
     const headingRad = degToRad(boatHeadingDeg)
     const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
     const leewardVec =
-      awa >= 0
+      twa >= 0
         ? { x: -headingVec.y, y: headingVec.x }
         : { x: headingVec.y, y: -headingVec.x }
     const leewardCross = downwindVec.x * leewardVec.y - downwindVec.y * leewardVec.x
-    return leewardCross >= 0 ? 1 : -1
+    // Flip sign to put shadow on correct (leeward) side
+    return leewardCross >= 0 ? -1 : 1
   }
 
   private drawPlayerWindShadow(state: RaceState) {
@@ -901,7 +896,18 @@ export class RaceScene {
       state.wind.directionDeg,
       windDownDir,
     )
-    const twa = angleDiff(boat.headingDeg, state.wind.directionDeg)
+    // Wake direction: TWA (true wind) or AWA (apparent wind) based on env setting
+    let dir = windDownDir
+    if (appEnv.wakeUseAwa) {
+      const localWindSpeed = sampleWindSpeed(state, boat.pos)
+      const awa = apparentWindAngle(
+        boat.headingDeg,
+        boat.speed,
+        state.wind.directionDeg,
+        localWindSpeed,
+      )
+      dir = rotateVec(windDownDir, awa)
+    }
     const nowMs = performance.now()
     const dt = this.windShadowLastMs > 0 ? (nowMs - this.windShadowLastMs) / 1000 : 0
     this.windShadowLastMs = nowMs
@@ -909,13 +915,6 @@ export class RaceScene {
     this.windShadowLeewardBlend +=
       (leewardSideSign - this.windShadowLeewardBlend) * blendT
     const leewardWeight = (this.windShadowLeewardBlend + 1) / 2
-    const absTwa = Math.abs(twa)
-    const downwindT = clamp01((absTwa - 110) / 50)
-    const biasDeg = this.windShadowLeewardBlend * wake.biasDeg
-    const rotScale =
-      wake.twaRotationScaleUpwind +
-      (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT
-    const dir = rotateVec(windDownDir, twa * rotScale + biasDeg)
     const cross = { x: -dir.y, y: dir.x }
     const coreToTurbRatio =
       Math.tan(degToRad(wake.coreHalfAngleDeg)) /
@@ -937,13 +936,8 @@ export class RaceScene {
       return windward + (leeward - windward) * (1 - leewardWeight)
     }
 
-    const headingRad = degToRad(boat.headingDeg)
-    const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
-    const forwardOffset = wakeForwardOffset(boat.headingDeg, state.wind.directionDeg)
-    const basePos = {
-      x: boat.pos.x + headingVec.x * forwardOffset,
-      y: boat.pos.y + headingVec.y * forwardOffset,
-    }
+    // Wake starts at boat position - no forward offset
+    const basePos = { x: boat.pos.x, y: boat.pos.y }
 
     const drawZone = (widthScale: number, baseAlpha: number) => {
       const slices = 14
@@ -1033,22 +1027,20 @@ export class RaceScene {
         state.wind.directionDeg,
         windDownDir,
       )
-      const twa = angleDiff(boat.headingDeg, state.wind.directionDeg)
-      const absTwa = Math.abs(twa)
-      const downwindT = clamp01((absTwa - 110) / 50)
-      const biasDeg = leewardSideSign * wake.biasDeg
-      const rotScale =
-        wake.twaRotationScaleUpwind +
-        (wake.twaRotationScaleDownwind - wake.twaRotationScaleUpwind) * downwindT
-      const dir = rotateVec(windDownDir, twa * rotScale + biasDeg)
-      const cross = { x: -dir.y, y: dir.x }
-      const headingRad = degToRad(boat.headingDeg)
-      const headingVec = { x: Math.sin(headingRad), y: -Math.cos(headingRad) }
-      const forwardOffset = wakeForwardOffset(boat.headingDeg, state.wind.directionDeg)
-      const origin = {
-        x: boat.pos.x + headingVec.x * forwardOffset,
-        y: boat.pos.y + headingVec.y * forwardOffset,
+      // Wake direction: TWA (true wind) or AWA (apparent wind) based on env setting
+      let dir = windDownDir
+      if (appEnv.wakeUseAwa) {
+        const localWindSpeed = sampleWindSpeed(state, boat.pos)
+        const awa = apparentWindAngle(
+          boat.headingDeg,
+          boat.speed,
+          state.wind.directionDeg,
+          localWindSpeed,
+        )
+        dir = rotateVec(windDownDir, awa)
       }
+      const cross = { x: -dir.y, y: dir.x }
+      const origin = { x: boat.pos.x, y: boat.pos.y }
       wakeDirs.set(boat.id, { dir, cross, leewardSideSign, origin })
     })
 

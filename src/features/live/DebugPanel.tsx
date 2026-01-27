@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useInputTelemetry, useRaceState, useWakeTuning } from '@/state/hooks'
 import { identity } from '@/net/identity'
-import { apparentWindAngleSigned, angleDiff } from '@/logic/physics'
+import { trueWindAngleSigned, angleDiff, apparentWindAngle } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
 import { appEnv } from '@/config/env'
 import {
@@ -53,8 +53,6 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         formatConst('WAKE_LEEWARD_WIDTH_MULT', wake.leewardWidthMult),
         formatConst('WAKE_WINDWARD_WIDTH_MULT', wake.windwardWidthMult),
         formatConst('WAKE_BIAS_DEG', wake.biasDeg),
-        formatConst('WAKE_TWA_ROTATION_SCALE_UPWIND', wake.twaRotationScaleUpwind),
-        formatConst('WAKE_TWA_ROTATION_SCALE_DOWNWIND', wake.twaRotationScaleDownwind),
         formatConst('WAKE_CORE_HALF_ANGLE_DEG', wake.coreHalfAngleDeg),
         formatConst('WAKE_TURB_HALF_ANGLE_DEG', wake.turbHalfAngleDeg),
         formatConst('WAKE_CORE_STRENGTH', wake.coreStrength),
@@ -181,22 +179,6 @@ export const DebugPanel = ({ onClose, network }: Props) => {
         {renderControl('Bias deg', wake.biasDeg, -90, 90, 1, (value) =>
           setWakeValue('biasDeg', value),
         )}
-        {renderControl(
-          'TWA rot upwind',
-          wake.twaRotationScaleUpwind,
-          0,
-          1,
-          0.02,
-          (value) => setWakeValue('twaRotationScaleUpwind', value),
-        )}
-        {renderControl(
-          'TWA rot downwind',
-          wake.twaRotationScaleDownwind,
-          0,
-          1,
-          0.02,
-          (value) => setWakeValue('twaRotationScaleDownwind', value),
-        )}
         {renderControl('Core half angle', wake.coreHalfAngleDeg, 2, 30, 0.5, (value) =>
           setWakeValue('coreHalfAngleDeg', value),
         )}
@@ -234,6 +216,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
           <span>Boat</span>
           <span>Heading</span>
           <span>Desired</span>
+          <span>TWA</span>
           <span>AWA</span>
           <span>Speed</span>
           <span>Stall</span>
@@ -241,7 +224,14 @@ export const DebugPanel = ({ onClose, network }: Props) => {
           <span>Pos Y</span>
         </div>
         {boats.map((boat) => {
-          const awa = apparentWindAngleSigned(boat.headingDeg, race.wind.directionDeg)
+          const twa = trueWindAngleSigned(boat.headingDeg, race.wind.directionDeg)
+          const boatWindSpeed = sampleWindSpeed(race, boat.pos)
+          const awa = apparentWindAngle(
+            boat.headingDeg,
+            boat.speed,
+            race.wind.directionDeg,
+            boatWindSpeed,
+          )
           const headingError = angleDiff(
             boat.desiredHeadingDeg ?? boat.headingDeg,
             boat.headingDeg,
@@ -257,6 +247,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
                 {formatAngle(boat.desiredHeadingDeg ?? boat.headingDeg)} (
                 {headingError.toFixed(1)}°)
               </span>
+              <span>{formatAngle(twa)}</span>
               <span>{formatAngle(awa)}</span>
               <span>{formatSpeed(boat.speed)}</span>
               <span>{boat.stallTimer.toFixed(1)} s</span>

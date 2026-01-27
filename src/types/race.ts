@@ -37,8 +37,8 @@ export type BoatAiConfig = {
   profileId: string
   accuracy: number
   reactionMs: number
-  upwindAwa: number
-  downwindAwa: number
+  upwindTwa: number
+  downwindTwa: number
   tackThresholdDeg: number
   gybeThresholdDeg: number
   laylineBuffer: number
