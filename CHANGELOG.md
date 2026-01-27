@@ -1,3 +1,10 @@
+## [1.35.6](https://github.com/Smod9/onlytactics/compare/v1.35.5...v1.35.6) (2026-01-27)
+
+
+### Bug Fixes
+
+* disables lulls, only puffs now, but makes it configurable ([fecd821](https://github.com/Smod9/onlytactics/commit/fecd821edb982a5b4be22d323989a80fa5feaccb))
+
 ## [1.35.5](https://github.com/Smod9/onlytactics/compare/v1.35.4...v1.35.5) (2026-01-21)
 
 
