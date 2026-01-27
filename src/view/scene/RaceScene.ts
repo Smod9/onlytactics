@@ -119,15 +119,16 @@ class BoatView {
     const hullPoints = [0, -20, 10, 10, 0, 16, -10, 10]
     this.hull.poly(hullPoints)
     this.hull.fill()
-    this.hull.setStrokeStyle({ width: 2, color: 0x00c389 })
+    // Port/starboard edge colors
+    this.hull.setStrokeStyle({ width: 3, color: 0x00c389 })
     this.hull.moveTo(0, -20)
     this.hull.lineTo(10, 10)
     this.hull.stroke()
-    this.hull.setStrokeStyle({ width: 2, color: 0xff5e5e })
+    this.hull.setStrokeStyle({ width: 3, color: 0xff5e5e })
     this.hull.moveTo(-10, 10)
     this.hull.lineTo(0, -20)
     this.hull.stroke()
-    this.hull.setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.25 })
+    this.hull.setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.4 })
     this.hull.moveTo(-10, 10)
     this.hull.lineTo(10, 10)
     this.hull.stroke()
@@ -140,7 +141,7 @@ class BoatView {
 
   private drawSailShape() {
     this.sail.clear()
-    this.sail.fill({ color: 0xffffff, alpha: 0.4 })
+    this.sail.fill({ color: 0xffffff, alpha: 0.65 })
     // Bow tack
     this.sail.moveTo(0, 0)
 
@@ -654,7 +655,7 @@ export class RaceScene {
     }
 
     const puffColor = 0x19d3c5 // teal
-    const lullColor = 0x12345a // deep blue
+    const lullColor = 0xb07aa1 // deep blue
     const maxAlpha = 0.24
 
     for (let b = 0; b < buckets; b += 1) {
