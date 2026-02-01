@@ -1,3 +1,10 @@
+## [1.35.7](https://github.com/Smod9/onlytactics/compare/v1.35.6...v1.35.7) (2026-02-01)
+
+
+### Reverts
+
+* Revert "fix: disables lulls, only puffs now, but makes it configurable" ([64a5cb9](https://github.com/Smod9/onlytactics/commit/64a5cb929d7936fff395455d379c6e7c71d30c18))
+
 ## [1.35.6](https://github.com/Smod9/onlytactics/compare/v1.35.5...v1.35.6) (2026-01-27)
 
 
