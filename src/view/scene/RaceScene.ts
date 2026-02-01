@@ -33,6 +33,7 @@ import {
   computeCourseBounds,
   clearGrid,
   blitStamp,
+  isLeewardOnPort,
   type WindShadowGrid,
 } from '@/logic/windShadowGrid'
 
@@ -1248,10 +1249,13 @@ export class RaceScene {
 
     // Get stamp for current wind direction
     const stamp = getStampForWindDir(this.shadowStampAtlas, state.wind.directionDeg)
+    const windDirDeg = state.wind.directionDeg
 
-    // Blit shadow for each boat
+    // Blit shadow for each boat, flipping based on their tack
     Object.values(state.boats).forEach((boat) => {
-      blitStamp(grid, stamp, boat.pos.x, boat.pos.y)
+      // Flip if leeward is on port side (template has leeward on right/starboard)
+      const flipHorizontal = isLeewardOnPort(boat.headingDeg, windDirDeg)
+      blitStamp(grid, stamp, boat.pos.x, boat.pos.y, flipHorizontal)
     })
 
     // Draw heatmap - only cells with significant shadow

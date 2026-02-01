@@ -109,6 +109,10 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   private cleanupTimer?: NodeJS.Timeout
 
   onCreate(options: Record<string, unknown>) {
+    // Disable auto-dispose so rooms stay alive during reconnection windows.
+    // We manage cleanup manually via scheduleCleanup() after 5 minutes of being empty.
+    this.autoDispose = false
+
     // Set patch rate to match configured publish interval (must be called before setState)
     this.setPatchRate(appEnv.hostPublishIntervalMs)
     this.setState(new RaceRoomState())
@@ -403,16 +407,21 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
 
   async onLeave(client: Client, code?: number) {
     const didConsent = code === 1000 || code === 1001
-    // If a client disconnects unexpectedly, allow a brief reconnection window.
-    // This prevents "freeze -> refresh -> new boat" churn for transient network drops.
-    if (!didConsent) {
-      try {
-        await this.allowReconnection(client, 30)
-        roomDebug('onLeave:reconnected', { clientId: client.sessionId })
-        return
-      } catch {
-        // fall through to cleanup
-      }
+    // Allow reconnection for all disconnects (both intentional and unexpected).
+    // This lets users refresh the page or briefly leave without losing their boat.
+    const RECONNECT_SECONDS = 120 // 2 minutes
+    try {
+      roomDebug('onLeave:waiting for reconnection', {
+        clientId: client.sessionId,
+        consented: didConsent,
+        seconds: RECONNECT_SECONDS,
+      })
+      await this.allowReconnection(client, RECONNECT_SECONDS)
+      roomDebug('onLeave:reconnected', { clientId: client.sessionId })
+      return
+    } catch {
+      // Reconnection timed out or was rejected, fall through to cleanup
+      roomDebug('onLeave:reconnection failed', { clientId: client.sessionId })
     }
 
     this.state.playerCount = Math.max(0, this.state.playerCount - 1)

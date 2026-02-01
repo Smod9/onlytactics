@@ -154,16 +154,24 @@ const computeShadowIntensity = (
 const generateStamp = (downwindAngleDeg: number): ShadowStamp => {
   const cellSize = WAKE_GRID_CELL_SIZE
 
-  // Compute stamp bounds in cells
-  // The shadow extends downwind (along) and to both sides (cross)
-  const maxHalfWidth = Math.max(
-    WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT,
-    WAKE_HALF_WIDTH_START * WAKE_WINDWARD_WIDTH_MULT,
-  )
+  let lengthCells: number
+  let halfWidthCells: number
 
-  // Convert to cells with padding
-  const lengthCells = Math.ceil(WAKE_LENGTH / cellSize) + 2
-  const halfWidthCells = Math.ceil(maxHalfWidth / cellSize) + 2
+  if (USE_SHADOW_TEMPLATE) {
+    // Use template dimensions directly
+    const templateRows = SHADOW_SHAPE_TEMPLATE.length
+    const templateCols = SHADOW_SHAPE_TEMPLATE[0]?.length ?? 0
+    lengthCells = templateRows + 2 // padding
+    halfWidthCells = Math.ceil(templateCols / 2) + 2
+  } else {
+    // Use constants for computed shape
+    const maxHalfWidth = Math.max(
+      WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT,
+      WAKE_HALF_WIDTH_START * WAKE_WINDWARD_WIDTH_MULT,
+    )
+    lengthCells = Math.ceil(WAKE_LENGTH / cellSize) + 2
+    halfWidthCells = Math.ceil(maxHalfWidth / cellSize) + 2
+  }
 
   // Stamp dimensions - need to accommodate rotated shadow
   // For simplicity, use a square that can contain the rotated shape

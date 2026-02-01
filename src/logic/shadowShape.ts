@@ -46,43 +46,41 @@ import { WAKE_GRID_CELL_SIZE, WAKE_MAX_SLOWDOWN } from './constants'
  * Each cell is ~5 world units (WAKE_GRID_CELL_SIZE)
  */
 export const SHADOW_SHAPE_TEMPLATE: number[][] = [
-  // Row 0: At boat position - no shadow here
-  [0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
-  
-  // Rows 1-5: Close behind boat - narrow, building intensity
-  [0,   0,   5,  15,  30,  40,  30,  15,   5,   0,   0],
-  [0,   5,  15,  35,  60,  75,  60,  35,  15,   5,   0],
-  [0,  10,  25,  50,  75,  90,  75,  50,  25,  10,   0],
-  [5,  15,  35,  60,  85, 100,  85,  60,  35,  15,   5],
-  [5,  20,  40,  65,  85,  95,  85,  65,  40,  20,   5],
-  
-  // Rows 6-10: Mid-distance - wider, strong
-  [8,  22,  42,  62,  80,  90,  80,  62,  42,  22,   8],
-  [10, 25,  42,  58,  75,  85,  75,  58,  42,  25,  10],
-  [10, 25,  40,  55,  70,  80,  70,  55,  40,  25,  10],
-  [10, 23,  38,  52,  65,  75,  65,  52,  38,  23,  10],
-  [8,  20,  35,  48,  60,  70,  60,  48,  35,  20,   8],
-  
-  // Rows 11-15: Getting further - fading
-  [6,  18,  32,  44,  55,  65,  55,  44,  32,  18,   6],
-  [5,  15,  28,  40,  50,  58,  50,  40,  28,  15,   5],
-  [4,  12,  24,  35,  45,  52,  45,  35,  24,  12,   4],
-  [3,  10,  20,  30,  40,  46,  40,  30,  20,  10,   3],
-  [2,   8,  17,  26,  35,  40,  35,  26,  17,   8,   2],
-  
-  // Rows 16-20: Far out - fading more
-  [2,   6,  14,  22,  30,  35,  30,  22,  14,   6,   2],
-  [1,   5,  11,  18,  25,  30,  25,  18,  11,   5,   1],
-  [1,   4,   9,  15,  20,  25,  20,  15,   9,   4,   1],
-  [0,   3,   7,  12,  16,  20,  16,  12,   7,   3,   0],
-  [0,   2,   5,   9,  13,  16,  13,   9,   5,   2,   0],
-  
-  // Rows 21-25: Very far - nearly gone
-  [0,   1,   4,   7,  10,  12,  10,   7,   4,   1,   0],
-  [0,   1,   3,   5,   7,   9,   7,   5,   3,   1,   0],
-  [0,   0,   2,   4,   5,   6,   5,   4,   2,   0,   0],
-  [0,   0,   1,   2,   3,   4,   3,   2,   1,   0,   0],
-  [0,   0,   0,   1,   2,   2,   2,   1,   0,   0,   0],
+  [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],  // at boat
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 32, 50, 97, 64, 32,  0,  0,  0,  0,  0,  0,  0,  0],  // close
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 94, 62, 31,  0,  0,  0,  0,  0,  0,  0,  0],  // close
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 45, 68, 91, 68, 45, 22,  0,  0,  0,  0,  0,  0,  0],  // close
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 44, 66, 88, 66, 44, 22,  0,  0,  0,  0,  0,  0,  0],  // close
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 42, 63, 85, 63, 42, 21,  0,  0,  0,  0,  0,  0,  0],  // close
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 49, 65, 82, 65, 49, 32, 16,  0,  0,  0,  0,  0,  0],  // mid
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 47, 63, 79, 63, 47, 31, 15,  0,  0,  0,  0,  0,  0],  // mid
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 45, 60, 76, 60, 45, 30, 15,  0,  0,  0,  0,  0,  0],  // mid
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 48, 60, 73, 60, 48, 36, 24, 12,  0,  0,  0,  0,  0],  // mid
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 46, 58, 70, 58, 46, 35, 23, 11,  0,  0,  0,  0,  0],  // mid
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 44, 55, 67, 55, 44, 33, 22, 11,  0,  0,  0,  0,  0],  // far
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 60, 54, 64, 54, 45, 36, 27, 18,  9,  0,  0,  0,  0],  // far
+  [ 60, 60, 60, 60, 60, 60, 60, 60, 43, 52, 61, 52, 43, 34, 26, 17,  8,  0,  0,  0,  0],  // far
+  [ 60, 60, 60, 60, 60, 60, 60, 33, 41, 49, 58, 49, 41, 33, 24, 16,  8,  0,  0,  0,  0],  // far
+  [ 60, 60, 60, 60, 60, 60, 27, 34, 41, 48, 55, 48, 41, 34, 27, 20, 13,  6,  0,  0,  0],  // far
+  [ 60, 60, 60, 60, 13, 19, 26, 32, 39, 45, 52, 45, 39, 32, 26, 19, 13,  6,  0,  0,  0],  // fading
+  [ 60, 60, 60, 25, 12, 18, 24, 30, 36, 42, 49, 42, 36, 30, 24, 18, 12,  6,  0,  0,  0],  // fading
+  [ 60, 60,  5, 10, 15, 20, 25, 30, 35, 40, 46, 40, 35, 30, 25, 20, 15, 10,  5,  0,  0],  // fading
+  [  0,  0,  4,  9, 14, 19, 23, 28, 33, 38, 43, 38, 33, 28, 23, 19, 14,  9,  4,  0,  0],  // fading
+  [  0,  0,  4,  8, 13, 17, 22, 26, 31, 35, 40, 35, 31, 26, 22, 17, 13,  8,  4,  0,  0],  // fading
+  [  0,  3,  7, 11, 14, 18, 22, 25, 29, 33, 37, 33, 29, 25, 22, 18, 14, 11,  7,  3,  0],  // fading
+  [  0,  3,  6, 10, 13, 17, 20, 23, 27, 30, 34, 30, 27, 23, 20, 17, 13, 10,  6,  3,  0],  // fading
+  [  0,  3,  6,  9, 12, 15, 18, 21, 24, 27, 31, 27, 24, 21, 18, 15, 12,  9,  6,  3,  0],  // fading
+  [  0,  0,  7, 10, 12, 15, 17, 20, 22, 25, 28, 25, 22, 20, 17, 15, 12, 10,  7,  5,  2],  // fading
+  [  0,  0,  6,  9, 11, 13, 15, 18, 20, 22, 25, 22, 20, 18, 15, 13, 11,  9,  6,  4,  2],  // fading
+  [  0,  0,  0, 25, 12, 18, 24, 30, 36, 25, 25, 25, 36, 25, 25, 25, 25, 25, 25, 25, 25],  // fading
+  [  0,  0,  0,  0,  0,  0, 25, 30, 35, 25, 25, 25, 25, 25,  0,  0,  0,  0,  0,  0,  0],  // fading
+  [  0,  0,  0,  0,  0,  0, 23,  0, 33, 38,  0,  0,  0,  0, 23, 19, 14,  9,  4,  0,  0],  // fading
+  [  0,  0,  4,  8, 13, 17, 22, 26, 31, 35, 40, 35, 31, 26, 22, 17, 13,  8,  4,  0,  0],  // fading
+  [  0,  3,  7, 11, 14, 18, 22, 25, 29, 33, 37, 33, 29, 25, 22, 18, 14, 11,  7,  3,  0],  // fading
+  [  0,  3,  6, 10, 13, 17, 20, 23, 27, 30, 34, 30, 27, 23, 20, 17, 13, 10,  6,  3,  0],  // fading
+  [  0,  3,  6,  9, 12, 15, 18, 21, 24, 27, 31, 27, 24, 21, 18, 15, 12,  9,  6,  3,  0],  // fading
+  [  2,  5,  7, 10, 12, 15, 17, 20, 22, 25, 28, 25, 22, 20, 17, 15, 12, 10,  7,  5,  2],  // fading
+  [  2,  4,  6,  9, 11, 13, 15, 18, 20, 22, 25, 22, 20, 18, 15, 13, 11,  9,  6,  4,  2],  // fading
 ]
 
 /**
@@ -123,9 +121,15 @@ export const getDefaultShadowShape = (): ShadowShapeConfig => ({
 
 /**
  * Sample the shadow template at a given position relative to the boat.
+ * 
+ * The template is designed with the asymmetric (wider) side on the RIGHT (positive columns).
+ * When the leeward side is actually on the LEFT (isLeewardPositive = false), we flip
+ * the cross coordinate to mirror the template.
+ * 
  * @param alongDist - Distance downwind (world units)
- * @param crossDist - Distance cross-wind (world units, positive = leeward side)
+ * @param crossDist - Distance cross-wind (world units)
  * @param isLeewardPositive - Whether positive crossDist is the leeward side
+ *                           (true = leeward on right, false = leeward on left)
  */
 export const sampleShadowTemplate = (
   config: ShadowShapeConfig,
@@ -133,7 +137,7 @@ export const sampleShadowTemplate = (
   crossDist: number,
   isLeewardPositive: boolean = true,
 ): number => {
-  const { template, leewardMultiplier, rowSpacing, colSpacing, maxIntensity } = config
+  const { template, rowSpacing, colSpacing, maxIntensity } = config
   
   // No shadow upwind
   if (alongDist <= 0) return 0
@@ -148,14 +152,12 @@ export const sampleShadowTemplate = (
   const rowF = alongDist / rowSpacing
   if (rowF >= rows - 1) return 0
   
-  // Apply leeward multiplier to cross distance
-  // If crossDist is on the leeward side, shrink it (making the shadow wider on that side)
-  // If crossDist is on the windward side, keep it as-is
-  const isLeeward = isLeewardPositive ? crossDist > 0 : crossDist < 0
-  const adjustedCross = isLeeward ? crossDist / leewardMultiplier : crossDist
+  // FLIP the cross coordinate if leeward is on the negative side
+  // This mirrors the template so the wider (leeward) side is always correct
+  const flippedCross = isLeewardPositive ? crossDist : -crossDist
   
   // Convert cross distance to column offset
-  const colOffset = adjustedCross / colSpacing
+  const colOffset = flippedCross / colSpacing
   const colF = centerCol + colOffset
   
   if (colF < 0 || colF >= cols - 1) return 0

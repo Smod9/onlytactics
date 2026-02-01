@@ -130,12 +130,16 @@ const worldToCell = (
 /**
  * Blit a shadow stamp onto the grid at a world position.
  * Values are additive (multiple overlapping shadows accumulate).
+ * 
+ * @param flipHorizontal - If true, mirror the stamp horizontally.
+ *                         Use this to flip the shadow to the correct leeward side.
  */
 export const blitStamp = (
   grid: WindShadowGrid,
   stamp: ShadowStamp,
   worldX: number,
   worldY: number,
+  flipHorizontal: boolean = false,
 ): void => {
   // Convert boat position to grid cell
   const { cx: boatCellX, cy: boatCellY } = worldToCell(grid, worldX, worldY)
@@ -153,13 +157,34 @@ export const blitStamp = (
       const gridX = stampStartX + sx
       if (gridX < 0 || gridX >= grid.width) continue
 
-      const stampValue = stamp.data[sy * stamp.width + sx]
+      // When flipping, read from the mirrored X position in the stamp
+      const stampSx = flipHorizontal ? (stamp.width - 1 - sx) : sx
+      const stampValue = stamp.data[sy * stamp.width + stampSx]
       if (stampValue <= 0) continue
 
       const gridIdx = gridY * grid.width + gridX
       grid.data[gridIdx] += stampValue
     }
   }
+}
+
+/**
+ * Determine if a boat's leeward side is on the port side (left when looking forward).
+ * Returns true if leeward is port, false if leeward is starboard.
+ * 
+ * Leeward = the side the sail is on = opposite of where wind comes from.
+ * - Starboard tack (wind from starboard) → sail/leeward on port side → return true
+ * - Port tack (wind from port) → sail/leeward on starboard side → return false
+ */
+export const isLeewardOnPort = (boatHeadingDeg: number, windDirDeg: number): boolean => {
+  // Compute the angle from wind direction to boat heading
+  // Positive = wind coming from starboard (right) = starboard tack = leeward on port
+  // Negative = wind coming from port (left) = port tack = leeward on starboard
+  let diff = boatHeadingDeg - windDirDeg
+  // Normalize to -180 to 180
+  while (diff > 180) diff -= 360
+  while (diff < -180) diff += 360
+  return diff >= 0
 }
 
 /**
@@ -213,6 +238,7 @@ export const sampleGridSmooth = (grid: WindShadowGrid, pos: Vec2): number => {
  * Returns a map of boatId -> wakeFactor (1 = no shadow, lower = more shadow).
  * 
  * Important: Each boat is only affected by OTHER boats' shadows, not its own.
+ * The shadow is flipped based on each source boat's tack (which side is leeward).
  */
 export const computeWakeFactorsFromGrid = (
   state: RaceState,
@@ -224,6 +250,7 @@ export const computeWakeFactorsFromGrid = (
 
   // Get the stamp for current wind direction
   const stamp = getStampForWindDir(atlas, state.wind.directionDeg)
+  const windDirDeg = state.wind.directionDeg
 
   // For each target boat, compute wake factor from all OTHER boats' shadows
   for (const targetBoat of boats) {
@@ -233,7 +260,14 @@ export const computeWakeFactorsFromGrid = (
     for (const sourceBoat of boats) {
       // Skip self - a boat shouldn't be affected by its own shadow
       if (sourceBoat.id === targetBoat.id) continue
-      blitStamp(grid, stamp, sourceBoat.pos.x, sourceBoat.pos.y)
+      
+      // Determine if we need to flip the stamp based on this boat's tack
+      // The template has the wider (leeward) side on the RIGHT (positive columns)
+      // If leeward is on port (left), we need to flip so wider side is on left
+      const leewardOnPort = isLeewardOnPort(sourceBoat.headingDeg, windDirDeg)
+      const flipHorizontal = leewardOnPort
+      
+      blitStamp(grid, stamp, sourceBoat.pos.x, sourceBoat.pos.y, flipHorizontal)
     }
 
     // Sample at target boat's position
