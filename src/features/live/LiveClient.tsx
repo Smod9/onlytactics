@@ -900,12 +900,10 @@ export const LiveClient = () => {
                   )
                 })()}
               </div>
-              {appEnv.windFieldLullsEnabled && (
-                <WindIntensityLegend
-                  enabled={race.windField?.enabled}
-                  intensityKts={race.windField?.intensityKts}
-                />
-              )}
+              <WindIntensityLegend
+                enabled={race.windField?.enabled}
+                intensityKts={race.windField?.intensityKts}
+              />
               {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
                 <div className="spin-under-hud">
                   <button
