@@ -15,6 +15,8 @@ import {
   NO_GO_ANGLE_DEG,
   STALL_DURATION_S,
   WAKE_FORWARD_OFFSET_MAX,
+  WAKE_GRID_ENABLED,
+  WAKE_MAX_SLOWDOWN,
 } from '@/logic/constants'
 import { getEffectiveWakeTuning } from '@/logic/wakeTuning'
 import { boatCapsuleCircles } from '@/logic/boatGeometry'
@@ -25,6 +27,14 @@ import {
   radialSets,
   gateRadials,
 } from '@/config/course'
+import { createShadowStampAtlas, getStampForWindDir, type ShadowStampAtlas } from '@/logic/shadowStamps'
+import {
+  createWindShadowGrid,
+  computeCourseBounds,
+  clearGrid,
+  blitStamp,
+  type WindShadowGrid,
+} from '@/logic/windShadowGrid'
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
@@ -350,6 +360,12 @@ export class RaceScene {
   )
   private readonly windFieldCenter: Vec2 = { x: 0, y: 0 }
 
+  // Grid-based wind shadow visualization
+  private shadowStampAtlas?: ShadowStampAtlas
+  private windShadowGridViz?: WindShadowGrid
+  private windShadowGridLayer = new Graphics()
+  private gridVizInitialized = false
+
   constructor(
     private app: Application,
     options?: {
@@ -358,6 +374,7 @@ export class RaceScene {
   ) {
     // Render order (bottom -> top):
     // - windFieldLayer: moving puffs/lulls visualization (world-space)
+    // - windShadowGridLayer: grid-based wind shadow heatmap (debug, world-space)
     // - windShadowLayer: player wind shadow visualization (world-space)
     // - courseLayer: static course visuals (kept above wind shadows for readability)
     // - contextLayer: follow-mode guidance line(s)
@@ -365,6 +382,7 @@ export class RaceScene {
     // - boatLayer: boats + name tags, etc.
     this.worldLayer.addChild(
       this.windFieldLayer,
+      this.windShadowGridLayer,
       this.windShadowLayer,
       this.courseLayer,
       this.contextLayer,
@@ -832,8 +850,18 @@ export class RaceScene {
 
   private drawDebugAnnotations(state: RaceState) {
     this.overlayLayer.removeChildren()
-    if (!appEnv.debugHud) return
-    this.drawWindShadowsDebug(state)
+    if (!appEnv.debugHud) {
+      this.windShadowGridLayer.clear()
+      return
+    }
+
+    // Draw either grid-based heatmap OR old trig visualization (not both)
+    if (WAKE_GRID_ENABLED) {
+      this.drawWindShadowGridHeatmap(state)
+    } else {
+      this.windShadowGridLayer.clear()
+      this.drawWindShadowsDebug(state)
+    }
     this.drawMarkRadials(state)
     this.drawMarkLabels(state)
     this.drawNextMarkHighlight(state)
@@ -888,6 +916,13 @@ export class RaceScene {
 
   private drawPlayerWindShadow(state: RaceState) {
     this.windShadowLayer.clear()
+
+    // Skip old trig-based visualization when grid mode is enabled
+    if (WAKE_GRID_ENABLED) {
+      // console.log('[drawPlayerWindShadow] Grid mode enabled, skipping old visualization')
+      return
+    }
+
     const boat = state.boats[identity.boatId]
     if (!boat) return
 
@@ -1186,6 +1221,69 @@ export class RaceScene {
         this.overlayLayer.addChild(gTurb, gCore)
       }
     })
+  }
+
+  /**
+   * Draw a heatmap visualization of the grid-based wind shadow system.
+   * This computes the grid client-side for visualization only.
+   */
+  private drawWindShadowGridHeatmap(state: RaceState) {
+    this.windShadowGridLayer.clear()
+
+    // Initialize grid infrastructure lazily
+    if (!this.gridVizInitialized) {
+      this.shadowStampAtlas = createShadowStampAtlas()
+      const bounds = computeCourseBounds(state)
+      this.windShadowGridViz = createWindShadowGrid(bounds)
+      this.gridVizInitialized = true
+      console.log('[RaceScene] Initialized grid visualization')
+    }
+
+    if (!this.windShadowGridViz || !this.shadowStampAtlas) return
+
+    const grid = this.windShadowGridViz
+
+    // Clear and recompute grid
+    clearGrid(grid)
+
+    // Get stamp for current wind direction
+    const stamp = getStampForWindDir(this.shadowStampAtlas, state.wind.directionDeg)
+
+    // Blit shadow for each boat
+    Object.values(state.boats).forEach((boat) => {
+      blitStamp(grid, stamp, boat.pos.x, boat.pos.y)
+    })
+
+    // Draw heatmap - only cells with significant shadow
+    const minIntensity = 0.01 // Skip very faint cells
+    const g = this.windShadowGridLayer
+
+    for (let cy = 0; cy < grid.height; cy++) {
+      for (let cx = 0; cx < grid.width; cx++) {
+        const intensity = grid.data[cy * grid.width + cx]
+        if (intensity < minIntensity) continue
+
+        // World position of cell
+        const worldX = grid.originX + cx * grid.cellSize
+        const worldY = grid.originY + cy * grid.cellSize
+
+        // Color: blue to red based on intensity
+        // Normalize intensity to 0-1 range based on max slowdown
+        const normalizedIntensity = Math.min(1, intensity / WAKE_MAX_SLOWDOWN)
+
+        // Interpolate from blue (low) to red (high)
+        const r = Math.floor(normalizedIntensity * 255)
+        const b = Math.floor((1 - normalizedIntensity) * 255)
+        const color = (r << 16) | b
+
+        // Alpha increases with intensity for better visibility
+        const alpha = 0.1 + normalizedIntensity * 0.4
+
+        g.fill({ color, alpha })
+        g.rect(worldX, worldY, grid.cellSize, grid.cellSize)
+        g.fill()
+      }
+    }
   }
 
   private drawMarkRadials(state: RaceState) {

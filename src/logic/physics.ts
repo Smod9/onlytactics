@@ -64,6 +64,7 @@ import {
   LEEWARD_DRIFT_SPEED_KTS,
   LEEWARD_DRIFT_THRESHOLD_KTS,
   COLLISION_SLOWDOWN_AT_FAULT,
+  WAKE_GRID_ENABLED,
 } from './constants'
 import { getEffectiveWakeTuning } from '@/logic/wakeTuning'
 import { appEnv } from '@/config/env'
@@ -421,6 +422,15 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
 export type InputMap = Record<string, PlayerInput>
 
 /**
+ * Options for physics step, allowing external systems to provide
+ * pre-computed values.
+ */
+export type StepOptions = {
+  /** Pre-computed wake factors from grid-based system */
+  wakeFactors?: Record<string, number>
+}
+
+/**
  * Main physics simulation step - advances race state by dt seconds
  *
  * This is the heart of the physics engine. For each boat, it:
@@ -433,12 +443,15 @@ export type InputMap = Record<string, PlayerInput>
  * @param state - Current race state (modified in place)
  * @param inputs - Map of player inputs by boat ID
  * @param dt - Time step in seconds (typically 1/60 for 60fps)
+ * @param collisionOutcome - Optional collision resolution results
+ * @param options - Optional settings including pre-computed wake factors
  */
 export const stepRaceState = (
   state: RaceState,
   inputs: InputMap,
   dt: number,
   collisionOutcome?: CollisionOutcome,
+  options?: StepOptions,
 ) => {
   // Advance simulation time
   state.t += dt
@@ -448,7 +461,11 @@ export const stepRaceState = (
     state.phase = 'running'
   }
 
-  const wakeFactors = computeWakeFactors(state)
+  // Use pre-computed wake factors if provided (grid-based), otherwise compute with trig
+  const wakeFactors =
+    options?.wakeFactors && WAKE_GRID_ENABLED
+      ? options.wakeFactors
+      : computeWakeFactors(state)
 
   // Update each boat
   Object.values(state.boats).forEach((boat) => {

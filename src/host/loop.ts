@@ -7,11 +7,23 @@ import { createSeededRandom } from '@/utils/rng'
 import { appEnv } from '@/config/env'
 import { createId } from '@/utils/ids'
 import { identity } from '@/net/identity'
-import { SPIN_HOLD_SECONDS, WIND_SPEED_MAX_KTS, WIND_SPEED_MIN_KTS } from '@/logic/constants'
+import {
+  SPIN_HOLD_SECONDS,
+  WIND_SPEED_MAX_KTS,
+  WIND_SPEED_MIN_KTS,
+  WAKE_GRID_ENABLED,
+} from '@/logic/constants'
 import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import { courseLegs, radialSets, gateRadials } from '@/config/course'
 import { distanceBetween } from '@/utils/geometry'
 import { assignLeaderboard } from '@/logic/leaderboard'
+import { createShadowStampAtlas, type ShadowStampAtlas } from '@/logic/shadowStamps'
+import {
+  createWindShadowGrid,
+  computeCourseBounds,
+  computeWakeFactorsFromGrid,
+  type WindShadowGrid,
+} from '@/logic/windShadowGrid'
 
 const circleSignedDistanceToLine = (
   circleCenter: { x: number; y: number },
@@ -123,6 +135,10 @@ export class HostLoop {
 
   private roundingProgress = new Map<string, RoundingProgress>()
 
+  // Grid-based wind shadow system
+  private shadowStampAtlas?: ShadowStampAtlas
+  private windShadowGrid?: WindShadowGrid
+
   constructor(
     private store: RaceStore = raceStore,
     private rules = new RulesEngine(appEnv.penaltyCooldownSeconds),
@@ -133,6 +149,18 @@ export class HostLoop {
     this.windRandom = createSeededRandom(initialState.meta.seed)
     this.windSpeedTarget = initialState.wind.speed
     this.raceStartWallClockMs = initialState.clockStartMs
+
+    // Initialize grid-based wind shadow system
+    if (WAKE_GRID_ENABLED) {
+      this.initializeWindShadowGrid(initialState)
+    }
+  }
+
+  private initializeWindShadowGrid(state: RaceState) {
+    console.log('[HostLoop] Initializing grid-based wind shadow system')
+    this.shadowStampAtlas = createShadowStampAtlas()
+    const bounds = computeCourseBounds(state)
+    this.windShadowGrid = createWindShadowGrid(bounds)
   }
 
   private windTimer = 0
@@ -190,6 +218,12 @@ export class HostLoop {
     this.raceStartWallClockMs = state.clockStartMs
     this.cancelSpinSequences()
     this.roundingProgress.clear()
+
+    // Reinitialize grid if course bounds might have changed
+    if (WAKE_GRID_ENABLED) {
+      const bounds = computeCourseBounds(state)
+      this.windShadowGrid = createWindShadowGrid(bounds)
+    }
   }
 
   isRunning = () => Boolean(this.timer)
@@ -207,8 +241,15 @@ export class HostLoop {
     const inputs = this.store.consumeInputs()
     const collisionOutcomes = this.rules.computeCollisionOutcomes(next)
     const countdownHeld = next.phase === 'prestart' && !next.countdownArmed
+
+    // Compute wake factors using grid-based system if enabled
+    const wakeFactors =
+      WAKE_GRID_ENABLED && this.windShadowGrid && this.shadowStampAtlas
+        ? computeWakeFactorsFromGrid(next, this.windShadowGrid, this.shadowStampAtlas)
+        : undefined
+
     if (!countdownHeld) {
-      stepRaceState(next, inputs, dt, collisionOutcomes)
+      stepRaceState(next, inputs, dt, collisionOutcomes, { wakeFactors })
     } else if (next.phase === 'prestart' && !next.countdownArmed) {
       next.t = -appEnv.countdownSeconds
     }
