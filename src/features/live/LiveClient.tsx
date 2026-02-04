@@ -925,10 +925,19 @@ export const LiveClient = () => {
               const showSailStatus = Boolean(
                 boat && (boat.blowSails || boat.stallTimer > 0.05),
               )
-              const shouldShow = canShowBoatInfo && (wakeActive || showSailStatus)
+              // Bullet time indicator
+              const bulletTimeScale = boat
+                ? (race.bulletTimeScales?.[boat.id] ?? 1)
+                : 1
+              const inBulletTime = bulletTimeScale < 0.99
+              const bulletTimePercent = Math.round(bulletTimeScale * 100)
+
+              const shouldShow =
+                canShowBoatInfo && (wakeActive || showSailStatus || inBulletTime)
               if (!shouldShow) return null
 
               const parts: string[] = []
+              if (inBulletTime) parts.push(`Bullet Time ${bulletTimePercent}%`)
               if (wakeActive) parts.push(`Wind Shadow -${wakeSlowPercent}%`)
               if (boat?.blowSails) parts.push('Blowing Sails')
               else if (boat && boat.stallTimer > 0.05) parts.push('Luffing')

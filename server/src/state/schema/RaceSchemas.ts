@@ -220,6 +220,9 @@ export class RaceStateSchema extends Schema {
 
   @type('boolean')
   paused = false
+
+  @type({ map: 'number' })
+  bulletTimeScales = new MapSchema<number>()
 }
 
 export type { ArraySchema, MapSchema }

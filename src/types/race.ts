@@ -114,6 +114,8 @@ export type RaceState = {
   aiEnabled: boolean
   /** Debug/admin feature: when true, the simulation is frozen (no stepping). */
   paused?: boolean
+  /** Per-boat time scales for bullet time (mark rounding slow-motion). 1.0 = normal speed. */
+  bulletTimeScales?: Record<string, number>
 }
 
 export type PlayerInput = {

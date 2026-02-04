@@ -57,3 +57,9 @@ export const WAKE_TURB_STRENGTH = 0.4 // Turbulent zone strength
 export const WAKE_CORE_MAX_SLOWDOWN = 0.4 // Core blanket max slowdown
 export const WAKE_TURB_MAX_SLOWDOWN = 0.25 // Turbulent zone max slowdown
 export const WAKE_MIN_STRENGTH = 0.015 // Ignore negligible contributions
+
+// Bullet time parameters (mark rounding slow-motion)
+export const BULLET_TIME_OUTER_RADIUS_BL = 8 // Where slowdown begins (boat lengths from mark)
+export const BULLET_TIME_INNER_RADIUS_BL = 2 // Where max slowdown is reached (boat lengths)
+export const BULLET_TIME_MIN_SCALE = 0.5 // Time scale at innermost (0.25 = 4x slowdown)
+export const BULLET_TIME_ENABLED = true // Feature flag to enable/disable bullet time

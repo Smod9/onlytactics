@@ -12,6 +12,7 @@ import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import { courseLegs, radialSets, gateRadials } from '@/config/course'
 import { distanceBetween } from '@/utils/geometry'
 import { assignLeaderboard } from '@/logic/leaderboard'
+import { computeBoatTimeScales } from '@/logic/bulletTime'
 
 const circleSignedDistanceToLine = (
   circleCenter: { x: number; y: number },
@@ -207,8 +208,13 @@ export class HostLoop {
     const inputs = this.store.consumeInputs()
     const collisionOutcomes = this.rules.computeCollisionOutcomes(next)
     const countdownHeld = next.phase === 'prestart' && !next.countdownArmed
+
+    // Compute per-boat time scales for bullet time (mark rounding slow-motion)
+    const timeScales = computeBoatTimeScales(next)
+    next.bulletTimeScales = timeScales
+
     if (!countdownHeld) {
-      stepRaceState(next, inputs, dt, collisionOutcomes)
+      stepRaceState(next, inputs, dt, collisionOutcomes, { timeScales })
     } else if (next.phase === 'prestart' && !next.countdownArmed) {
       next.t = -appEnv.countdownSeconds
     }

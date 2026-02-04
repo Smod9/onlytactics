@@ -421,6 +421,15 @@ const computeWakeFactors = (state: RaceState): Record<string, number> => {
 export type InputMap = Record<string, PlayerInput>
 
 /**
+ * Options for physics step, allowing external systems to provide
+ * pre-computed values.
+ */
+export type StepOptions = {
+  /** Per-boat time scaling for bullet time (mark rounding slow-motion) */
+  timeScales?: Record<string, number>
+}
+
+/**
  * Main physics simulation step - advances race state by dt seconds
  *
  * This is the heart of the physics engine. For each boat, it:
@@ -433,12 +442,15 @@ export type InputMap = Record<string, PlayerInput>
  * @param state - Current race state (modified in place)
  * @param inputs - Map of player inputs by boat ID
  * @param dt - Time step in seconds (typically 1/60 for 60fps)
+ * @param collisionOutcome - Optional collision resolution results
+ * @param options - Optional settings including per-boat time scales
  */
 export const stepRaceState = (
   state: RaceState,
   inputs: InputMap,
   dt: number,
   collisionOutcome?: CollisionOutcome,
+  options?: StepOptions,
 ) => {
   // Advance simulation time
   state.t += dt
@@ -453,6 +465,11 @@ export const stepRaceState = (
   // Update each boat
   Object.values(state.boats).forEach((boat) => {
     const input = inputs[boat.id]
+
+    // Get per-boat time scale for bullet time (mark rounding slow-motion)
+    // This affects position updates, steering, and timer decay
+    const boatTimeScale = options?.timeScales?.[boat.id] ?? 1
+    const boatDt = dt * boatTimeScale
 
     // ========================================================================
     // STEP 1: Process VMG Mode (Velocity Made Good autopilot)
@@ -519,9 +536,9 @@ export const stepRaceState = (
     // ========================================================================
 
     clampDesiredHeading(boat, desiredHeading, state.wind.directionDeg)
-    steerTowardsDesired(boat, dt)
-    applyStallDecay(boat, dt)
-    applyTackTimer(boat, dt)
+    steerTowardsDesired(boat, boatDt)
+    applyStallDecay(boat, boatDt)
+    applyTackTimer(boat, boatDt)
 
     // ========================================================================
     // STEP 4: Calculate target speed from polar diagram
@@ -578,8 +595,8 @@ export const stepRaceState = (
     // STEP 6: Update boat speed and position
     // ========================================================================
 
-    // Smoothly interpolate toward target speed
-    boat.speed = smoothSpeed(boat.speed, targetSpeed, dt)
+    // Smoothly interpolate toward target speed (uses boatDt so acceleration slows in bullet time)
+    boat.speed = smoothSpeed(boat.speed, targetSpeed, boatDt)
 
     const fault = collisionOutcome?.faults[boat.id]
     const hasBoatCollision = collisionOutcome?.collidedBoatIds.has(boat.id)
@@ -589,13 +606,14 @@ export const stepRaceState = (
 
     // Update position based on heading and speed
     // Coordinate system: +X = East, +Y = South (y inverted because North is "up" on screen)
+    // Uses boatDt for bullet time effect
     const courseRad = degToRad(boat.headingDeg)
     const speedMs = boat.speed * KNOTS_TO_MS
     boat.prevPos = boat.prevPos ?? { x: boat.pos.x, y: boat.pos.y }
     boat.prevPos.x = boat.pos.x
     boat.prevPos.y = boat.pos.y
-    boat.pos.x += Math.sin(courseRad) * speedMs * dt
-    boat.pos.y -= Math.cos(courseRad) * speedMs * dt // Negative because North is up
+    boat.pos.x += Math.sin(courseRad) * speedMs * boatDt
+    boat.pos.y -= Math.cos(courseRad) * speedMs * boatDt // Negative because North is up
 
     if (boat.speed <= LEEWARD_DRIFT_THRESHOLD_KTS) {
       const headingVec = dirToUnit(boat.headingDeg)
@@ -604,8 +622,8 @@ export const stepRaceState = (
           ? { x: -headingVec.y, y: headingVec.x }
           : { x: headingVec.y, y: -headingVec.x }
       const driftMs = LEEWARD_DRIFT_SPEED_KTS * KNOTS_TO_MS * appEnv.speedMultiplier
-      boat.pos.x += leewardVec.x * driftMs * dt
-      boat.pos.y += leewardVec.y * driftMs * dt
+      boat.pos.x += leewardVec.x * driftMs * boatDt
+      boat.pos.y += leewardVec.y * driftMs * boatDt
     }
   })
 

@@ -137,4 +137,16 @@ export const applyRaceStateToSchema = (target: RaceStateSchema, source: RaceStat
 
   target.leaderboard.splice(0, target.leaderboard.length)
   source.leaderboard.forEach((boatId) => target.leaderboard.push(boatId))
+
+  // Sync bullet time scales
+  const bulletTimeScales = source.bulletTimeScales ?? {}
+  const bulletTimeIds = new Set(Object.keys(bulletTimeScales))
+  target.bulletTimeScales.forEach((_, key) => {
+    if (!bulletTimeIds.has(key)) {
+      target.bulletTimeScales.delete(key)
+    }
+  })
+  Object.entries(bulletTimeScales).forEach(([boatId, scale]) => {
+    target.bulletTimeScales.set(boatId, scale)
+  })
 }
