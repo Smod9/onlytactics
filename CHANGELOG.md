@@ -1,3 +1,10 @@
+## [1.35.8](https://github.com/Smod9/onlytactics/compare/v1.35.7...v1.35.8) (2026-02-04)
+
+
+### Bug Fixes
+
+* hole color - makes them 'dusty mauve' ([6630cad](https://github.com/Smod9/onlytactics/commit/6630cad847a426aef74165eca148a2ef8fc057f5))
+
 ## [1.35.7](https://github.com/Smod9/onlytactics/compare/v1.35.6...v1.35.7) (2026-02-01)
 
 
