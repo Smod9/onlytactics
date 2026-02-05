@@ -1,3 +1,10 @@
+## [1.35.10](https://github.com/Smod9/onlytactics/compare/v1.35.9...v1.35.10) (2026-02-05)
+
+
+### Bug Fixes
+
+* Updates all discord links ([47e2c04](https://github.com/Smod9/onlytactics/commit/47e2c0458f85435da8e6bdc706c0ec6336ba3ef8))
+
 ## [1.35.9](https://github.com/Smod9/onlytactics/compare/v1.35.8...v1.35.9) (2026-02-05)
 
 
