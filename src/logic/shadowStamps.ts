@@ -25,7 +25,6 @@ import {
 import {
   getDefaultShadowShape,
   sampleShadowTemplate,
-  printShadowTemplate,
   SHADOW_SHAPE_TEMPLATE,
 } from './shadowShape'
 
@@ -242,17 +241,6 @@ export const createShadowStampAtlas = (): ShadowStampAtlas => {
   for (let i = 0; i < count; i++) {
     const angleDeg = i * angleStep
     stamps.push(generateStamp(angleDeg))
-  }
-
-  console.log(
-    `[shadowStamps] Created atlas: ${count} stamps, ${stamps[0]?.width}x${stamps[0]?.height} cells each`,
-  )
-
-  if (USE_SHADOW_TEMPLATE) {
-    console.log('[shadowStamps] Using template-based shape from shadowShape.ts')
-    printShadowTemplate()
-  } else {
-    console.log('[shadowStamps] Using computed shape (constants-based)')
   }
 
   return { stamps, angleStep, count }

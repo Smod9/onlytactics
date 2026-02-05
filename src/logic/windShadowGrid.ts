@@ -69,15 +69,19 @@ export const computeCourseBounds = (state: RaceState): GridBounds => {
     maxY = Math.max(maxY, state.leewardGate.left.y, state.leewardGate.right.y)
   }
 
-  // Add padding for shadow overhang and boat spawn positions
-  const shadowPadding = WAKE_LENGTH + WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT
-  const spawnPadding = 200 // Boats spawn south of start line
+  // Add generous padding - boats can sail well beyond marks
+  // Use larger of shadow extent or fixed padding to ensure coverage
+  const shadowPadding = Math.max(
+    WAKE_LENGTH + WAKE_HALF_WIDTH_START * WAKE_LEEWARD_WIDTH_MULT,
+    300, // Minimum padding for boats sailing beyond marks
+  )
+  const spawnPadding = 300 // Boats spawn south of start line, also sail beyond marks
 
   return {
     minX: minX - shadowPadding,
     maxX: maxX + shadowPadding,
-    minY: minY - shadowPadding,
-    maxY: maxY + shadowPadding + spawnPadding,
+    minY: minY - shadowPadding - spawnPadding, // Extra padding north (upwind overshoot)
+    maxY: maxY + shadowPadding + spawnPadding, // Extra padding south (spawn + overshoot)
   }
 }
 
@@ -91,10 +95,6 @@ export const createWindShadowGrid = (bounds: GridBounds): WindShadowGrid => {
   const height = Math.ceil((bounds.maxY - bounds.minY) / cellSize)
 
   const data = new Float32Array(width * height)
-
-  console.log(
-    `[windShadowGrid] Created grid: ${width}x${height} cells (${(data.byteLength / 1024).toFixed(1)}KB)`,
-  )
 
   return {
     data,

@@ -157,10 +157,53 @@ export class HostLoop {
   }
 
   private initializeWindShadowGrid(state: RaceState) {
-    console.log('[HostLoop] Initializing grid-based wind shadow system')
     this.shadowStampAtlas = createShadowStampAtlas()
     const bounds = computeCourseBounds(state)
     this.windShadowGrid = createWindShadowGrid(bounds)
+  }
+
+  /**
+   * Check if any boat is outside the grid bounds and expand if needed.
+   */
+  private expandGridIfNeeded(state: RaceState): void {
+    if (!this.windShadowGrid) return
+
+    const grid = this.windShadowGrid
+    const padding = 100 // Extra padding when expanding
+
+    let needsExpansion = false
+    let newMinX = grid.originX
+    let newMaxX = grid.originX + grid.width * grid.cellSize
+    let newMinY = grid.originY
+    let newMaxY = grid.originY + grid.height * grid.cellSize
+
+    for (const boat of Object.values(state.boats)) {
+      if (boat.pos.x < grid.originX + padding) {
+        newMinX = Math.min(newMinX, boat.pos.x - padding * 2)
+        needsExpansion = true
+      }
+      if (boat.pos.x > grid.originX + grid.width * grid.cellSize - padding) {
+        newMaxX = Math.max(newMaxX, boat.pos.x + padding * 2)
+        needsExpansion = true
+      }
+      if (boat.pos.y < grid.originY + padding) {
+        newMinY = Math.min(newMinY, boat.pos.y - padding * 2)
+        needsExpansion = true
+      }
+      if (boat.pos.y > grid.originY + grid.height * grid.cellSize - padding) {
+        newMaxY = Math.max(newMaxY, boat.pos.y + padding * 2)
+        needsExpansion = true
+      }
+    }
+
+    if (needsExpansion) {
+      this.windShadowGrid = createWindShadowGrid({
+        minX: newMinX,
+        maxX: newMaxX,
+        minY: newMinY,
+        maxY: newMaxY,
+      })
+    }
   }
 
   private windTimer = 0
@@ -241,6 +284,11 @@ export class HostLoop {
     const inputs = this.store.consumeInputs()
     const collisionOutcomes = this.rules.computeCollisionOutcomes(next)
     const countdownHeld = next.phase === 'prestart' && !next.countdownArmed
+
+    // Expand grid if boats have sailed outside bounds
+    if (WAKE_GRID_ENABLED) {
+      this.expandGridIfNeeded(next)
+    }
 
     // Compute wake factors using grid-based system if enabled
     const wakeFactors =

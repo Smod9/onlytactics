@@ -714,6 +714,12 @@ export class RaceScene {
 
   private drawCourse(state: RaceState) {
     const debug = appEnv.debugHud
+
+    // Always draw wind shadow (player's own in normal mode, all boats in debug mode)
+    if (WAKE_GRID_ENABLED) {
+      this.drawWindShadowGridHeatmap(state)
+    }
+
     if (!debug) {
       const prevWasDebug = this.lastCourseWasDebug
       const key = this.getCourseKey(state)
@@ -852,18 +858,12 @@ export class RaceScene {
 
   private drawDebugAnnotations(state: RaceState) {
     this.overlayLayer.removeChildren()
-    if (!appEnv.debugHud) {
-      this.windShadowGridLayer.clear()
-      return
-    }
 
-    // Draw either grid-based heatmap OR old trig visualization (not both)
-    if (WAKE_GRID_ENABLED) {
-      this.drawWindShadowGridHeatmap(state)
-    } else {
-      this.windShadowGridLayer.clear()
+    // Old trig visualization only in debug mode (grid viz is handled in drawCourse)
+    if (!WAKE_GRID_ENABLED && appEnv.debugHud) {
       this.drawWindShadowsDebug(state)
     }
+
     this.drawMarkRadials(state)
     this.drawMarkLabels(state)
     this.drawNextMarkHighlight(state)
@@ -1238,10 +1238,12 @@ export class RaceScene {
       const bounds = computeCourseBounds(state)
       this.windShadowGridViz = createWindShadowGrid(bounds)
       this.gridVizInitialized = true
-      console.log('[RaceScene] Initialized grid visualization')
     }
 
     if (!this.windShadowGridViz || !this.shadowStampAtlas) return
+
+    // Expand grid if boats are outside bounds
+    this.expandVizGridIfNeeded(state)
 
     const grid = this.windShadowGridViz
 
@@ -1252,8 +1254,15 @@ export class RaceScene {
     const stamp = getStampForWindDir(this.shadowStampAtlas, state.wind.directionDeg)
     const windDirDeg = state.wind.directionDeg
 
+    // In debug mode, show all boats' shadows
+    // In normal mode, only show the local player's shadow
+    const allBoats = Object.values(state.boats)
+    const boatsToShow = appEnv.debugHud
+      ? allBoats
+      : allBoats.filter((b) => b.id === identity.boatId)
+
     // Blit shadow for each boat, flipping based on their tack
-    Object.values(state.boats).forEach((boat) => {
+    boatsToShow.forEach((boat) => {
       // Flip if leeward is on port side (template has leeward on right/starboard)
       const flipHorizontal = isLeewardOnPort(boat.headingDeg, windDirDeg)
       blitStamp(grid, stamp, boat.pos.x, boat.pos.y, flipHorizontal)
@@ -1263,9 +1272,26 @@ export class RaceScene {
     const minIntensity = 0.01 // Skip very faint cells
     const g = this.windShadowGridLayer
 
-    for (let cy = 0; cy < grid.height; cy++) {
-      for (let cx = 0; cx < grid.width; cx++) {
-        const intensity = grid.data[cy * grid.width + cx]
+    // Down-sample visualization if grid is too large (prevents Pixi.js overload)
+    // Aim for max ~10000 cells drawn
+    const totalCells = grid.width * grid.height
+    const maxDrawnCells = 10000
+    const skipFactor = totalCells > maxDrawnCells ? Math.ceil(Math.sqrt(totalCells / maxDrawnCells)) : 1
+    const drawCellSize = grid.cellSize * skipFactor
+
+    for (let cy = 0; cy < grid.height; cy += skipFactor) {
+      for (let cx = 0; cx < grid.width; cx += skipFactor) {
+        // Sample the center of the drawn cell (or average nearby cells)
+        let intensity = 0
+        let samples = 0
+        for (let sy = 0; sy < skipFactor && cy + sy < grid.height; sy++) {
+          for (let sx = 0; sx < skipFactor && cx + sx < grid.width; sx++) {
+            intensity += grid.data[(cy + sy) * grid.width + (cx + sx)]
+            samples++
+          }
+        }
+        intensity = samples > 0 ? intensity / samples : 0
+
         if (intensity < minIntensity) continue
 
         // World position of cell
@@ -1285,9 +1311,53 @@ export class RaceScene {
         const alpha = 0.1 + normalizedIntensity * 0.4
 
         g.fill({ color, alpha })
-        g.rect(worldX, worldY, grid.cellSize, grid.cellSize)
+        g.rect(worldX, worldY, drawCellSize, drawCellSize)
         g.fill()
       }
+    }
+  }
+
+  /**
+   * Expand the visualization grid if boats are outside bounds.
+   */
+  private expandVizGridIfNeeded(state: RaceState): void {
+    if (!this.windShadowGridViz) return
+
+    const grid = this.windShadowGridViz
+    const padding = 100
+
+    let needsExpansion = false
+    let newMinX = grid.originX
+    let newMaxX = grid.originX + grid.width * grid.cellSize
+    let newMinY = grid.originY
+    let newMaxY = grid.originY + grid.height * grid.cellSize
+
+    for (const boat of Object.values(state.boats)) {
+      if (boat.pos.x < grid.originX + padding) {
+        newMinX = Math.min(newMinX, boat.pos.x - padding * 2)
+        needsExpansion = true
+      }
+      if (boat.pos.x > grid.originX + grid.width * grid.cellSize - padding) {
+        newMaxX = Math.max(newMaxX, boat.pos.x + padding * 2)
+        needsExpansion = true
+      }
+      if (boat.pos.y < grid.originY + padding) {
+        newMinY = Math.min(newMinY, boat.pos.y - padding * 2)
+        needsExpansion = true
+      }
+      if (boat.pos.y > grid.originY + grid.height * grid.cellSize - padding) {
+        newMaxY = Math.max(newMaxY, boat.pos.y + padding * 2)
+        needsExpansion = true
+      }
+    }
+
+    if (needsExpansion) {
+      this.windShadowGridViz = createWindShadowGrid({
+        minX: newMinX,
+        maxX: newMaxX,
+        minY: newMinY,
+        maxY: newMaxY,
+      })
     }
   }
 
