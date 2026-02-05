@@ -234,7 +234,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
           <span>Boat</span>
           <span>Heading</span>
           <span>Desired</span>
-          <span>AWA</span>
+          <span>TWA</span>
           <span>Speed</span>
           <span>Stall</span>
           <span>Pos X</span>
