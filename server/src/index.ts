@@ -4,7 +4,11 @@ import express from 'express'
 import { createServer } from 'http'
 import { performance } from 'node:perf_hooks'
 import { env } from './lib/env'
+import { runMigrations } from './db'
+import { getRace, getRecentRaces, queryRaces } from './db/raceStorage'
 import { RaceRoom } from './rooms/RaceRoom'
+import authRoutes from './routes/authRoutes'
+import adminRoutes from './routes/adminRoutes'
 
 const attachGlobalPolyfills = () => {
   const globalAny = globalThis as typeof globalThis & {
@@ -37,7 +41,7 @@ const applyCorsHeaders = (
   } else {
     res.setHeader('Access-Control-Allow-Origin', '*')
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
   res.setHeader('Access-Control-Max-Age', '86400')
 }
@@ -55,6 +59,10 @@ expressApp.use((req, res, next) => {
 // Enable JSON body parsing for POST requests
 expressApp.use(express.json())
 
+// Mount auth and admin routes
+expressApp.use('/api/auth', authRoutes)
+expressApp.use('/api/admin', adminRoutes)
+
 expressApp.get('/', (_req, res) => {
   res.json({
     service: 'Only Tactics Colyseus Server',
@@ -64,6 +72,49 @@ expressApp.get('/', (_req, res) => {
 
 expressApp.get('/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() })
+})
+
+expressApp.get('/api/replays/:raceId', async (req, res) => {
+  try {
+    const raceId = req.params.raceId
+    const replay = await getRace(raceId)
+    if (!replay) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    res.json(replay)
+  } catch (error) {
+    console.error('[api] failed to fetch replay', error)
+    res.status(500).json({ error: 'internal_error' })
+  }
+})
+
+expressApp.get('/api/replays', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 25
+    const races = await getRecentRaces(limit)
+    res.json(races)
+  } catch (error) {
+    console.error('[api] failed to list replays', error)
+    res.status(500).json({ error: 'internal_error' })
+  }
+})
+
+expressApp.get('/api/replays/query', async (req, res) => {
+  try {
+    const { winnerId, courseName, dateFrom, dateTo, limit } = req.query
+    const races = await queryRaces({
+      winnerId: typeof winnerId === 'string' ? winnerId : undefined,
+      courseName: typeof courseName === 'string' ? courseName : undefined,
+      dateFrom: typeof dateFrom === 'string' ? dateFrom : undefined,
+      dateTo: typeof dateTo === 'string' ? dateTo : undefined,
+      limit: typeof limit === 'string' ? Number(limit) : undefined,
+    })
+    res.json(races)
+  } catch (error) {
+    console.error('[api] failed to query replays', error)
+    res.status(500).json({ error: 'internal_error' })
+  }
 })
 
 const httpServer = createServer(expressApp)
@@ -221,6 +272,7 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
 
 const start = async () => {
   try {
+    await runMigrations()
     await gameServer.listen(env.port, env.hostname)
     console.log(`[colyseus] listening on ${env.hostname}:${env.port}`)
   } catch (error) {
