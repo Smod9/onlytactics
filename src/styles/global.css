@@ -1853,8 +1853,8 @@ button {
 
 .tactician-popout {
   position: fixed;
-  left: auto;
-  right: 1rem;
+  left: 1rem;
+  right: auto;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -1868,7 +1868,7 @@ button {
 }
 
 .tactician-nudge {
-  align-self: flex-end;
+  align-self: flex-start;
   max-width: 220px;
   padding: 0.35rem 0.6rem;
   border-radius: 999px;
