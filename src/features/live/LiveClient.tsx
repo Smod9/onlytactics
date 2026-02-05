@@ -1202,7 +1202,7 @@ export const LiveClient = () => {
               }
             />
           )}
-          <ChatPanel network={network} />
+          {appEnv.chatEnabled && <ChatPanel network={network} />}
         </div>
       </div>
       {role !== 'spectator' && (
