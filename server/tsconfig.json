@@ -11,6 +11,10 @@
       "@/config/env": ["server/src/config/serverEnv"],
       "@/net/identity": ["server/src/net/serverIdentity"],
       "@/state/raceStore": ["server/src/state/serverRaceStore"],
+      "@/db": ["server/src/db"],
+      "@/db/*": ["server/src/db/*"],
+      "@/auth": ["server/src/auth"],
+      "@/auth/*": ["server/src/auth/*"],
       "@/*": ["src/*"]
     },
     "esModuleInterop": true,

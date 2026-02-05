@@ -7,6 +7,8 @@ import { env } from './lib/env'
 import { runMigrations } from './db'
 import { getRace, getRecentRaces, queryRaces } from './db/raceStorage'
 import { RaceRoom } from './rooms/RaceRoom'
+import authRoutes from './routes/authRoutes'
+import adminRoutes from './routes/adminRoutes'
 
 const attachGlobalPolyfills = () => {
   const globalAny = globalThis as typeof globalThis & {
@@ -39,7 +41,7 @@ const applyCorsHeaders = (
   } else {
     res.setHeader('Access-Control-Allow-Origin', '*')
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
   res.setHeader('Access-Control-Max-Age', '86400')
 }
@@ -56,6 +58,10 @@ expressApp.use((req, res, next) => {
 
 // Enable JSON body parsing for POST requests
 expressApp.use(express.json())
+
+// Mount auth and admin routes
+expressApp.use('/api/auth', authRoutes)
+expressApp.use('/api/admin', adminRoutes)
 
 expressApp.get('/', (_req, res) => {
   res.json({

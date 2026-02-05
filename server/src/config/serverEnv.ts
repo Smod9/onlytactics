@@ -84,6 +84,24 @@ export const appEnv = {
     rawEnv.WIND_FIELD_TILE_SIZE_WORLD ?? rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD,
     36,
   ),
+
+  // Authentication
+  jwtSecret: rawEnv.JWT_SECRET ?? 'dev-jwt-secret-change-in-production',
+  jwtAccessExpiresIn: rawEnv.JWT_ACCESS_EXPIRES_IN ?? '15m',
+  jwtRefreshExpiresIn: rawEnv.JWT_REFRESH_EXPIRES_IN ?? '7d',
+  bcryptCostFactor: toNumber(rawEnv.BCRYPT_COST_FACTOR, 12),
+  passwordResetExpiresMinutes: toNumber(rawEnv.PASSWORD_RESET_EXPIRES_MINUTES, 60),
+
+  // Email (SMTP)
+  smtpHost: rawEnv.SMTP_HOST ?? '',
+  smtpPort: toNumber(rawEnv.SMTP_PORT, 587),
+  smtpUser: rawEnv.SMTP_USER ?? '',
+  smtpPass: rawEnv.SMTP_PASS ?? '',
+  smtpFrom: rawEnv.SMTP_FROM ?? 'noreply@onlytactics.com',
+  smtpSecure: toBool(rawEnv.SMTP_SECURE, false),
+
+  // App URLs
+  appUrl: rawEnv.APP_URL ?? 'http://localhost:5173',
 } as const
 
 export type AppEnv = typeof appEnv

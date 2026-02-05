@@ -32,7 +32,14 @@ const defaultColyseusEndpoint =
     ? 'ws://localhost:2567'
     : 'wss://onlytactics-server.fly.dev'
 
+const defaultApiUrl =
+  rawEnv.MODE === 'development' || rawEnv.NODE_ENV === 'development'
+    ? 'http://localhost:2567'
+    : 'https://onlytactics-server.fly.dev'
+
 export const appEnv = {
+  apiUrl: stripInlineComment(rawEnv.VITE_API_URL ?? defaultApiUrl),
+  mockAuth: toBool(rawEnv.VITE_MOCK_AUTH, false),
   raceId: rawEnv.VITE_RACE_ID ?? 'debug-race',
   clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'host') as ClientRole,
   clientName: rawEnv.VITE_CLIENT_NAME ?? 'Debug Host',

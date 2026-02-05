@@ -45,25 +45,36 @@ export const withClient = async <T>(fn: (client: PoolClient) => Promise<T>) => {
   }
 }
 
-const readInitialMigration = () => {
-  const migrationPath = path.join(__dirname, 'migrations', '001_initial.sql')
+const readMigration = (filename: string, fallback?: string) => {
+  const migrationPath = path.join(__dirname, 'migrations', filename)
   try {
     return fs.readFileSync(migrationPath, 'utf8')
   } catch (error) {
-    console.warn('[db] failed to read migration file, using fallback SQL', {
-      migrationPath,
-      error,
-    })
-    return fallbackMigration
+    if (fallback) {
+      console.warn('[db] failed to read migration file, using fallback SQL', {
+        migrationPath,
+        error,
+      })
+      return fallback
+    }
+    throw error
   }
 }
 
+const MIGRATIONS = [
+  { filename: '001_initial.sql', fallback: fallbackMigration },
+  { filename: '002_users.sql' },
+]
+
 export const runMigrations = async () => {
-  const sql = readInitialMigration()
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
-    await client.query(sql)
+    for (const migration of MIGRATIONS) {
+      const sql = readMigration(migration.filename, migration.fallback)
+      await client.query(sql)
+      console.log(`[db] applied migration: ${migration.filename}`)
+    }
     await client.query('COMMIT')
   } catch (error) {
     await client.query('ROLLBACK')

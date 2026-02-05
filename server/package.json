@@ -18,16 +18,23 @@
   "dependencies": {
     "@colyseus/schema": "^4.0.4",
     "@dimforge/rapier2d-compat": "^0.14.0",
+    "bcrypt": "^6.0.0",
     "colyseus": "^0.17.4",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
     "fly": "^4.6.16",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.0",
     "pg": "^8.16.3",
     "tsconfig-paths": "^4.2.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
+    "@types/nodemailer": "^7.0.9",
     "@types/pg": "^8.15.6",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
