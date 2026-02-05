@@ -1269,7 +1269,7 @@ export const LiveClient = () => {
                 </a>
                 <a
                   className="icon-link"
-                  href="https://discord.gg/gYPkWPhg"
+                  href="https://discord.gg/2awgM3w9QD"
                   target="_blank"
                   rel="noreferrer"
                   title="Join our Discord community"
