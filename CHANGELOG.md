@@ -1,3 +1,10 @@
+## [1.36.2](https://github.com/Smod9/onlytactics/compare/v1.36.1...v1.36.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* change the readout to say TWA and moved help menu to the left now that the chat is gone ([71b2f78](https://github.com/Smod9/onlytactics/commit/71b2f78e1213705a07a5660a3d42b6ca3fb63724))
+
 ## [1.36.1](https://github.com/Smod9/onlytactics/compare/v1.36.0...v1.36.1) (2026-02-05)
 
 
