@@ -1,3 +1,10 @@
+## [1.36.3](https://github.com/Smod9/onlytactics/compare/v1.36.2...v1.36.3) (2026-02-05)
+
+
+### Bug Fixes
+
+* increase maximum speed from 18 to 30 knots ([c979191](https://github.com/Smod9/onlytactics/commit/c979191d85bfcef6296beca6fd8b0fee5ed3f70c))
+
 ## [1.36.2](https://github.com/Smod9/onlytactics/compare/v1.36.1...v1.36.2) (2026-02-05)
 
 
