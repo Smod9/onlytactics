@@ -1,5 +1,5 @@
 export const KNOTS_TO_MS = 0.514444 * 2 //How fast a boat moves in meters per second (on the screen)
-export const MAX_SPEED_KTS = 18
+export const MAX_SPEED_KTS = 30
 export const TURN_RATE_DEG = 90 //How fast a boat turns in degrees per second
 export const ACCELERATION_RATE = 0.6 //How fast a boat accelerates in meters per second per second
 export const DECELERATION_RATE = 0.4 //How fast a boat decelerates in meters per second per second
