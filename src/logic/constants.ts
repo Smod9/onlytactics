@@ -57,3 +57,8 @@ export const WAKE_TURB_STRENGTH = 0.4 // Turbulent zone strength
 export const WAKE_CORE_MAX_SLOWDOWN = 0.4 // Core blanket max slowdown
 export const WAKE_TURB_MAX_SLOWDOWN = 0.25 // Turbulent zone max slowdown
 export const WAKE_MIN_STRENGTH = 0.015 // Ignore negligible contributions
+
+// Grid-based wind shadow parameters
+export const WAKE_GRID_CELL_SIZE = 5 // World units per grid cell (~half boat width)
+export const SHADOW_STAMP_ANGLE_STEP = 5 // Degrees between pre-computed stamps (72 total)
+export const WAKE_GRID_ENABLED = true // Feature flag for grid-based wind shadow
