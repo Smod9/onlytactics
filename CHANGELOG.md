@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/Smod9/onlytactics/compare/v1.35.10...v1.36.0) (2026-02-05)
+
+
+### Features
+
+* adds optional right left steering just to try it ([85be0ef](https://github.com/Smod9/onlytactics/commit/85be0effbd7eb7a7f0f10bdc47f83269b4404b8a))
+
 ## [1.35.10](https://github.com/Smod9/onlytactics/compare/v1.35.9...v1.35.10) (2026-02-05)
 
 
