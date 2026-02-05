@@ -368,14 +368,21 @@ export const LiveClient = () => {
 
   const elapsedRaceLabel = formatRaceTime(Math.max(0, race.t))
   const finishSplitsByBoatId = new Map<string, number>()
+  const splitFromFirstByBoatId = new Map<string, number>()
   let previousFinishTime: number | null = null
+  let firstPlaceFinishTime: number | null = null
   race.leaderboard.forEach((boatId) => {
     const finishTime = race.boats[boatId]?.finishTime
     if (typeof finishTime !== 'number' || !Number.isFinite(finishTime)) {
       return
     }
+    if (firstPlaceFinishTime === null) {
+      firstPlaceFinishTime = finishTime
+    }
     const deltaSeconds = previousFinishTime === null ? 0 : finishTime - previousFinishTime
+    const deltaFromFirst = finishTime - firstPlaceFinishTime
     finishSplitsByBoatId.set(boatId, deltaSeconds)
+    splitFromFirstByBoatId.set(boatId, deltaFromFirst)
     previousFinishTime = finishTime
   })
 
@@ -1053,6 +1060,16 @@ export const LiveClient = () => {
 
                         const speedText = leaderboardSpeeds[boatId] ?? '—'
                         const metaBottomText = finished ? (splitText ?? '—') : speedText
+                        let finishTooltip: string | undefined
+                        if (finished && typeof boat.finishTime === 'number') {
+                          const totalTime = formatRaceTime(boat.finishTime)
+                          const deltaFromFirst = splitFromFirstByBoatId.get(boatId)
+                          if (typeof deltaFromFirst === 'number' && deltaFromFirst > 0) {
+                            finishTooltip = `Finish time: ${totalTime}\nBehind leader: ${formatSplit(deltaFromFirst)}`
+                          } else {
+                            finishTooltip = `Finish time: ${totalTime}`
+                          }
+                        }
 
                         return (
                           <li key={boatId}>
@@ -1070,7 +1087,7 @@ export const LiveClient = () => {
                             </span>
                             <span className="leaderboard-meta">
                               <span className="leaderboard-meta-top">{statusText}</span>
-                              <span className="leaderboard-meta-bottom">
+                              <span className="leaderboard-meta-bottom" title={finishTooltip}>
                                 {metaBottomText}
                               </span>
                             </span>
