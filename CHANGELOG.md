@@ -1,3 +1,10 @@
+## [1.35.9](https://github.com/Smod9/onlytactics/compare/v1.35.8...v1.35.9) (2026-02-05)
+
+
+### Bug Fixes
+
+* Fixes wind scale legend ([97c8104](https://github.com/Smod9/onlytactics/commit/97c81042fa3163a9b73dfae25339a7360b3bea3e))
+
 ## [1.35.8](https://github.com/Smod9/onlytactics/compare/v1.35.7...v1.35.8) (2026-02-04)
 
 
