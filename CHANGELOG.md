@@ -1,3 +1,10 @@
+## [1.36.1](https://github.com/Smod9/onlytactics/compare/v1.36.0...v1.36.1) (2026-02-05)
+
+
+### Bug Fixes
+
+* players named seb automatically become RC ([5437eb4](https://github.com/Smod9/onlytactics/commit/5437eb4fb5177e645219c290298d6dc1a47bd01b))
+
 # [1.36.0](https://github.com/Smod9/onlytactics/compare/v1.35.10...v1.36.0) (2026-02-05)
 
 
