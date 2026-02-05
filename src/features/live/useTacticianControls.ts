@@ -118,7 +118,7 @@ export const useTacticianControls = (
         raw: { code: event.code, key: event.key, location: event.location },
         meta: { shiftKey: event.shiftKey, altKey: event.altKey, repeat: event.repeat },
       })
-      const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyP', 'KeyL']
+      const allowed = ['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyS', 'KeyP', 'KeyL']
       if (appEnv.debugHud) allowed.push('KeyJ')
       if (!allowed.includes(key)) {
         debugInputLog('keydown:ignored', { key })
@@ -230,6 +230,26 @@ export const useTacticianControls = (
           const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
           const desiredAbs = Math.min(absAwa + step, MAX_DOWNWIND_ANGLE_DEG)
           const heading = headingFromAwa(state.wind.directionDeg, tackSign * desiredAbs)
+          sendHeading(heading)
+          break
+        }
+        case 'ArrowRight': {
+          // Turn to starboard (clockwise)
+          exitVmgMode()
+          const hardModifier = event.shiftKey || event.altKey
+          debugInputLog('arrowRight', { hardModifier })
+          const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const heading = (lastHeading + step + 360) % 360
+          sendHeading(heading)
+          break
+        }
+        case 'ArrowLeft': {
+          // Turn to port (counter-clockwise)
+          exitVmgMode()
+          const hardModifier = event.shiftKey || event.altKey
+          debugInputLog('arrowLeft', { hardModifier })
+          const step = hardModifier ? HARD_TURN_STEP_DEG : HEADING_STEP_DEG
+          const heading = (lastHeading - step + 360) % 360
           sendHeading(heading)
           break
         }

@@ -389,7 +389,11 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       } else {
         this.assignBoatToClient(client, options)
       }
-      if (existingWasHost) {
+      // Auto-promote "seb" to RC (host)
+      const isSeb = displayName.toLowerCase() === 'seb'
+      if (isSeb) {
+        this.setHost(client.sessionId)
+      } else if (existingWasHost) {
         this.setHost(client.sessionId)
       } else if (!this.hostSessionId) {
         this.setHost(client.sessionId)

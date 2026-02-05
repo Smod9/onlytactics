@@ -783,7 +783,7 @@ export const LiveClient = () => {
                         )
                         const isStarboardTack = twaSigned >= 0
                         const absTwa = Math.abs(twaSigned)
-                        // Boat panel: keep AWA label, but show VMG mode status instead of degrees.
+                        // Boat panel: keep TWA label, but show VMG mode status instead of degrees.
                         const boatWindValue = boat.vmgMode
                           ? 'VMG'
                           : `${absTwa.toFixed(0)}°`
@@ -805,7 +805,7 @@ export const LiveClient = () => {
                                   </span>
                                 </div>
                                 <div className="hud-metric hud-metric-wind">
-                                  <span className="hud-label">AWA</span>
+                                  <span className="hud-label">TWA</span>
                                   <span className="hud-value">{boatWindValue}</span>
                                 </div>
                                 <div className="hud-metric hud-metric-tack">
@@ -1202,7 +1202,7 @@ export const LiveClient = () => {
               }
             />
           )}
-          <ChatPanel network={network} />
+          {appEnv.chatEnabled && <ChatPanel network={network} />}
         </div>
       </div>
       {role !== 'spectator' && (
@@ -1269,7 +1269,7 @@ export const LiveClient = () => {
                 </a>
                 <a
                   className="icon-link"
-                  href="https://discord.gg/gYPkWPhg"
+                  href="https://discord.gg/2awgM3w9QD"
                   target="_blank"
                   rel="noreferrer"
                   title="Join our Discord community"

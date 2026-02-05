@@ -1,3 +1,52 @@
+## [1.36.2](https://github.com/Smod9/onlytactics/compare/v1.36.1...v1.36.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* change the readout to say TWA and moved help menu to the left now that the chat is gone ([71b2f78](https://github.com/Smod9/onlytactics/commit/71b2f78e1213705a07a5660a3d42b6ca3fb63724))
+
+## [1.36.1](https://github.com/Smod9/onlytactics/compare/v1.36.0...v1.36.1) (2026-02-05)
+
+
+### Bug Fixes
+
+* players named seb automatically become RC ([5437eb4](https://github.com/Smod9/onlytactics/commit/5437eb4fb5177e645219c290298d6dc1a47bd01b))
+
+# [1.36.0](https://github.com/Smod9/onlytactics/compare/v1.35.10...v1.36.0) (2026-02-05)
+
+
+### Features
+
+* adds optional right left steering just to try it ([85be0ef](https://github.com/Smod9/onlytactics/commit/85be0effbd7eb7a7f0f10bdc47f83269b4404b8a))
+
+## [1.35.10](https://github.com/Smod9/onlytactics/compare/v1.35.9...v1.35.10) (2026-02-05)
+
+
+### Bug Fixes
+
+* Updates all discord links ([47e2c04](https://github.com/Smod9/onlytactics/commit/47e2c0458f85435da8e6bdc706c0ec6336ba3ef8))
+
+## [1.35.9](https://github.com/Smod9/onlytactics/compare/v1.35.8...v1.35.9) (2026-02-05)
+
+
+### Bug Fixes
+
+* Fixes wind scale legend ([97c8104](https://github.com/Smod9/onlytactics/commit/97c81042fa3163a9b73dfae25339a7360b3bea3e))
+
+## [1.35.8](https://github.com/Smod9/onlytactics/compare/v1.35.7...v1.35.8) (2026-02-04)
+
+
+### Bug Fixes
+
+* hole color - makes them 'dusty mauve' ([6630cad](https://github.com/Smod9/onlytactics/commit/6630cad847a426aef74165eca148a2ef8fc057f5))
+
+## [1.35.7](https://github.com/Smod9/onlytactics/compare/v1.35.6...v1.35.7) (2026-02-01)
+
+
+### Reverts
+
+* Revert "fix: disables lulls, only puffs now, but makes it configurable" ([64a5cb9](https://github.com/Smod9/onlytactics/commit/64a5cb929d7936fff395455d379c6e7c71d30c18))
+
 ## [1.35.6](https://github.com/Smod9/onlytactics/compare/v1.35.5...v1.35.6) (2026-01-27)
 
 
