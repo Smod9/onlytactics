@@ -40,7 +40,7 @@ export const GATE_COLLIDER_RADIUS = 7
 export const COLLISION_SLOWDOWN_AT_FAULT = 0.35
 
 // Wind shadow / wake parameters
-export const WAKE_MAX_SLOWDOWN = 0.4 // Max speed reduction (25%)
+export const WAKE_MAX_SLOWDOWN = 0.25 // Max speed reduction (25%)
 export const WAKE_LENGTH = 123 // Downwind wake length (scene units)
 export const WAKE_HALF_WIDTH_START = 25 // Near-boat half width
 export const WAKE_HALF_WIDTH_END = 17 // Wake narrows farther downwind
