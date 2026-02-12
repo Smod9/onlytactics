@@ -1,3 +1,10 @@
+## [1.36.4](https://github.com/Smod9/onlytactics/compare/v1.36.3...v1.36.4) (2026-02-12)
+
+
+### Bug Fixes
+
+* tweaks wind shadow shape and reduces max slowdown to 25% ([#126](https://github.com/Smod9/onlytactics/issues/126)) ([12bcc81](https://github.com/Smod9/onlytactics/commit/12bcc81daa808678cd93de94d9489639a4f447fb))
+
 ## [1.36.3](https://github.com/Smod9/onlytactics/compare/v1.36.2...v1.36.3) (2026-02-05)
 
 
