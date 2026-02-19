@@ -44,8 +44,6 @@ export class ColyseusBridge {
 
   private endpoint: string
 
-  private intentionalLeave = false
-
   constructor(
     endpoint: string,
     private roomId: string,
@@ -82,7 +80,6 @@ export class ColyseusBridge {
 
   async connect(options?: { role?: Exclude<RaceRole, 'host'>; joinExisting?: boolean }) {
     this.emitStatus('connecting')
-    this.intentionalLeave = false
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'connect()', {
         endpoint: this.endpoint,
@@ -142,7 +139,6 @@ export class ColyseusBridge {
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'disconnect()')
     }
-    this.intentionalLeave = true
     void this.room?.leave()
     this.room = undefined
     this.sessionId = undefined
