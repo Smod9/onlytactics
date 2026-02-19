@@ -917,10 +917,14 @@ export const LiveClient = () => {
                     <label className="results-option-row">
                       <input
                         type="checkbox"
-                        checked={rcScored}
+                        checked={rcScored && Object.keys(race.boats).length >= 3}
+                        disabled={Object.keys(race.boats).length < 3}
                         onChange={(e) => setRcScored(e.target.checked)}
                       />
                       <span>Include in rankings</span>
+                      {Object.keys(race.boats).length < 3 && (
+                        <span className="results-fleet-hint">Min 3 boats required</span>
+                      )}
                     </label>
                     {hasUnfinishedBoats && (
                       <div className="results-option-row">

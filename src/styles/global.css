@@ -2980,6 +2980,12 @@ kbd {
   margin-right: 0.25rem;
 }
 
+.results-fleet-hint {
+  font-size: 0.75rem;
+  color: #7a8aaf;
+  margin-left: 0.4rem;
+}
+
 .results-not-scored-badge {
   margin: 0;
   padding: 0.3rem 0.6rem;

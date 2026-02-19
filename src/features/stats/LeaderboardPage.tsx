@@ -11,6 +11,14 @@ type LeaderboardEntry = {
   wins: number
   avgPoints: number
   bestPosition: number | null
+  totalTillerTimeSeconds: number | null
+}
+
+const formatDuration = (seconds: number) => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
 }
 
 export function LeaderboardPage() {
@@ -59,6 +67,7 @@ export function LeaderboardPage() {
                 <th>Races</th>
                 <th>Wins</th>
                 <th>Best</th>
+                <th>Tiller Time</th>
               </tr>
             </thead>
             <tbody>
@@ -83,6 +92,11 @@ export function LeaderboardPage() {
                     <td>{entry.totalRaces}</td>
                     <td>{entry.wins}</td>
                     <td>{entry.bestPosition ?? '—'}</td>
+                    <td>
+                      {entry.totalTillerTimeSeconds
+                        ? formatDuration(entry.totalTillerTimeSeconds)
+                        : '—'}
+                    </td>
                   </tr>
                 )
               })}

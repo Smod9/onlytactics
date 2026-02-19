@@ -122,8 +122,9 @@ export const saveRaceStats = async (
 ) => {
   const raceId = recording.meta.raceId
   const windStats = computeWindStats(recording.frames)
+  const MIN_FLEET_SIZE = 3
   const fleetSize = Object.keys(finalState.boats).length
-  if (fleetSize === 0) return
+  if (fleetSize < MIN_FLEET_SIZE) return
 
   const results = computeResults(finalState, userBoatMap, dnfMode)
   const dnfPoints = fleetSize + 1
@@ -234,6 +235,7 @@ export type UserStats = {
   bestPosition: number | null
   fastestTimeSeconds: number | null
   avgFinishPct: number | null
+  totalTillerTimeSeconds: number | null
   byWindBand: {
     band: 'light' | 'medium' | 'heavy'
     races: number
@@ -252,17 +254,19 @@ export const getUserStats = async (userId: string): Promise<UserStats | null> =>
     const base = await client.query(
       `SELECT
         count(*)::int AS total_races,
-        count(*) FILTER (WHERE finish_position = 1)::int AS wins,
-        coalesce(avg(points), 0) AS avg_points,
-        min(finish_position) AS best_position,
-        min(finish_time_seconds) AS fastest_time,
+        count(*) FILTER (WHERE r.finish_position = 1)::int AS wins,
+        coalesce(avg(r.points), 0) AS avg_points,
+        min(r.finish_position) AS best_position,
+        min(r.finish_time_seconds) AS fastest_time,
         coalesce(avg(
-          CASE WHEN finish_position IS NOT NULL
-            THEN 1.0 - (finish_position - 1.0) / NULLIF(fleet_size - 1.0, 0)
+          CASE WHEN r.finish_position IS NOT NULL
+            THEN 1.0 - (r.finish_position - 1.0) / NULLIF(r.fleet_size - 1.0, 0)
           END
-        ), 0) AS avg_finish_pct
-      FROM race_results
-      WHERE user_id = $1`,
+        ), 0) AS avg_finish_pct,
+        coalesce(sum(c.race_duration_seconds), 0) AS total_tiller_time
+      FROM race_results r
+      LEFT JOIN race_conditions c ON c.race_id = r.race_id
+      WHERE r.user_id = $1`,
       [userId],
     )
 
@@ -316,6 +320,8 @@ export const getUserStats = async (userId: string): Promise<UserStats | null> =>
         row.avg_finish_pct != null
           ? Number(Number(row.avg_finish_pct).toFixed(3))
           : null,
+      totalTillerTimeSeconds:
+        row.total_tiller_time != null ? Number(row.total_tiller_time) : null,
       byWindBand: windBands.rows.map((r) => ({
         band: r.band as 'light' | 'medium' | 'heavy',
         races: Number(r.races),
@@ -342,6 +348,7 @@ export type LeaderboardEntry = {
   wins: number
   avgPoints: number
   bestPosition: number | null
+  totalTillerTimeSeconds: number | null
 }
 
 export type LeaderboardOptions = {
@@ -363,8 +370,10 @@ export const getLeaderboard = async (
         count(*)::int AS total_races,
         count(*) FILTER (WHERE r.finish_position = 1)::int AS wins,
         avg(r.points) AS avg_points,
-        min(r.finish_position) AS best_position
+        min(r.finish_position) AS best_position,
+        coalesce(sum(c.race_duration_seconds), 0) AS total_tiller_time
       FROM race_results r
+      LEFT JOIN race_conditions c ON c.race_id = r.race_id
       WHERE r.user_id IS NOT NULL
       GROUP BY r.user_id
       HAVING count(*) >= $1
@@ -380,6 +389,8 @@ export const getLeaderboard = async (
       wins: Number(row.wins),
       avgPoints: Number(Number(row.avg_points).toFixed(2)),
       bestPosition: row.best_position != null ? Number(row.best_position) : null,
+      totalTillerTimeSeconds:
+        row.total_tiller_time != null ? Number(row.total_tiller_time) : null,
     }))
   })
 }

@@ -12,6 +12,7 @@ type UserStats = {
   bestPosition: number | null
   fastestTimeSeconds: number | null
   avgFinishPct: number | null
+  totalTillerTimeSeconds: number | null
 }
 
 type RaceHistoryEntry = {
@@ -31,6 +32,13 @@ const formatTime = (seconds: number) => {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+const formatDuration = (seconds: number) => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
 }
 
 export function ProfilePage() {
@@ -113,6 +121,14 @@ export function ProfilePage() {
                 </span>
                 <span className="profile-stat-label">Fastest</span>
               </div>
+              <div className="profile-stat">
+                <span className="profile-stat-value">
+                  {stats.totalTillerTimeSeconds
+                    ? formatDuration(stats.totalTillerTimeSeconds)
+                    : '—'}
+                </span>
+                <span className="profile-stat-label">Tiller Time</span>
+              </div>
             </div>
 
             {history.length > 0 && (
@@ -124,6 +140,7 @@ export function ProfilePage() {
                       <th>Date</th>
                       <th>Course</th>
                       <th>Pos</th>
+                      <th>Fleet</th>
                       <th>Time</th>
                       <th>+1st</th>
                       <th>Pts</th>
@@ -142,10 +159,9 @@ export function ProfilePage() {
                         <td>
                           {race.dnf
                             ? 'DNF'
-                            : race.finishPosition
-                              ? `${race.finishPosition}/${race.fleetSize}`
-                              : '—'}
+                            : race.finishPosition ?? '—'}
                         </td>
+                        <td>{race.fleetSize}</td>
                         <td>
                           {race.finishTimeSeconds != null
                             ? formatTime(race.finishTimeSeconds)
