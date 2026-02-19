@@ -239,7 +239,6 @@ export class GameNetwork {
     this.colyseusBridge?.sendRelinquishHost()
   }
 
-<<<<<<< HEAD
   finishRace() {
     netLog('send host command', { kind: 'finish_race' })
     this.colyseusBridge?.sendHostCommand({ kind: 'finish_race' })
@@ -250,8 +249,6 @@ export class GameNetwork {
     this.colyseusBridge?.sendHostCommand({ kind: 'confirm_results', ...options })
   }
 
-=======
->>>>>>> main
   resetRace() {
     netLog('send host command', { kind: 'reset' })
     this.colyseusBridge?.sendHostCommand({ kind: 'reset' })
