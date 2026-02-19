@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/Smod9/onlytactics/compare/v1.36.4...v1.37.0) (2026-02-19)
+
+
+### Features
+
+* Relational database and basic race replay feature ([#104](https://github.com/Smod9/onlytactics/issues/104)) ([0231205](https://github.com/Smod9/onlytactics/commit/02312059cf96dbc3f0112b3edbc1f870fa7489d2))
+
 ## [1.36.4](https://github.com/Smod9/onlytactics/compare/v1.36.3...v1.36.4) (2026-02-12)
 
 

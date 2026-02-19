@@ -64,8 +64,11 @@ const readMigration = (filename: string, fallback?: string) => {
 const MIGRATIONS = [
   { filename: '001_initial.sql', fallback: fallbackMigration },
   { filename: '002_users.sql' },
+<<<<<<< HEAD
   { filename: '003_race_stats.sql' },
   { filename: '004_drop_fk_constraints.sql' },
+=======
+>>>>>>> main
 ]
 
 export const runMigrations = async () => {

@@ -250,9 +250,12 @@ export class ColyseusBridge {
     room.onMessage('room_closed', (payload: { reason?: string }) => {
       this.roomClosedListeners.forEach((listener) => listener(payload ?? {}))
     })
+<<<<<<< HEAD
     room.onMessage('stats_saved', (payload: StatsSavedPayload) => {
       this.statsSavedListeners.forEach((listener) => listener(payload ?? {}))
     })
+=======
+>>>>>>> main
     room.onDrop((code, reason) => {
       if (appEnv.debugNetLogs) {
         console.info('[ColyseusBridge]', 'connection dropped, SDK reconnecting', { code, reason })

@@ -7,12 +7,19 @@ import { RegisterPage } from './features/auth/RegisterPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { AdminDashboard } from './features/admin/AdminDashboard'
+<<<<<<< HEAD
 import { LeaderboardPage } from './features/stats/LeaderboardPage'
 import { ProfilePage } from './features/stats/ProfilePage'
 import { useAuth } from './state/authStore'
 import './styles/auth.css'
 
 type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile'
+=======
+import { useAuth } from './state/authStore'
+import './styles/auth.css'
+
+type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin'
+>>>>>>> main
 
 const getInitialMode = (): AppMode => {
   if (typeof window === 'undefined') return 'live'
@@ -22,8 +29,11 @@ const getInitialMode = (): AppMode => {
   if (path.startsWith('/forgot-password')) return 'forgot-password'
   if (path.startsWith('/reset-password')) return 'reset-password'
   if (path.startsWith('/admin')) return 'admin'
+<<<<<<< HEAD
   if (path.startsWith('/leaderboard')) return 'leaderboard'
   if (path.startsWith('/profile')) return 'profile'
+=======
+>>>>>>> main
   if (path.startsWith('/lobby')) return 'lobby'
   if (path.startsWith('/app')) return 'live'
   return 'live'
@@ -49,10 +59,13 @@ export function App() {
         setMode('reset-password')
       } else if (path.startsWith('/admin')) {
         setMode('admin')
+<<<<<<< HEAD
       } else if (path.startsWith('/leaderboard')) {
         setMode('leaderboard')
       } else if (path.startsWith('/profile')) {
         setMode('profile')
+=======
+>>>>>>> main
       } else if (path.startsWith('/lobby')) {
         setMode('lobby')
       } else if (path.startsWith('/app')) {
@@ -71,8 +84,11 @@ export function App() {
   if (mode === 'forgot-password') return <ForgotPasswordPage />
   if (mode === 'reset-password') return <ResetPasswordPage />
   if (mode === 'admin') return <AdminDashboard />
+<<<<<<< HEAD
   if (mode === 'leaderboard') return <LeaderboardPage />
   if (mode === 'profile') return <ProfilePage />
+=======
+>>>>>>> main
 
   return (
     <div className="app-shell">
@@ -96,6 +112,7 @@ export function App() {
           <div id="header-cta-root" className="header-cta" />
           {mode !== 'live' && (
             <div className="header-auth">
+<<<<<<< HEAD
               <a href="/leaderboard" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/leaderboard' }}>
                 Leaderboard
               </a>
@@ -104,6 +121,13 @@ export function App() {
                   <a href="/profile" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/profile' }}>
                     {authUser?.displayName ?? 'Account'}
                   </a>
+=======
+              {isAuthenticated ? (
+                <>
+                  <span className="header-auth-name">
+                    {authUser?.displayName ?? 'Account'}
+                  </span>
+>>>>>>> main
                   {isAdmin && (
                     <a href="/admin" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/admin' }}>
                       Admin
