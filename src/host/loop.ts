@@ -1,5 +1,5 @@
 import { stepRaceState, clamp as physicsClamp, normalizeDeg } from '@/logic/physics'
-import { RulesEngine, type RuleResolution } from '@/logic/rules'
+import { RulesEngine } from '@/logic/rules'
 import { resolveBoatBoatCollisions } from '@/logic/collision/boatBoat'
 import { cloneRaceState } from '@/state/factories'
 import { raceStore, RaceStore } from '@/state/raceStore'
