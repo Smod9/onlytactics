@@ -30,6 +30,7 @@ import { LobbyIcon, ZoomIcon, HandOffIcon, AdminIcon, LogOutIcon } from '@/view/
 import { angleDiff } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
 import { useFrameDropStats } from '@/state/useFrameDropStats'
+import { usePatchRate } from '@/state/patchRateStore'
 
 const isInteractiveElement = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) return false
@@ -1671,6 +1672,7 @@ export const LiveClient = () => {
 
 const BottomLeftOverlays = ({ rttText }: { rttText: string }) => {
   const { label } = useFrameDropStats()
+  const patchHz = usePatchRate()
 
   return (
     <div className="bottom-left-overlays" aria-label="Network and performance overlays">
@@ -1678,7 +1680,7 @@ const BottomLeftOverlays = ({ rttText }: { rttText: string }) => {
         {rttText}
       </div>
       <div className="perf-overlay" aria-label="Frame drop percentage">
-        {label}
+        {label} · {patchHz.toFixed(1)} p/s
       </div>
     </div>
   )

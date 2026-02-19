@@ -349,6 +349,7 @@ export class RaceScene {
   private lastCourseWasDebug = false
   private windFieldTick = 0
   private windFieldWasEnabled = false
+  private gridHeatmapTick = 0
   private windShadowLeewardBlend = 0
   private windShadowLastMs = 0
   private readonly windFieldBuckets = 6
@@ -716,8 +717,12 @@ export class RaceScene {
     const debug = appEnv.debugHud
 
     // Always draw wind shadow (player's own in normal mode, all boats in debug mode)
+    // Throttle to every 3rd update (same cadence as wind field) to reduce GPU churn.
     if (WAKE_GRID_ENABLED) {
-      this.drawWindShadowGridHeatmap(state)
+      if (this.gridHeatmapTick % 3 === 0) {
+        this.drawWindShadowGridHeatmap(state)
+      }
+      this.gridHeatmapTick += 1
     }
 
     if (!debug) {

@@ -11,6 +11,7 @@ import type {
 import { identity, setBoatId } from '@/net/identity'
 import { appEnv } from '@/config/env'
 import { cloneRaceState } from '@/state/factories'
+import { patchRateStore } from '@/state/patchRateStore'
 
 type ColyseusStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -201,10 +202,24 @@ export class ColyseusBridge {
   }
 
   private attachHandlers(room: Room<RaceRoomSchema>) {
+    let patchCount = 0
+    let patchWindowStart = performance.now()
+    const PATCH_LOG_INTERVAL_MS = 5000
+
     const pushState = () => {
       const next = room.state?.race?.toJSON?.()
       if (!next) return
-      // Defensive: ensure a new object reference per patch so React subscribers update reliably.
+
+      patchCount++
+      const now = performance.now()
+      const elapsed = now - patchWindowStart
+      if (elapsed >= PATCH_LOG_INTERVAL_MS) {
+        const hz = (patchCount / elapsed) * 1000
+        patchRateStore.setHz(hz)
+        patchCount = 0
+        patchWindowStart = now
+      }
+
       raceStore.setState(cloneRaceState(next))
     }
 
