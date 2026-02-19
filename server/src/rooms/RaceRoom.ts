@@ -125,6 +125,9 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
 
     // Set patch rate to match configured publish interval (must be called before setState)
     this.setPatchRate(appEnv.hostPublishIntervalMs)
+    console.info(
+      `[RaceRoom] onCreate config — tickRateHz=${appEnv.tickRateHz}, patchRate=${appEnv.hostPublishIntervalMs}ms (${(1000 / appEnv.hostPublishIntervalMs).toFixed(1)} Hz)`,
+    )
     this.setState(new RaceRoomState())
 
     // Initialize room metadata from options
