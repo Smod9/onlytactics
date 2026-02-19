@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
 import { readFileSync } from 'node:fs'
@@ -45,5 +45,9 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(displayVersion),
     __APP_RELEASE_URL__: JSON.stringify(releaseNotesUrl),
+  },
+  test: {
+    globals: true,
+    environment: 'node',
   },
 })

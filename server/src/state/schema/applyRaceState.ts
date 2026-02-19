@@ -33,6 +33,7 @@ const upsertBoat = (target: BoatStateSchema, source: BoatState) => {
   target.tackTimer = source.tackTimer ?? 0
   target.overEarly = Boolean(source.overEarly)
   target.fouled = Boolean(source.fouled)
+  target.fouledUntil = source.fouledUntil ?? 0
   target.lastInputSeq = source.lastInputSeq ?? 0
   target.lastInputAppliedAt = source.lastInputAppliedAt ?? 0
   target.rightsSuspended = Boolean(source.rightsSuspended)

@@ -67,7 +67,7 @@ type HostCommand =
   | { kind: 'reset' }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'wind_field'; enabled: boolean }
-  | { kind: 'debug_set_pos'; boatId: string; x: number; y: number }
+  | { kind: 'debug_set_pos'; boatId: string; x: number; y: number; headingDeg?: number }
   | { kind: 'debug_lap'; boatId: string }
   | { kind: 'debug_finish'; boatId: string }
   | { kind: 'debug_warp'; boatId: string }
@@ -324,7 +324,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       } else if (command.kind === 'wind_field') {
         this.setWindFieldEnabled(command.enabled)
       } else if (command.kind === 'debug_set_pos') {
-        this.debugSetBoatPosition(command.boatId, command.x, command.y)
+        this.debugSetBoatPosition(command.boatId, command.x, command.y, command.headingDeg)
       } else if (command.kind === 'debug_lap') {
         this.debugAdvanceLap(command.boatId)
       } else if (command.kind === 'debug_finish') {
@@ -1131,7 +1131,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     })
   }
 
-  private debugSetBoatPosition(boatId: string, x: number, y: number) {
+  private debugSetBoatPosition(boatId: string, x: number, y: number, headingDeg?: number) {
     if (!this.raceStore) return
     const state = this.raceStore.getState()
     if (!state.paused) return
@@ -1141,6 +1141,10 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       if (!boat) return
       boat.pos = { x, y }
       boat.prevPos = { x, y }
+      if (headingDeg !== undefined && Number.isFinite(headingDeg)) {
+        boat.headingDeg = headingDeg
+        boat.desiredHeadingDeg = headingDeg
+      }
     })
   }
 

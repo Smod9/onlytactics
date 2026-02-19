@@ -28,6 +28,7 @@ import { RosterPanel } from './RosterPanel'
 import type { CameraMode } from '@/view/scene/RaceScene'
 import { LobbyIcon, ZoomIcon, HandOffIcon, AdminIcon, LogOutIcon } from '@/view/icons'
 import { angleDiff } from '@/logic/physics'
+import { getTack } from '@/logic/rules'
 import { sampleWindSpeed } from '@/logic/windField'
 import { useFrameDropStats } from '@/state/useFrameDropStats'
 import { usePatchRate } from '@/state/patchRateStore'
@@ -1023,13 +1024,12 @@ export const LiveClient = () => {
 
                   const boatSection = boat
                     ? (() => {
-                        // IMPORTANT: For tack labeling we want the sign of wind relative to heading
-                        // (windDir - heading). This matches `RaceScene` and avoids PORT/STBD inversion.
+                        const tack = getTack(boat, race.wind.directionDeg)
+                        const isStarboardTack = tack === 'starboard'
                         const twaSigned = angleDiff(
                           race.wind.directionDeg,
                           boat.headingDeg,
                         )
-                        const isStarboardTack = twaSigned >= 0
                         const absTwa = Math.abs(twaSigned)
                         // Boat panel: keep TWA label, but show VMG mode status instead of degrees.
                         const boatWindValue = boat.vmgMode
@@ -1162,7 +1162,10 @@ export const LiveClient = () => {
                   >
                     <span className="spin-button-title">Do your 360</span>
                     <span className="spin-button-subtitle">
-                      Hit the P key if you dont believe you deserve the penalty
+                      Press <span className="kbd">S</span> or click this button to
+                      spin.{' '}
+                      Press <span className="kbd">P</span> to protest if you
+                      disagree with the call.
                     </span>
                   </button>
                 </div>

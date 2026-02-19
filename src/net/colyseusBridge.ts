@@ -29,7 +29,7 @@ type HostCommand =
   | { kind: 'reset' }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'wind_field'; enabled: boolean }
-  | { kind: 'debug_set_pos'; boatId: string; x: number; y: number }
+  | { kind: 'debug_set_pos'; boatId: string; x: number; y: number; headingDeg?: number }
   | { kind: 'debug_lap'; boatId: string }
   | { kind: 'debug_finish'; boatId: string }
   | { kind: 'debug_warp'; boatId: string }

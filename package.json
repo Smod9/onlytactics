@@ -11,6 +11,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"server/**/*.{ts,tsx}\"",
     "deploy": "npm run build && npx surge dist https://onlytactics.surge.sh",
     "render:prompt-log": "node scripts/render_prompt_log.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "release": "semantic-release"
   },
   "dependencies": {
@@ -40,7 +42,8 @@
     "semantic-release": "^24.1.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.0.18"
   },
   "overrides": {
     "diff": "^8.0.3",

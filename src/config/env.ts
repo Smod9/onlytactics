@@ -54,10 +54,10 @@ export const appEnv = {
   // Example: lapsToFinish=2 => Start -> W -> Gate -> W -> Finish
   lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 2),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 180),
-  penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
+  penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 5),
   // Camera zoom multiplier used in follow mode (applied on top of screen-derived base scale).
   // Smaller = zoomed out. Typical range: ~1.1 - 1.6.
-  followZoomFactor: toNumber(rawEnv.VITE_FOLLOW_ZOOM, 1.33),
+  followZoomFactor: toNumber(rawEnv.VITE_FOLLOW_ZOOM, 1.15),
   // Birdseye scale multiplier applied after computing the "fit course to screen" scale.
   // Smaller = zoomed out (shows more around the course). Typical range: ~0.85 - 1.0.
   birdseyeZoomFactor: toNumber(rawEnv.VITE_BIRDSEYE_ZOOM, 0.92),

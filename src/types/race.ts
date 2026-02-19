@@ -73,6 +73,8 @@ export type BoatState = {
   tackTimer: number
   overEarly: boolean
   fouled: boolean
+  /** Race-time `t` until which the fouled flash should show. */
+  fouledUntil?: number
   lastInputSeq?: number
   lastInputAppliedAt?: number
   rightsSuspended: boolean

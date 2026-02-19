@@ -626,13 +626,17 @@ export const stepRaceState = (
     }
   })
 
-  const { correctedPositions } = resolveBoatMarkCollisions(state)
-  correctedPositions.forEach((pos, boatId) => {
+  const { correctedPositions: markCorrected } = resolveBoatMarkCollisions(state)
+  markCorrected.forEach((pos, boatId) => {
     const boat = state.boats[boatId]
     if (!boat) return
     boat.pos.x = pos.x
     boat.pos.y = pos.y
   })
+
+  // Boat-to-boat repulsion is applied AFTER rules evaluation in the host
+  // loop so the rules engine can detect overlapping boats before they're
+  // pushed apart.
 }
 
 // ============================================================================

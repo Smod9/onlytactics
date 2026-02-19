@@ -137,6 +137,9 @@ export class BoatStateSchema extends Schema {
   fouled = false
 
   @type('number')
+  fouledUntil = 0
+
+  @type('number')
   lastInputSeq = 0
 
   @type('number')

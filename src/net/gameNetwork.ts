@@ -267,13 +267,14 @@ export class GameNetwork {
     })
   }
 
-  debugSetBoatPosition(boatId: string, pos: { x: number; y: number }) {
-    netLog('send host command', { kind: 'debug_set_pos', boatId, pos })
+  debugSetBoatPosition(boatId: string, pos: { x: number; y: number }, headingDeg?: number) {
+    netLog('send host command', { kind: 'debug_set_pos', boatId, pos, headingDeg })
     this.colyseusBridge?.sendHostCommand({
       kind: 'debug_set_pos',
       boatId,
       x: pos.x,
       y: pos.y,
+      headingDeg,
     })
   }
 
