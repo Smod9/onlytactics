@@ -1,4 +1,4 @@
-import { Client, type Room } from 'colyseus.js'
+import { Client, type Room } from '@colyseus/sdk'
 import { raceStore } from '@/state/raceStore'
 import { rosterStore } from '@/state/rosterStore'
 import type {
@@ -44,10 +44,6 @@ export class ColyseusBridge {
 
   private endpoint: string
 
-  private reconnectionToken?: string
-  private intentionalLeave = false
-  private reconnectInFlight?: Promise<void>
-
   constructor(
     endpoint: string,
     private roomId: string,
@@ -84,7 +80,6 @@ export class ColyseusBridge {
 
   async connect(options?: { role?: Exclude<RaceRole, 'host'>; joinExisting?: boolean }) {
     this.emitStatus('connecting')
-    this.intentionalLeave = false
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'connect()', {
         endpoint: this.endpoint,
@@ -131,9 +126,6 @@ export class ColyseusBridge {
       this.room = await this.client.joinOrCreate<RaceRoomSchema>('race_room', joinOptions)
     }
     this.sessionId = this.room.sessionId
-    this.reconnectionToken = (
-      this.room as unknown as { reconnectionToken?: string }
-    ).reconnectionToken
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'joined room', {
         sessionId: this.sessionId,
@@ -147,8 +139,6 @@ export class ColyseusBridge {
     if (appEnv.debugNetLogs) {
       console.info('[ColyseusBridge]', 'disconnect()')
     }
-    this.intentionalLeave = true
-    this.reconnectionToken = undefined
     void this.room?.leave()
     this.room = undefined
     this.sessionId = undefined
@@ -178,6 +168,11 @@ export class ColyseusBridge {
   sendChat(text: string) {
     if (!this.room) return
     this.room.send('chat', { text })
+  }
+
+  sendRelinquishHost() {
+    if (!this.room) return
+    this.room.send('relinquish_host', {})
   }
 
   sendProtestCommand(command: {
@@ -238,15 +233,24 @@ export class ColyseusBridge {
     room.onMessage('room_closed', (payload: { reason?: string }) => {
       this.roomClosedListeners.forEach((listener) => listener(payload ?? {}))
     })
-    room.onLeave(() => {
+    room.onDrop((code, reason) => {
       if (appEnv.debugNetLogs) {
-        console.info('[ColyseusBridge]', 'room leave event')
+        console.info('[ColyseusBridge]', 'connection dropped, SDK reconnecting', { code, reason })
       }
-      if (this.intentionalLeave) {
-        this.emitStatus('disconnected')
-        return
+      this.emitStatus('connecting')
+    })
+    room.onReconnect(() => {
+      if (appEnv.debugNetLogs) {
+        console.info('[ColyseusBridge]', 'reconnected successfully')
       }
-      void this.tryReconnect()
+      this.sessionId = room.sessionId
+      this.emitStatus('connected')
+    })
+    room.onLeave((code, reason) => {
+      if (appEnv.debugNetLogs) {
+        console.info('[ColyseusBridge]', 'room leave event', { code, reason })
+      }
+      this.emitStatus('disconnected')
     })
     room.onError((code) => {
       console.error('[colyseus] room error', code)
@@ -261,50 +265,4 @@ export class ColyseusBridge {
     }
   }
 
-  private async tryReconnect() {
-    if (this.reconnectInFlight) return this.reconnectInFlight
-    const token = this.reconnectionToken
-    if (!token) {
-      this.emitStatus('disconnected')
-      return
-    }
-
-    this.reconnectInFlight = (async () => {
-      const delaysMs = [0, 500, 1000, 2000, 5000, 8000]
-      for (const delay of delaysMs) {
-        if (delay) {
-          await new Promise((r) => setTimeout(r, delay))
-        }
-        if (appEnv.debugNetLogs) {
-          console.info('[ColyseusBridge]', 'reconnect attempt', { delay })
-        }
-        this.emitStatus('connecting')
-        try {
-          const nextRoom = (await (
-            this.client as unknown as {
-              reconnect: <T>(reconnectionToken: string) => Promise<Room<T>>
-            }
-          ).reconnect<RaceRoomSchema>(token)) as Room<RaceRoomSchema>
-
-          this.room = nextRoom
-          this.sessionId = nextRoom.sessionId
-          this.reconnectionToken =
-            (nextRoom as unknown as { reconnectionToken?: string }).reconnectionToken ??
-            this.reconnectionToken
-          this.attachHandlers(nextRoom)
-          this.emitStatus('connected')
-          return
-        } catch (err) {
-          if (appEnv.debugNetLogs) {
-            console.warn('[ColyseusBridge]', 'reconnect failed', err)
-          }
-        }
-      }
-      this.emitStatus('disconnected')
-    })().finally(() => {
-      this.reconnectInFlight = undefined
-    })
-
-    return this.reconnectInFlight
-  }
 }

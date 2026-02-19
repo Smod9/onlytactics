@@ -4,15 +4,18 @@ import './styles/global.css'
 import { App } from './App'
 import { LandingPage } from './LandingPage'
 
-const isGameRoute =
-  window.location.pathname.startsWith('/app') ||
-  window.location.pathname.startsWith('/lobby')
+const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/admin']
 
-if (isGameRoute) {
+const isAppRoute =
+  window.location.pathname.startsWith('/app') ||
+  window.location.pathname.startsWith('/lobby') ||
+  AUTH_ROUTES.some((r) => window.location.pathname.startsWith(r))
+
+if (isAppRoute) {
   document.documentElement.classList.add('game-root')
   document.body.classList.add('game-root')
 }
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>{isGameRoute ? <App /> : <LandingPage />}</StrictMode>,
+  <StrictMode>{isAppRoute ? <App /> : <LandingPage />}</StrictMode>,
 )

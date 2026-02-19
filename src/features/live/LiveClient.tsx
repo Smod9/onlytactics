@@ -17,6 +17,7 @@ import { ReplaySaveButton } from './ReplaySaveButton'
 import { useTacticianControls } from './useTacticianControls'
 import { DebugPanel } from './DebugPanel'
 import { identity, setClientName } from '@/net/identity'
+import { useAuth } from '@/state/authStore'
 import { startRosterWatcher } from '@/state/rosterStore'
 import { TacticianPopout } from './TacticianPopout'
 import { ProgressStepper } from './ProgressStepper'
@@ -25,7 +26,7 @@ import { OnScreenControls } from './OnScreenControls'
 import { useRoster } from '@/state/rosterStore'
 import { RosterPanel } from './RosterPanel'
 import type { CameraMode } from '@/view/scene/RaceScene'
-import { LobbyIcon, ZoomIcon } from '@/view/icons'
+import { LobbyIcon, ZoomIcon, HandOffIcon, AdminIcon, LogOutIcon } from '@/view/icons'
 import { angleDiff } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
 import { useFrameDropStats } from '@/state/useFrameDropStats'
@@ -65,6 +66,7 @@ export const LiveClient = () => {
   const events = useRaceEvents()
   const race = useRaceState()
   const telemetry = useInputTelemetry()
+  const { user: authUser, isAuthenticated, isAdmin, logout: authLogout } = useAuth()
 
   // Get roomId from URL query parameter
   const roomId = useMemo(() => {
@@ -525,7 +527,9 @@ export const LiveClient = () => {
               <span aria-hidden="true" style={{ opacity: 0.9 }}>
                 👤
               </span>
-              <span className="header-name-text">Menu</span>
+              <span className="header-name-text">
+                {isAuthenticated && authUser?.displayName ? authUser.displayName : 'Menu'}
+              </span>
               <span aria-hidden="true" style={{ opacity: 0.75 }}>
                 ▾
               </span>
@@ -1289,72 +1293,127 @@ export const LiveClient = () => {
                 </a>
               </div>
             </div>
-            <div className="username-form user-menu-form">
-              <div className="user-menu-row">
-                <span className="user-menu-label">Name</span>
-                <span className="user-menu-field">
-                  <input
-                    value={userNameDraft}
-                    onChange={(event) => setUserNameDraft(event.target.value)}
-                    placeholder="Callsign or Name"
-                    maxLength={24}
-                    autoFocus
-                    className="user-menu-input"
-                  />
-                </span>
-              </div>
-              <div className="user-menu-row">
-                <span className="user-menu-label">Role</span>
-                <span className="user-menu-field">
-                  <select
-                    value={userRoleDraft}
-                    onChange={(event) =>
-                      setUserRoleDraft(event.target.value as NonHostRole)
-                    }
-                    aria-label="Select role"
-                    className="user-menu-select"
-                  >
-                    <option value="player">Player</option>
-                    <option value="spectator">Spectator</option>
-                    <option value="judge">Judge</option>
-                    {appEnv.debugHud && <option value="god">God</option>}
-                  </select>
-                  <span className="user-menu-chevron" aria-hidden="true">
-                    ▾
-                  </span>
-                </span>
-              </div>
-              {userSettingsError && (
-                <p className="chat-status" role="alert">
-                  {userSettingsError}
-                </p>
-              )}
-              <div className="username-form-actions">
-                <button
-                  type="button"
-                  className="user-menu-lobby"
-                  onClick={() => {
-                    window.location.href = '/lobby'
-                  }}
-                >
-                  <LobbyIcon />
-                  Lobby
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserModal(false)
-                    setUserSettingsError(null)
-                  }}
-                  className="username-form-cancel"
-                >
-                  Cancel
-                </button>
-                <button type="button" onClick={() => void saveUserSettings()}>
-                  Save
-                </button>
-              </div>
-            </div>
+            {(() => {
+              const currentName = identity.clientName ?? ''
+              const currentNonHostRole: NonHostRole = role === 'host' ? 'player' : (role as NonHostRole)
+              const isDirty = userNameDraft.trim() !== currentName || userRoleDraft !== currentNonHostRole
+              return (
+                <div className="user-menu-form">
+                  <div className="user-menu-settings">
+                    <div className="user-menu-row">
+                      <span className="user-menu-label">Name</span>
+                      <span className="user-menu-field">
+                        <input
+                          value={userNameDraft}
+                          onChange={(event) => setUserNameDraft(event.target.value)}
+                          placeholder="Callsign or Name"
+                          maxLength={24}
+                          autoFocus
+                          className="user-menu-input"
+                        />
+                      </span>
+                    </div>
+                    <div className="user-menu-row">
+                      <span className="user-menu-label">Role</span>
+                      <span className="user-menu-field">
+                        <select
+                          value={userRoleDraft}
+                          onChange={(event) =>
+                            setUserRoleDraft(event.target.value as NonHostRole)
+                          }
+                          aria-label="Select role"
+                          className="user-menu-select"
+                        >
+                          <option value="player">Player</option>
+                          <option value="spectator">Spectator</option>
+                          <option value="judge">Judge</option>
+                          {appEnv.debugHud && <option value="god">God</option>}
+                        </select>
+                        <span className="user-menu-chevron" aria-hidden="true">
+                          ▾
+                        </span>
+                      </span>
+                    </div>
+                    {userSettingsError && (
+                      <p className="chat-status" role="alert">
+                        {userSettingsError}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className={`user-menu-save-btn${isDirty ? ' user-menu-save-btn--active' : ''}`}
+                      disabled={!isDirty}
+                      onClick={() => void saveUserSettings()}
+                    >
+                      Save
+                    </button>
+                  </div>
+                  <div className="user-menu-actions">
+                    <button
+                      type="button"
+                      className="user-menu-action-row"
+                      onClick={() => {
+                        window.location.href = '/lobby'
+                      }}
+                    >
+                      <LobbyIcon />
+                      <span>Lobby</span>
+                    </button>
+                    {role === 'host' && (
+                      <button
+                        type="button"
+                        className="user-menu-action-row"
+                        onClick={() => {
+                          network.relinquishHost()
+                          setShowUserModal(false)
+                        }}
+                        title="Pass host (RC) privileges to the next player"
+                      >
+                        <HandOffIcon />
+                        <span>Relinquish RC</span>
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="user-menu-action-row"
+                        onClick={() => {
+                          window.location.href = '/admin'
+                        }}
+                      >
+                        <AdminIcon />
+                        <span>Admin Dashboard</span>
+                      </button>
+                    )}
+                    {isAuthenticated ? (
+                      <button
+                        type="button"
+                        className="user-menu-action-row user-menu-action-row--danger"
+                        onClick={async () => {
+                          setShowUserModal(false)
+                          await authLogout()
+                          window.location.href = '/lobby'
+                        }}
+                      >
+                        <LogOutIcon />
+                        <span>Log Out</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="user-menu-action-row"
+                        onClick={() => {
+                          window.location.href = '/login'
+                        }}
+                      >
+                        <LogOutIcon />
+                        <span>Sign In</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}

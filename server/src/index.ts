@@ -7,6 +7,8 @@ import { env } from './lib/env'
 import { runMigrations } from './db'
 import { getRace, getRecentRaces, queryRaces } from './db/raceStorage'
 import { RaceRoom } from './rooms/RaceRoom'
+import authRoutes from './routes/authRoutes'
+import adminRoutes from './routes/adminRoutes'
 
 const attachGlobalPolyfills = () => {
   const globalAny = globalThis as typeof globalThis & {
@@ -39,7 +41,7 @@ const applyCorsHeaders = (
   } else {
     res.setHeader('Access-Control-Allow-Origin', '*')
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
   res.setHeader('Access-Control-Max-Age', '86400')
 }
@@ -56,6 +58,10 @@ expressApp.use((req, res, next) => {
 
 // Enable JSON body parsing for POST requests
 expressApp.use(express.json())
+
+// Mount auth and admin routes
+expressApp.use('/api/auth', authRoutes)
+expressApp.use('/api/admin', adminRoutes)
 
 expressApp.get('/', (_req, res) => {
   res.json({
@@ -123,34 +129,6 @@ httpServer.on('request', (req, res) => {
 const gameServer = new ColyseusServer({
   transport: new WebSocketTransport({ server: httpServer }),
 })
-
-const normalizeMatchmakeResponse = (response: unknown) => {
-  if (!response || typeof response !== 'object') return response
-  const record = response as Record<string, unknown>
-  if (record.room && typeof record.room === 'object') return response
-  const name = typeof record.name === 'string' ? record.name : undefined
-  const roomId = typeof record.roomId === 'string' ? record.roomId : undefined
-  if (!name || !roomId) return response
-  const processId =
-    typeof record.processId === 'string' ? record.processId : matchMaker.processId
-  const publicAddress =
-    typeof record.publicAddress === 'string' ? record.publicAddress : undefined
-  return {
-    ...record,
-    room: {
-      name,
-      roomId,
-      processId,
-      ...(publicAddress ? { publicAddress } : {}),
-    },
-  }
-}
-
-const originalInvoke = matchMaker.controller.invokeMethod.bind(matchMaker.controller)
-matchMaker.controller.invokeMethod = async (...args) => {
-  const response = await originalInvoke(...args)
-  return normalizeMatchmakeResponse(response)
-}
 
 // Define 'race_room' with roomName-based matchmaking when provided.
 gameServer.define('race_room', RaceRoom).filterBy(['roomName'])

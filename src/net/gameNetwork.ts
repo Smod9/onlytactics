@@ -230,6 +230,11 @@ export class GameNetwork {
     this.colyseusBridge?.sendHostCommand({ kind: 'debug_warp', boatId })
   }
 
+  relinquishHost() {
+    netLog('relinquish host')
+    this.colyseusBridge?.sendRelinquishHost()
+  }
+
   resetRace() {
     netLog('send host command', { kind: 'reset' })
     this.colyseusBridge?.sendHostCommand({ kind: 'reset' })

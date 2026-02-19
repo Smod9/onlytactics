@@ -328,6 +328,25 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       this.handleChat(client, payload)
     })
 
+    this.onMessage('relinquish_host', (client) => {
+      if (client.sessionId !== this.hostSessionId) {
+        roomDebug('relinquish_host ignored – not the host', {
+          clientId: client.sessionId,
+          hostSessionId: this.hostSessionId,
+        })
+        return
+      }
+      roomDebug('relinquish_host', { clientId: client.sessionId })
+      let nextHost: string | undefined
+      for (const sessionId of this.clientBoatMap.keys()) {
+        if (sessionId !== client.sessionId) {
+          nextHost = sessionId
+          break
+        }
+      }
+      this.setHost(nextHost)
+    })
+
     // Client may miss the initial roster broadcast during join; allow requesting it explicitly.
     this.onMessage('roster_request', (client) => {
       client.send('roster', { entries: this.buildRosterEntries() })

@@ -82,6 +82,9 @@
 }
 
 .user-menu-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   padding-top: 0.25rem;
 }
 
@@ -113,12 +116,19 @@
   border: 1px solid #2c3550;
   background: rgba(24, 31, 50, 0.9);
   color: inherit;
+  font: inherit;
   appearance: none;
   -webkit-appearance: none;
 }
 
 .user-menu-input {
   width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid #2c3550;
+  background: rgba(24, 31, 50, 0.9);
+  color: inherit;
+  font: inherit;
 }
 
 .user-menu-select:focus-visible {
@@ -188,6 +198,94 @@
 .username-card .username-form-actions .username-form-cancel {
   background: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.user-menu-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.user-menu-save-btn {
+  width: 100%;
+  padding: 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+  cursor: default;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.user-menu-save-btn--active {
+  background: linear-gradient(135deg, #4f7dff, #6e5bff);
+  border-color: transparent;
+  color: white;
+  cursor: pointer;
+}
+
+.user-menu-save-btn--active:hover {
+  filter: brightness(1.1);
+}
+
+.user-menu-save-btn:disabled {
+  opacity: 1;
+}
+
+.user-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.35rem;
+}
+
+.user-menu-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.65rem 0.5rem;
+  background: none;
+  border: none;
+  border-radius: 0.4rem;
+  color: #cfe0ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-weight: normal;
+  transition: background 0.15s ease;
+}
+
+.user-menu-action-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.user-menu-action-row:active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.user-menu-action-row svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.user-menu-action-row--danger {
+  color: #ff8a8a;
+}
+
+.user-menu-action-row--danger:hover {
+  background: rgba(255, 80, 80, 0.08);
+}
+
+.user-menu-action-row--danger svg {
+  opacity: 0.65;
 }
 :root {
   color-scheme: dark;
@@ -349,19 +447,6 @@ button {
   pointer-events: none;
 }
 
-.user-menu-lobby {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-}
-
-.username-card .username-form-actions .user-menu-lobby {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: inherit;
-}
-
 .header-name:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.25);
@@ -455,6 +540,58 @@ button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.header-auth {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-auth-name {
+  font-size: 0.85rem;
+  color: #cfe0ff;
+  opacity: 0.85;
+}
+
+.header-auth-link {
+  font-size: 0.85rem;
+  color: #9fb7ff;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.15s ease;
+}
+
+.header-auth-link:hover {
+  color: #c4d4ff;
+  text-decoration: underline;
+}
+
+.header-auth-register {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(79, 125, 255, 0.4);
+  border-radius: 999px;
+  color: #9fb7ff;
+  text-decoration: none;
+}
+
+.header-auth-register:hover {
+  border-color: rgba(79, 125, 255, 0.6);
+  background: rgba(79, 125, 255, 0.08);
+  text-decoration: none;
+  color: #c4d4ff;
+}
+
+.header-auth-logout {
+  color: #ff8a8a;
+}
+
+.header-auth-logout:hover {
+  color: #ffb3b3;
 }
 
 .sr-only {
