@@ -215,9 +215,6 @@ export class ColyseusBridge {
       const elapsed = now - patchWindowStart
       if (elapsed >= PATCH_LOG_INTERVAL_MS) {
         const hz = (patchCount / elapsed) * 1000
-        if (appEnv.debugNetLogs) {
-          console.info(`[ColyseusBridge] patches/sec: ${hz.toFixed(1)} (${patchCount} in ${(elapsed / 1000).toFixed(1)}s)`)
-        }
         patchRateStore.setHz(hz)
         patchCount = 0
         patchWindowStart = now
