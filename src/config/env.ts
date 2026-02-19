@@ -54,7 +54,7 @@ export const appEnv = {
   // Example: lapsToFinish=2 => Start -> W -> Gate -> W -> Finish
   lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 2),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 180),
-  penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
+  penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 5),
   // Camera zoom multiplier used in follow mode (applied on top of screen-derived base scale).
   // Smaller = zoomed out. Typical range: ~1.1 - 1.6.
   followZoomFactor: toNumber(rawEnv.VITE_FOLLOW_ZOOM, 1.33),

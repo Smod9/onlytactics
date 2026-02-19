@@ -237,6 +237,16 @@ class BoatView {
       this.nameTag.style.fill = nextFill
       this.lastNameFill = nextFill
     }
+
+    if (boat.fouled) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100)
+      this.hull.alpha = 0.4 + 0.6 * pulse
+      this.hull.tint = 0xff4444
+    } else {
+      this.hull.alpha = 1
+      this.hull.tint = 0xffffff
+    }
+
     this.drawProjection(isPlayer)
     this.updateWakeIndicator(boat)
   }

@@ -46,4 +46,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(displayVersion),
     __APP_RELEASE_URL__: JSON.stringify(releaseNotesUrl),
   },
+  test: {
+    globals: true,
+    environment: 'node',
+  },
 })

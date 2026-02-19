@@ -2,7 +2,27 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { roomService, type RoomInfo, type CreateRoomRequest } from '@/net/roomService'
 import { identity } from '@/net/identity'
 import { removeKey } from '@/utils/storage'
-import { KeyboardIcon } from '@/view/icons'
+import { appEnv } from '@/config/env'
+import { useAuth } from '@/state/authStore'
+
+const apiBase = appEnv.apiUrl.replace(/\/$/, '')
+
+type LeaderboardEntry = {
+  userId: string
+  displayName: string
+  totalRaces: number
+  wins: number
+  avgPoints: number
+  bestPosition: number | null
+  totalTillerTimeSeconds: number | null
+}
+
+const formatDuration = (seconds: number) => {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
 
 const LOBBY_RESET_KEYS = ['sgame:boatId', 'sgame:rolePreference']
 
@@ -15,10 +35,13 @@ export const LobbyClient = () => {
   const [roomName, setRoomName] = useState('')
   const [roomDescription, setRoomDescription] = useState('')
   const [creating, setCreating] = useState(false)
-  const [showControls, setShowControls] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null)
   const [roomNotice, setRoomNotice] = useState<string | null>(null)
+  const [showControls, setShowControls] = useState(false)
+  const [lbEntries, setLbEntries] = useState<LeaderboardEntry[]>([])
+  const [lbLoading, setLbLoading] = useState(true)
+  const { user } = useAuth()
   const emojiOptions = [
     '⛵',
     '🌊',
@@ -99,6 +122,21 @@ export const LobbyClient = () => {
     }
   }, [])
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/stats/leaderboard?minRaces=1&limit=10`)
+        if (!res.ok) return
+        setLbEntries(await res.json())
+      } catch {
+        /* leaderboard is non-critical */
+      } finally {
+        setLbLoading(false)
+      }
+    }
+    load()
+  }, [])
+
   const handleCreateRoom = async (event: FormEvent) => {
     event.preventDefault()
     const trimmedName = roomName.trim()
@@ -148,78 +186,88 @@ export const LobbyClient = () => {
   }
 
   return (
-    <div
-      className="lobby-client"
-      style={{
-        padding: '2.5rem 2rem 3rem',
-        maxWidth: '980px',
-        margin: '0 auto',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1.5rem',
-          marginBottom: '1.25rem',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ minWidth: 240 }}>
+    <div className="lobby-layout">
+      <div className="lobby-main">
+        <div style={{ marginBottom: '1.25rem' }}>
           <h1 style={{ fontSize: '2.2rem', marginBottom: '0.35rem' }}>Race Lobby</h1>
           <p style={{ opacity: 0.75, margin: 0 }}>Pick a race or start a new one.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button
-            type="button"
-            className="start-sequence"
-            onClick={() => setShowCreateModal(true)}
-          >
-            Create Race
-          </button>
-          <button
-            type="button"
-            className="start-sequence"
-            onClick={() => void refreshRooms()}
-            disabled={loading}
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-        <input
-          type="search"
-          value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
-          placeholder="Search races"
+        <div
           style={{
-            width: '100%',
-            maxWidth: 360,
-            padding: '0.45rem 0.75rem',
-            borderRadius: 999,
-            border: '1px solid rgba(255,255,255,0.2)',
-            background: 'rgba(255,255,255,0.04)',
-            color: 'inherit',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '0.75rem',
+            marginBottom: '1rem',
           }}
-        />
-      </div>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <button
-          type="button"
-          onClick={() => setShowControls(true)}
-          className="tactician-toggle"
-          title="Learn about the controls"
         >
-          <span className="tactician-toggle-icon" aria-hidden="true">
-            <KeyboardIcon />
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => setShowCreateModal(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Create Race
+            </button>
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => void refreshRooms()}
+              disabled={loading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              Refresh
+            </button>
+          </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            marginBottom: '1.25rem',
+            padding: '0.6rem 1rem',
+            borderRadius: 8,
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(255, 255, 255, 0.03)',
+          }}
+        >
+          <span style={{ fontSize: '0.85rem', opacity: 0.65 }}>
+            Having fun? Consider{' '}
+            <a
+              href="https://buymeacoffee.com/onlytactics"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: '#ffdd00', textDecoration: 'none' }}
+            >
+              supporting the infrastructure costs
+            </a>{' '}
+            🙏
           </span>
-          <span className="tactician-toggle-text">
-            Click here to learn about the controls
-          </span>
-        </button>
-      </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search races"
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              padding: '0.45rem 0.75rem',
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,0.2)',
+              background: 'rgba(255,255,255,0.04)',
+              color: 'inherit',
+            }}
+          />
+        </div>
 
       {roomNotice && (
         <div
@@ -344,71 +392,6 @@ export const LobbyClient = () => {
         </div>
       )}
 
-      {showControls && (
-        <div
-          className="username-gate"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '1.5rem',
-          }}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setShowControls(false)
-            }
-          }}
-        >
-          <div
-            className="username-card"
-            style={{
-              maxWidth: '980px',
-              width: '100%',
-              maxHeight: '85vh',
-              overflow: 'auto',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1rem',
-                marginBottom: '1rem',
-              }}
-            >
-              <h2 style={{ margin: 0 }}>Controls</h2>
-              <button
-                type="button"
-                className="user-menu-close"
-                onClick={() => setShowControls(false)}
-                aria-label="Close controls"
-                title="Close"
-              >
-                ✕
-              </button>
-            </div>
-            <img
-              src={helpImageUrl}
-              alt="Keyboard layout"
-              style={{
-                width: '100%',
-                height: 'auto',
-                borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.15)',
-              }}
-            />
-          </div>
-        </div>
-      )}
-
       {loading ? (
         <div style={{ textAlign: 'center', padding: '2.5rem', opacity: 0.8 }}>
           Loading races…
@@ -457,7 +440,7 @@ export const LobbyClient = () => {
                     flexWrap: 'wrap',
                   }}
                 >
-                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{room.roomName}</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{room.roomName}</h3>
                   <span
                     style={{
                       fontSize: 12,
@@ -565,6 +548,120 @@ export const LobbyClient = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      </div>
+      <aside className="lobby-sidebar">
+        <h2 style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>Leaderboard</h2>
+        {lbLoading ? (
+          <p style={{ opacity: 0.6, fontSize: '0.9rem' }}>Loading&hellip;</p>
+        ) : lbEntries.length === 0 ? (
+          <p style={{ opacity: 0.6, fontSize: '0.9rem' }}>No ranked sailors yet.</p>
+        ) : (
+          <table className="stats-table" style={{ fontSize: '0.82rem' }}>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Sailor</th>
+                <th>Avg Pts</th>
+                <th>Races</th>
+                <th>Wins</th>
+                <th>Tiller</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lbEntries.map((entry, i) => {
+                const isMe = user?.id === entry.userId
+                return (
+                  <tr key={entry.userId} className={isMe ? 'stats-row-me' : ''}>
+                    <td>{i + 1}</td>
+                    <td>
+                      <a
+                        href={`/profile/${entry.userId}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          window.location.href = `/profile/${entry.userId}`
+                        }}
+                      >
+                        {entry.displayName}
+                      </a>
+                      {isMe && <span className="stats-you-badge">you</span>}
+                    </td>
+                    <td>{entry.avgPoints}</td>
+                    <td>{entry.totalRaces}</td>
+                    <td>{entry.wins}</td>
+                    <td>
+                      {entry.totalTillerTimeSeconds
+                        ? formatDuration(entry.totalTillerTimeSeconds)
+                        : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+        <div style={{ marginTop: '0.75rem' }}>
+          <a
+            href="/leaderboard"
+            onClick={(e) => {
+              e.preventDefault()
+              window.location.href = '/leaderboard'
+            }}
+            style={{ fontSize: '0.85rem', opacity: 0.7 }}
+          >
+            View full leaderboard →
+          </a>
+        </div>
+
+        <div style={{ marginTop: '2rem' }}>
+          <h2 style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>Controls</h2>
+          <img
+            src={helpImageUrl}
+            alt="Keyboard layout — click to enlarge"
+            onClick={() => setShowControls(true)}
+            style={{
+              width: '100%',
+              height: 'auto',
+              borderRadius: 8,
+              border: '1px solid rgba(255,255,255,0.15)',
+              cursor: 'pointer',
+            }}
+          />
+          <p style={{ fontSize: '0.75rem', opacity: 0.45, marginTop: '0.4rem' }}>
+            Click image to enlarge
+          </p>
+        </div>
+      </aside>
+
+      {showControls && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '2rem',
+            cursor: 'pointer',
+          }}
+          onClick={() => setShowControls(false)}
+        >
+          <img
+            src={helpImageUrl}
+            alt="Keyboard layout"
+            style={{
+              maxWidth: '100%',
+              maxHeight: '90vh',
+              borderRadius: 12,
+              border: '1px solid rgba(255,255,255,0.2)',
+            }}
+          />
         </div>
       )}
     </div>

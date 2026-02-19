@@ -1,16 +1,11 @@
-import { useMemo } from 'react'
-import { useInputTelemetry, useRaceState, useWakeTuning } from '@/state/hooks'
+import { useMemo, useState } from 'react'
+import { useInputTelemetry, useRaceState } from '@/state/hooks'
 import { identity } from '@/net/identity'
 import { apparentWindAngleSigned, angleDiff } from '@/logic/physics'
 import { sampleWindSpeed } from '@/logic/windField'
 import { appEnv } from '@/config/env'
-import {
-  resetWakeTuning,
-  setWakeTuningEnabled,
-  updateWakeTuning,
-  wakeTuningDefaults,
-} from '@/logic/wakeTuning'
 import type { GameNetwork } from '@/net/gameNetwork'
+import { ruleScenarios, type RuleScenario } from '@/logic/ruleScenarios'
 
 const formatAngle = (deg: number) => `${deg.toFixed(1)}°`
 const formatSpeed = (speed: number) => `${speed.toFixed(2)} kts`
@@ -24,7 +19,6 @@ type Props = {
 export const DebugPanel = ({ onClose, network }: Props) => {
   const race = useRaceState()
   const telemetry = useInputTelemetry()
-  const wakeState = useWakeTuning()
   const brokerLabel = 'Broker: CloudAMQP'
   const myLatency = telemetry[identity.boatId]
   const myBoat = race.boats[identity.boatId]
@@ -36,72 +30,6 @@ export const DebugPanel = ({ onClose, network }: Props) => {
   )
   const isHost = race.hostId === identity.clientId
   const showHostDebug = appEnv.debugHud && isHost && network
-
-  const wake = wakeState.tuning
-  const setWakeValue = <K extends keyof typeof wake>(key: K, value: number) => {
-    updateWakeTuning({ [key]: value } as Partial<typeof wake>)
-  }
-  const formatConst = (name: string, value: number) =>
-    `export const ${name} = ${Number(value.toFixed(3))}`
-  const wakeConstantsText = useMemo(
-    () =>
-      [
-        formatConst('WAKE_LENGTH', wake.length),
-        formatConst('WAKE_HALF_WIDTH_START', wake.widthStart),
-        formatConst('WAKE_HALF_WIDTH_END', wake.widthEnd),
-        formatConst('WAKE_WIDTH_CURVE', wake.widthCurve),
-        formatConst('WAKE_LEEWARD_WIDTH_MULT', wake.leewardWidthMult),
-        formatConst('WAKE_WINDWARD_WIDTH_MULT', wake.windwardWidthMult),
-        formatConst('WAKE_BIAS_DEG', wake.biasDeg),
-        formatConst('WAKE_TWA_ROTATION_SCALE_UPWIND', wake.twaRotationScaleUpwind),
-        formatConst('WAKE_TWA_ROTATION_SCALE_DOWNWIND', wake.twaRotationScaleDownwind),
-        formatConst('WAKE_CORE_HALF_ANGLE_DEG', wake.coreHalfAngleDeg),
-        formatConst('WAKE_TURB_HALF_ANGLE_DEG', wake.turbHalfAngleDeg),
-        formatConst('WAKE_CORE_STRENGTH', wake.coreStrength),
-        formatConst('WAKE_TURB_STRENGTH', wake.turbStrength),
-        formatConst('WAKE_CORE_MAX_SLOWDOWN', wake.coreMaxSlowdown),
-        formatConst('WAKE_TURB_MAX_SLOWDOWN', wake.turbMaxSlowdown),
-        formatConst('WAKE_MAX_SLOWDOWN', wake.maxSlowdown),
-        formatConst('WAKE_MIN_STRENGTH', wake.minStrength),
-      ].join('\n'),
-    [wake],
-  )
-  const copyWakeConstants = async () => {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(wakeConstantsText)
-      return
-    }
-    console.info('[wake-tuning] constants\n', wakeConstantsText)
-  }
-
-  const renderControl = (
-    label: string,
-    value: number,
-    min: number,
-    max: number,
-    step: number,
-    onChange: (next: number) => void,
-  ) => (
-    <div className="debug-row">
-      <strong>{label}:</strong>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-      />
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={Number(value.toFixed(3))}
-        onChange={(event) => onChange(Number(event.target.value))}
-      />
-    </div>
-  )
 
   return (
     <div className="debug-panel">
@@ -132,103 +60,7 @@ export const DebugPanel = ({ onClose, network }: Props) => {
             : 'n/a'}
         </span>
       </div>
-      <div className="debug-table">
-        <div className="debug-table-header">
-          <span>Wake tuning</span>
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="debug-row">
-          <strong>Enabled:</strong>
-          <label>
-            <input
-              type="checkbox"
-              checked={wakeState.enabled}
-              onChange={(event) => setWakeTuningEnabled(event.target.checked)}
-            />
-            apply overrides
-          </label>
-          <button type="button" onClick={() => resetWakeTuning()}>
-            Reset defaults
-          </button>
-          <button type="button" onClick={() => copyWakeConstants()}>
-            Copy constants
-          </button>
-        </div>
-        {renderControl('Length', wake.length, 20, 240, 1, (value) =>
-          setWakeValue('length', value),
-        )}
-        {renderControl('Width start', wake.widthStart, 5, 80, 1, (value) =>
-          setWakeValue('widthStart', value),
-        )}
-        {renderControl('Width end', wake.widthEnd, 2, 60, 1, (value) =>
-          setWakeValue('widthEnd', value),
-        )}
-        {renderControl('Width curve', wake.widthCurve, 0.4, 3, 0.05, (value) =>
-          setWakeValue('widthCurve', value),
-        )}
-        {renderControl('Leeward mult', wake.leewardWidthMult, 0.2, 4, 0.05, (value) =>
-          setWakeValue('leewardWidthMult', value),
-        )}
-        {renderControl('Windward mult', wake.windwardWidthMult, 0.1, 2, 0.05, (value) =>
-          setWakeValue('windwardWidthMult', value),
-        )}
-        {renderControl('Bias deg', wake.biasDeg, -90, 90, 1, (value) =>
-          setWakeValue('biasDeg', value),
-        )}
-        {renderControl(
-          'TWA rot upwind',
-          wake.twaRotationScaleUpwind,
-          0,
-          1,
-          0.02,
-          (value) => setWakeValue('twaRotationScaleUpwind', value),
-        )}
-        {renderControl(
-          'TWA rot downwind',
-          wake.twaRotationScaleDownwind,
-          0,
-          1,
-          0.02,
-          (value) => setWakeValue('twaRotationScaleDownwind', value),
-        )}
-        {renderControl('Core half angle', wake.coreHalfAngleDeg, 2, 30, 0.5, (value) =>
-          setWakeValue('coreHalfAngleDeg', value),
-        )}
-        {renderControl('Turb half angle', wake.turbHalfAngleDeg, 4, 45, 0.5, (value) =>
-          setWakeValue('turbHalfAngleDeg', value),
-        )}
-        {renderControl('Core strength', wake.coreStrength, 0, 2, 0.05, (value) =>
-          setWakeValue('coreStrength', value),
-        )}
-        {renderControl('Turb strength', wake.turbStrength, 0, 2, 0.05, (value) =>
-          setWakeValue('turbStrength', value),
-        )}
-        {renderControl('Core max slow', wake.coreMaxSlowdown, 0, 1, 0.02, (value) =>
-          setWakeValue('coreMaxSlowdown', value),
-        )}
-        {renderControl('Turb max slow', wake.turbMaxSlowdown, 0, 1, 0.02, (value) =>
-          setWakeValue('turbMaxSlowdown', value),
-        )}
-        {renderControl('Max slow', wake.maxSlowdown, 0.05, 0.9, 0.02, (value) =>
-          setWakeValue('maxSlowdown', value),
-        )}
-        {renderControl('Min strength', wake.minStrength, 0, 0.2, 0.005, (value) =>
-          setWakeValue('minStrength', value),
-        )}
-        <div className="debug-row">
-          <strong>Defaults:</strong>
-          <span>
-            width {wakeTuningDefaults.widthStart}→{wakeTuningDefaults.widthEnd}, length{' '}
-            {wakeTuningDefaults.length}
-          </span>
-        </div>
-      </div>
+      {showHostDebug && <ScenarioLoader network={network} boats={boats} />}
       <div className="debug-table">
         <div className="debug-table-header">
           <span>Boat</span>
@@ -316,6 +148,71 @@ export const DebugPanel = ({ onClose, network }: Props) => {
               </span>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ScenarioLoader({
+  network,
+  boats,
+}: {
+  network: GameNetwork
+  boats: { id: string; name: string; pos: { x: number; y: number } }[]
+}) {
+  const [selectedId, setSelectedId] = useState(ruleScenarios[0]?.id ?? '')
+  const scenario = ruleScenarios.find((s) => s.id === selectedId)
+
+  const loadScenario = (s: RuleScenario) => {
+    if (boats.length < 2) return
+    const refX = (boats[0].pos.x + boats[1].pos.x) / 2
+    const refY = (boats[0].pos.y + boats[1].pos.y) / 2
+
+    network.setPaused(true)
+
+    setTimeout(() => {
+      s.boats.forEach((cfg, i) => {
+        const boat = boats[i]
+        if (!boat) return
+        network.debugSetBoatPosition(
+          boat.id,
+          { x: refX + cfg.offsetX, y: refY + cfg.offsetY },
+          cfg.headingDeg,
+        )
+      })
+    }, 100)
+  }
+
+  return (
+    <div className="debug-table" style={{ marginTop: 8 }}>
+      <div className="debug-table-header">
+        <span>Rule Test Scenarios</span>
+      </div>
+      <div style={{ padding: '4px 6px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          style={{ flex: 1, minWidth: 120, fontSize: 11 }}
+        >
+          {ruleScenarios.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => scenario && loadScenario(scenario)}
+          disabled={!scenario || boats.length < 2}
+          style={{ fontSize: 13, padding: '4px 16px', fontWeight: 600 }}
+        >
+          Load
+        </button>
+      </div>
+      {scenario && (
+        <div style={{ padding: '2px 6px 6px', fontSize: 10, opacity: 0.7 }}>
+          {scenario.description}
         </div>
       )}
     </div>

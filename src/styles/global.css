@@ -2768,6 +2768,12 @@ kbd {
   width: 18px;
   height: 18px;
   fill: currentColor;
+  stroke: none;
+}
+
+.social-link svg[aria-hidden] path[stroke] {
+  fill: none;
+  stroke: currentColor;
 }
 
 .replay-chat-log {
@@ -3215,5 +3221,44 @@ kbd {
   }
   to {
     opacity: 0;
+  }
+}
+
+/* ── Lobby layout ──────────────────────────────────────── */
+
+.lobby-layout {
+  padding: 2.5rem 2rem 3rem;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.lobby-sidebar {
+  margin-top: 2rem;
+}
+
+.lobby-sidebar .stats-table {
+  width: 100%;
+}
+
+@media (min-width: 1200px) {
+  .lobby-layout {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 3rem;
+    max-width: 100%;
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    align-items: start;
+  }
+
+  .lobby-sidebar {
+    margin-top: 0;
+    position: sticky;
+    top: 2rem;
+    order: -1;
+  }
+
+  .lobby-main {
+    max-width: 720px;
   }
 }

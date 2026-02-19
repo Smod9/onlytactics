@@ -73,6 +73,21 @@ export const LandingPage = () => {
               </svg>
               <span className="sr-only">WhatsApp</span>
             </a>
+            <a
+              href="https://buymeacoffee.com/onlytactics"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Buy Me a Coffee"
+              className="social-link"
+              title="Buy me a coffee"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M18 8h1a3 3 0 0 1 0 6h-1" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M6 1v3M10 1v3M14 1v3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="sr-only">Buy Me a Coffee</span>
+            </a>
           </nav>
           <p className="eyebrow">Community Sailing Project</p>
           <h1>Only Tactics</h1>
@@ -175,6 +190,17 @@ export const LandingPage = () => {
         <p className="note">
           Want to help shape it? File an issue, send feedback, or drop into{' '}
           <code>/landing</code> to share ideas.
+        </p>
+        <p className="note">
+          Having fun? Consider{' '}
+          <a
+            href="https://buymeacoffee.com/onlytactics"
+            target="_blank"
+            rel="noreferrer"
+          >
+            supporting the infrastructure costs
+          </a>{' '}
+          🙏
         </p>
       </footer>
     </div>

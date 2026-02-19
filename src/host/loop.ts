@@ -1,5 +1,6 @@
 import { stepRaceState, clamp as physicsClamp, normalizeDeg } from '@/logic/physics'
 import { RulesEngine, type RuleResolution } from '@/logic/rules'
+import { resolveBoatBoatCollisions } from '@/logic/collision/boatBoat'
 import { cloneRaceState } from '@/state/factories'
 import { raceStore, RaceStore } from '@/state/raceStore'
 import type { BoatState, RaceEvent, RaceState } from '@/types/race'
@@ -218,7 +219,6 @@ export class HostLoop {
   private ocsBoats = new Set<string>()
 
   private courseSideSign?: number
-  private penaltyHistory = new Map<string, number>()
   private raceStartWallClockMs: number | null = null
   private spinTimers = new Map<string, Array<ReturnType<typeof setTimeout>>>()
   private spinningBoats = new Set<string>()
@@ -257,7 +257,6 @@ export class HostLoop {
     this.startSignalSent = false
     this.ocsBoats.clear()
     this.courseSideSign = undefined
-    this.penaltyHistory.clear()
     this.raceStartWallClockMs = state.clockStartMs
     this.cancelSpinSequences()
     this.roundingProgress.clear()
@@ -328,8 +327,7 @@ export class HostLoop {
 
     this.applySpinLocks(next)
     const startEvents = this.updateStartLine(next)
-    const rawResolutions = this.rules.evaluate(next)
-    const resolutions = this.filterPenalties(rawResolutions, next.t)
+    const resolutions = this.rules.evaluate(next)
     resolutions.forEach((violation) => {
       const offender = next.boats[violation.offenderId]
       if (offender) offender.penalties += 1
@@ -342,14 +340,25 @@ export class HostLoop {
       ...lapEvents,
     ]
 
+    // Apply boat-to-boat repulsion AFTER rules evaluation so the rules
+    // engine can detect overlapping boats before they're pushed apart.
+    const { correctedPositions: boatCorrected } = resolveBoatBoatCollisions(next)
+    boatCorrected.forEach((pos, boatId) => {
+      const boat = next.boats[boatId]
+      if (!boat) return
+      boat.pos.x = pos.x
+      boat.pos.y = pos.y
+    })
+
     Object.values(next.boats).forEach((boat) => {
-      boat.fouled = false
+      boat.fouled = (boat.fouledUntil ?? 0) > next.t
     })
     resolutions.forEach((violation) => {
-      violation.boats.forEach((boatId) => {
-        const boat = next.boats[boatId]
-        if (boat) boat.fouled = violation.offenderId === boatId
-      })
+      const offender = next.boats[violation.offenderId]
+      if (offender) {
+        offender.fouled = true
+        offender.fouledUntil = next.t + 2
+      }
     })
 
     this.store.setState(next)
@@ -1218,17 +1227,6 @@ export class HostLoop {
     return events
   }
 
-  private filterPenalties(resolutions: RuleResolution[], currentTime: number) {
-    return resolutions.filter((violation) => {
-      const key = `${violation.offenderId}:${violation.ruleId}`
-      const last = this.penaltyHistory.get(key)
-      if (last !== undefined && currentTime - last < 10) {
-        return false
-      }
-      this.penaltyHistory.set(key, currentTime)
-      return true
-    })
-  }
 
   private checkRaceTimeout(state: RaceState) {
     if (state.phase !== 'running') return
