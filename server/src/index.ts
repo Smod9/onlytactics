@@ -130,34 +130,6 @@ const gameServer = new ColyseusServer({
   transport: new WebSocketTransport({ server: httpServer }),
 })
 
-const normalizeMatchmakeResponse = (response: unknown) => {
-  if (!response || typeof response !== 'object') return response
-  const record = response as Record<string, unknown>
-  if (record.room && typeof record.room === 'object') return response
-  const name = typeof record.name === 'string' ? record.name : undefined
-  const roomId = typeof record.roomId === 'string' ? record.roomId : undefined
-  if (!name || !roomId) return response
-  const processId =
-    typeof record.processId === 'string' ? record.processId : matchMaker.processId
-  const publicAddress =
-    typeof record.publicAddress === 'string' ? record.publicAddress : undefined
-  return {
-    ...record,
-    room: {
-      name,
-      roomId,
-      processId,
-      ...(publicAddress ? { publicAddress } : {}),
-    },
-  }
-}
-
-const originalInvoke = matchMaker.controller.invokeMethod.bind(matchMaker.controller)
-matchMaker.controller.invokeMethod = async (...args) => {
-  const response = await originalInvoke(...args)
-  return normalizeMatchmakeResponse(response)
-}
-
 // Define 'race_room' with roomName-based matchmaking when provided.
 gameServer.define('race_room', RaceRoom).filterBy(['roomName'])
 

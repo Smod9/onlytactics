@@ -18,6 +18,22 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
+.auth-brand {
+  display: block;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #9fb7ff;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: color 0.2s ease;
+}
+
+.auth-brand:hover {
+  color: #c4d4ff;
+}
+
 .auth-card h1 {
   margin: 0 0 0.5rem;
   font-size: 1.75rem;
@@ -119,6 +135,16 @@
   border: 1px solid rgba(255, 82, 82, 0.3);
   color: #ff8a8a;
   font-size: 0.9rem;
+}
+
+.auth-error a {
+  color: #ffb3b3;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.auth-error a:hover {
+  color: #fff;
 }
 
 .auth-links {

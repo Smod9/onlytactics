@@ -199,25 +199,32 @@ class AuthStore {
 // Singleton instance
 export const authStore = new AuthStore()
 
+// Stable bound references (created once, never change)
+const subscribe = (cb: Listener) => authStore.subscribe(cb)
+const getSnapshot = () => authStore.getState()
+const boundLogin = authStore.login.bind(authStore)
+const boundRegister = authStore.register.bind(authStore)
+const boundLogout = authStore.logout.bind(authStore)
+const boundRefreshSession = authStore.refreshSession.bind(authStore)
+const boundClearError = authStore.clearError.bind(authStore)
+const boundGetAccessToken = authStore.getAccessToken.bind(authStore)
+
 // React hook for using auth state
 import { useEffect, useSyncExternalStore } from 'react'
 
 export const useAuth = () => {
-  const state = useSyncExternalStore(
-    (callback) => authStore.subscribe(callback),
-    () => authStore.getState(),
-  )
+  const state = useSyncExternalStore(subscribe, getSnapshot)
 
   return {
     ...state,
-    login: authStore.login.bind(authStore),
-    register: authStore.register.bind(authStore),
-    logout: authStore.logout.bind(authStore),
-    refreshSession: authStore.refreshSession.bind(authStore),
-    clearError: authStore.clearError.bind(authStore),
+    login: boundLogin,
+    register: boundRegister,
+    logout: boundLogout,
+    refreshSession: boundRefreshSession,
+    clearError: boundClearError,
     isAuthenticated: authStore.isAuthenticated(),
     isAdmin: authStore.isAdmin(),
-    getAccessToken: authStore.getAccessToken.bind(authStore),
+    getAccessToken: boundGetAccessToken,
   }
 }
 

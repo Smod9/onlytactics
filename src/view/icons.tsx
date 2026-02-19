@@ -37,3 +37,42 @@ export const LobbyIcon = () => (
     />
   </svg>
 )
+
+export const HandOffIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"
+    />
+  </svg>
+)
+
+export const AdminIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+    />
+  </svg>
+)
+
+export const LogOutIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4m7 14l5-5-5-5m5 5H9"
+    />
+  </svg>
+)

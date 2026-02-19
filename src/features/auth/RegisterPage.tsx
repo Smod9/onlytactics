@@ -45,15 +45,35 @@ export function RegisterPage() {
   }
 
   const displayError = localError || error
+  const isEmailExists = displayError?.toLowerCase().includes('already exists')
+
+  const goTo = (path: string) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    window.history.pushState({}, '', path)
+    window.dispatchEvent(new PopStateEvent('popstate'))
+  }
 
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
         <h1>Create Account</h1>
         <p className="auth-subtitle">Join Only Tactics and start racing</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {displayError && <div className="auth-error">{displayError}</div>}
+          {displayError && (
+            <div className="auth-error">
+              {isEmailExists ? (
+                <>
+                  An account with this email already exists.
+                  <br /><br />
+                  If this is you, try{' '}
+                  <a href="/forgot-password" onClick={goTo('/forgot-password')}>resetting your password</a> or{' '}
+                  <a href="/login" onClick={goTo('/login')}>signing in</a>.
+                </>
+              ) : displayError}
+            </div>
+          )}
 
           <div className="auth-field">
             <label htmlFor="displayName">Display Name</label>

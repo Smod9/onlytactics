@@ -12,11 +12,6 @@ import './styles/auth.css'
 
 type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin'
 
-const MODES: Array<{ label: string; value: AppMode }> = [
-  { label: 'Live Race', value: 'live' },
-  { label: 'Replay Viewer', value: 'replay' },
-]
-
 const getInitialMode = (): AppMode => {
   if (typeof window === 'undefined') return 'live'
   const path = window.location.pathname
@@ -32,7 +27,7 @@ const getInitialMode = (): AppMode => {
 
 export function App() {
   const [mode, setMode] = useState<AppMode>(getInitialMode)
-  const { user, isAuthenticated, isAdmin, logout } = useAuth()
+  const { user: authUser, isAuthenticated, isAdmin, logout: authLogout } = useAuth()
   const appVersion = `v${__APP_VERSION__}`
   const releaseUrl = __APP_RELEASE_URL__
 
@@ -69,18 +64,6 @@ export function App() {
   if (mode === 'reset-password') return <ResetPasswordPage />
   if (mode === 'admin') return <AdminDashboard />
 
-  const handleLogout = async () => {
-    await logout()
-    window.history.pushState({}, '', '/')
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }
-
-  const navigateTo = (path: string) => (e: React.MouseEvent) => {
-    e.preventDefault()
-    window.history.pushState({}, '', path)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }
-
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -101,40 +84,41 @@ export function App() {
         </div>
         <div className="header-right">
           <div id="header-cta-root" className="header-cta" />
-          {isAuthenticated ? (
-            <div className="header-user-menu">
-              <span className="header-user-name">{user?.displayName}</span>
-              {isAdmin && (
-                <a href="/admin" onClick={navigateTo('/admin')} className="header-admin-link">
-                  Admin
-                </a>
+          {mode !== 'live' && (
+            <div className="header-auth">
+              {isAuthenticated ? (
+                <>
+                  <span className="header-auth-name">
+                    {authUser?.displayName ?? 'Account'}
+                  </span>
+                  {isAdmin && (
+                    <a href="/admin" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/admin' }}>
+                      Admin
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className="header-auth-link header-auth-logout"
+                    onClick={async () => {
+                      await authLogout()
+                      window.location.href = '/lobby'
+                    }}
+                  >
+                    Log Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <a href="/login" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/login' }}>
+                    Sign In
+                  </a>
+                  <a href="/register" className="header-auth-link header-auth-register" onClick={(e) => { e.preventDefault(); window.location.href = '/register' }}>
+                    Register
+                  </a>
+                </>
               )}
-              <button onClick={handleLogout} className="header-logout-btn">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="header-auth-links">
-              <a href="/login" onClick={navigateTo('/login')} className="header-login-link">
-                Sign In
-              </a>
-              <a href="/register" onClick={navigateTo('/register')} className="header-register-link">
-                Register
-              </a>
             </div>
           )}
-          <div className="mode-switcher" style={{ display: 'none' }}>
-            {MODES.map(({ label, value }) => (
-              <button
-                key={value}
-                className={value === mode ? 'active' : ''}
-                onClick={() => setMode(value)}
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
       </header>
       <main className="app-main">
