@@ -1,5 +1,5 @@
 export const KNOTS_TO_MS = 0.514444 * 2 //How fast a boat moves in meters per second (on the screen)
-export const MAX_SPEED_KTS = 16
+export const MAX_SPEED_KTS = 30
 export const TURN_RATE_DEG = 90 //How fast a boat turns in degrees per second
 export const ACCELERATION_RATE = 0.6 //How fast a boat accelerates in meters per second per second
 export const DECELERATION_RATE = 0.4 //How fast a boat decelerates in meters per second per second
@@ -20,6 +20,10 @@ export const MAX_REVERSE_SPEED_KTS = 0 //Max reverse speed when blowing sails (L
 export const LEEWARD_DRIFT_SPEED_KTS = 1.3 //Leeward drift when speed is zero or less
 export const LEEWARD_DRIFT_THRESHOLD_KTS = 0.8 //Leeward drift below this speed
 
+// Wind speed envelope (kts) for oscillation in host loop
+export const WIND_SPEED_MIN_KTS = 12
+export const WIND_SPEED_MAX_KTS = 22
+
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
 export const BOAT_BOW_RADIUS = 4.5
 export const BOAT_STERN_RADIUS = 9
@@ -36,7 +40,7 @@ export const GATE_COLLIDER_RADIUS = 7
 export const COLLISION_SLOWDOWN_AT_FAULT = 0.35
 
 // Wind shadow / wake parameters
-export const WAKE_MAX_SLOWDOWN = 0.4 // Max speed reduction (25%)
+export const WAKE_MAX_SLOWDOWN = 0.25 // Max speed reduction (25%)
 export const WAKE_LENGTH = 123 // Downwind wake length (scene units)
 export const WAKE_HALF_WIDTH_START = 25 // Near-boat half width
 export const WAKE_HALF_WIDTH_END = 17 // Wake narrows farther downwind
@@ -53,3 +57,8 @@ export const WAKE_TURB_STRENGTH = 0.4 // Turbulent zone strength
 export const WAKE_CORE_MAX_SLOWDOWN = 0.4 // Core blanket max slowdown
 export const WAKE_TURB_MAX_SLOWDOWN = 0.25 // Turbulent zone max slowdown
 export const WAKE_MIN_STRENGTH = 0.015 // Ignore negligible contributions
+
+// Grid-based wind shadow parameters
+export const WAKE_GRID_CELL_SIZE = 5 // World units per grid cell (~half boat width)
+export const SHADOW_STAMP_ANGLE_STEP = 5 // Degrees between pre-computed stamps (72 total)
+export const WAKE_GRID_ENABLED = true // Feature flag for grid-based wind shadow

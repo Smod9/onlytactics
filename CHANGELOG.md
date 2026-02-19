@@ -1,3 +1,94 @@
+## [1.36.4](https://github.com/Smod9/onlytactics/compare/v1.36.3...v1.36.4) (2026-02-12)
+
+
+### Bug Fixes
+
+* tweaks wind shadow shape and reduces max slowdown to 25% ([#126](https://github.com/Smod9/onlytactics/issues/126)) ([12bcc81](https://github.com/Smod9/onlytactics/commit/12bcc81daa808678cd93de94d9489639a4f447fb))
+
+## [1.36.3](https://github.com/Smod9/onlytactics/compare/v1.36.2...v1.36.3) (2026-02-05)
+
+
+### Bug Fixes
+
+* increase maximum speed from 18 to 30 knots ([c979191](https://github.com/Smod9/onlytactics/commit/c979191d85bfcef6296beca6fd8b0fee5ed3f70c))
+
+## [1.36.2](https://github.com/Smod9/onlytactics/compare/v1.36.1...v1.36.2) (2026-02-05)
+
+
+### Bug Fixes
+
+* change the readout to say TWA and moved help menu to the left now that the chat is gone ([71b2f78](https://github.com/Smod9/onlytactics/commit/71b2f78e1213705a07a5660a3d42b6ca3fb63724))
+
+## [1.36.1](https://github.com/Smod9/onlytactics/compare/v1.36.0...v1.36.1) (2026-02-05)
+
+
+### Bug Fixes
+
+* players named seb automatically become RC ([5437eb4](https://github.com/Smod9/onlytactics/commit/5437eb4fb5177e645219c290298d6dc1a47bd01b))
+
+# [1.36.0](https://github.com/Smod9/onlytactics/compare/v1.35.10...v1.36.0) (2026-02-05)
+
+
+### Features
+
+* adds optional right left steering just to try it ([85be0ef](https://github.com/Smod9/onlytactics/commit/85be0effbd7eb7a7f0f10bdc47f83269b4404b8a))
+
+## [1.35.10](https://github.com/Smod9/onlytactics/compare/v1.35.9...v1.35.10) (2026-02-05)
+
+
+### Bug Fixes
+
+* Updates all discord links ([47e2c04](https://github.com/Smod9/onlytactics/commit/47e2c0458f85435da8e6bdc706c0ec6336ba3ef8))
+
+## [1.35.9](https://github.com/Smod9/onlytactics/compare/v1.35.8...v1.35.9) (2026-02-05)
+
+
+### Bug Fixes
+
+* Fixes wind scale legend ([97c8104](https://github.com/Smod9/onlytactics/commit/97c81042fa3163a9b73dfae25339a7360b3bea3e))
+
+## [1.35.8](https://github.com/Smod9/onlytactics/compare/v1.35.7...v1.35.8) (2026-02-04)
+
+
+### Bug Fixes
+
+* hole color - makes them 'dusty mauve' ([6630cad](https://github.com/Smod9/onlytactics/commit/6630cad847a426aef74165eca148a2ef8fc057f5))
+
+## [1.35.7](https://github.com/Smod9/onlytactics/compare/v1.35.6...v1.35.7) (2026-02-01)
+
+
+### Reverts
+
+* Revert "fix: disables lulls, only puffs now, but makes it configurable" ([64a5cb9](https://github.com/Smod9/onlytactics/commit/64a5cb929d7936fff395455d379c6e7c71d30c18))
+
+## [1.35.6](https://github.com/Smod9/onlytactics/compare/v1.35.5...v1.35.6) (2026-01-27)
+
+
+### Bug Fixes
+
+* disables lulls, only puffs now, but makes it configurable ([fecd821](https://github.com/Smod9/onlytactics/commit/fecd821edb982a5b4be22d323989a80fa5feaccb))
+
+## [1.35.5](https://github.com/Smod9/onlytactics/compare/v1.35.4...v1.35.5) (2026-01-21)
+
+
+### Bug Fixes
+
+* Moves pin even further ([efcf6aa](https://github.com/Smod9/onlytactics/commit/efcf6aaa46eb68c4392ea5f05317bf385f1cfd3e))
+
+## [1.35.4](https://github.com/Smod9/onlytactics/compare/v1.35.3...v1.35.4) (2026-01-21)
+
+
+### Bug Fixes
+
+* Pin end up 10 units. lets see how it goes ([a6bfc54](https://github.com/Smod9/onlytactics/commit/a6bfc54913d56622fb0237c05307d69338b861f3))
+
+## [1.35.3](https://github.com/Smod9/onlytactics/compare/v1.35.2...v1.35.3) (2026-01-20)
+
+
+### Bug Fixes
+
+* Windspeed tweaks. Min now 12, max is 22, max boat speed is 18 and puffs are only worth 2knts max instead of 3 ([68337f1](https://github.com/Smod9/onlytactics/commit/68337f1243728b779c03102d6238d7fc208806a4))
+
 ## [1.35.2](https://github.com/Smod9/onlytactics/compare/v1.35.1...v1.35.2) (2026-01-20)
 
 

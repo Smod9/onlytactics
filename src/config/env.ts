@@ -69,13 +69,14 @@ export const appEnv = {
   aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, false),
   raceTimeoutMinutes: toNumber(rawEnv.VITE_RACE_TIMEOUT_MINUTES, 25),
   windFieldEnabled: toBool(rawEnv.VITE_WIND_FIELD_ENABLED, true),
-  windFieldIntensityKts: toNumber(rawEnv.VITE_WIND_FIELD_INTENSITY_KTS, 3),
+  windFieldIntensityKts: toNumber(rawEnv.VITE_WIND_FIELD_INTENSITY_KTS, 2),
   windFieldCount: toNumber(rawEnv.VITE_WIND_FIELD_COUNT, 32),
   windFieldSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_SIZE_WORLD, 320),
   windFieldDomainLengthWorld: toNumber(rawEnv.VITE_WIND_FIELD_DOMAIN_LENGTH_WORLD, 1800),
   windFieldDomainWidthWorld: toNumber(rawEnv.VITE_WIND_FIELD_DOMAIN_WIDTH_WORLD, 900),
   windFieldAdvectionFactor: toNumber(rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR, 0.1),
   windFieldTileSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD, 36),
+  chatEnabled: toBool(rawEnv.VITE_CHAT_ENABLED, false),
 }
 
 export type AppEnv = typeof appEnv
