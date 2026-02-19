@@ -2921,6 +2921,76 @@ kbd {
   opacity: 0.6;
 }
 
+.results-position-editable {
+  cursor: pointer;
+  border-bottom: 1px dashed rgba(159, 183, 255, 0.4);
+  transition: border-color 0.15s ease;
+}
+
+.results-position-editable:hover {
+  border-color: rgba(159, 183, 255, 0.8);
+  color: #c4d4ff;
+}
+
+.results-position-input {
+  width: 2.4em;
+  text-align: center;
+  padding: 0.15rem 0.2rem;
+  border-radius: 0.3rem;
+  border: 1px solid rgba(83, 224, 255, 0.5);
+  background: rgba(15, 28, 44, 0.9);
+  color: #e4edff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  -moz-appearance: textfield;
+}
+
+.results-position-input::-webkit-inner-spin-button,
+.results-position-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.results-options {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.results-option-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #c4cbe0;
+}
+
+.results-option-row input[type="checkbox"],
+.results-option-row input[type="radio"] {
+  accent-color: #4f7dff;
+}
+
+.results-option-label {
+  color: #7a8aaf;
+  font-size: 0.8rem;
+  margin-right: 0.25rem;
+}
+
+.results-not-scored-badge {
+  margin: 0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.3rem;
+  background: rgba(255, 138, 138, 0.12);
+  border: 1px solid rgba(255, 138, 138, 0.25);
+  color: #ff8a8a;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
 .finish-prompt {
   position: absolute;
   top: 50px;
@@ -3093,4 +3163,51 @@ kbd {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #7a8aaf;
+}
+
+.stats-toast {
+  position: fixed;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #e4edff;
+  background: rgba(20, 26, 40, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  pointer-events: none;
+  animation: stats-toast-in 0.25s ease-out, stats-toast-out 0.4s ease-in 3.5s forwards;
+}
+
+.stats-toast--success {
+  border-color: rgba(72, 199, 142, 0.5);
+}
+
+.stats-toast--error {
+  border-color: rgba(255, 100, 100, 0.6);
+  color: #ffa0a0;
+}
+
+@keyframes stats-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes stats-toast-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }

@@ -3,7 +3,7 @@ import { quantizeHeading } from '@/logic/physics'
 import { identity } from '@/net/identity'
 import { appEnv } from '@/config/env'
 import { raceStore } from '@/state/raceStore'
-import { ColyseusBridge } from './colyseusBridge'
+import { ColyseusBridge, type StatsSavedPayload } from './colyseusBridge'
 
 const netLog = (...args: unknown[]) => {
   if (!appEnv.debugNetLogs) return
@@ -129,6 +129,10 @@ export class GameNetwork {
     return () => this.chatListeners.delete(listener)
   }
 
+  onStatsSaved(listener: (payload: StatsSavedPayload) => void) {
+    return this.colyseusBridge?.onStatsSaved(listener) ?? (() => {})
+  }
+
   sendChat(text: string) {
     if (!text.trim()) return false
     if (!this.colyseusBridge) return false
@@ -238,6 +242,11 @@ export class GameNetwork {
   finishRace() {
     netLog('send host command', { kind: 'finish_race' })
     this.colyseusBridge?.sendHostCommand({ kind: 'finish_race' })
+  }
+
+  confirmResults(options: { scored: boolean; dnfMode: 'dnf' | 'position'; leaderboard?: string[] }) {
+    netLog('send host command', { kind: 'confirm_results', ...options })
+    this.colyseusBridge?.sendHostCommand({ kind: 'confirm_results', ...options })
   }
 
   resetRace() {

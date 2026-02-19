@@ -20,6 +20,7 @@ type RaceHistoryEntry = {
   courseName: string | null
   finishPosition: number | null
   finishTimeSeconds: number | null
+  timeBehindFirst: number | null
   fleetSize: number
   points: number
   dnf: boolean
@@ -124,6 +125,7 @@ export function ProfilePage() {
                       <th>Course</th>
                       <th>Pos</th>
                       <th>Time</th>
+                      <th>+1st</th>
                       <th>Pts</th>
                       <th>Wind</th>
                     </tr>
@@ -148,6 +150,13 @@ export function ProfilePage() {
                           {race.finishTimeSeconds != null
                             ? formatTime(race.finishTimeSeconds)
                             : '—'}
+                        </td>
+                        <td>
+                          {race.timeBehindFirst != null && race.timeBehindFirst > 0
+                            ? `+${formatTime(race.timeBehindFirst)}`
+                            : race.finishPosition === 1
+                              ? '—'
+                              : '—'}
                         </td>
                         <td>{race.points}</td>
                         <td>

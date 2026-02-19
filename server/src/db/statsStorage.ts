@@ -68,28 +68,43 @@ type BoatResult = {
 const computeResults = (
   finalState: RaceState,
   userBoatMap: Map<string, string | null>,
+  dnfMode: 'dnf' | 'position' = 'dnf',
 ): BoatResult[] => {
-  const fleetSize = Object.keys(finalState.boats).length
   const results: BoatResult[] = []
 
-  for (const boatId of finalState.leaderboard) {
+  for (let i = 0; i < finalState.leaderboard.length; i++) {
+    const boatId = finalState.leaderboard[i]
     const boat = finalState.boats[boatId]
     if (!boat) continue
     const hasFinishTime = typeof boat.finishTime === 'number' && boat.finishTime > 0
-    const dnf = !hasFinishTime
     const userId = userBoatMap.get(boatId) ?? null
 
-    results.push({
-      boatId,
-      userId,
-      displayName: boat.name,
-      finishPosition: dnf ? null : results.filter((r) => !r.dnf).length + 1,
-      finishTimeSeconds: hasFinishTime ? boat.finishTime! : null,
-      dnf,
-      ocs: Boolean(boat.overEarly),
-      penalties: boat.penalties ?? 0,
-      protestPenalties: boat.protestPenalties ?? 0,
-    })
+    if (dnfMode === 'position') {
+      results.push({
+        boatId,
+        userId,
+        displayName: boat.name,
+        finishPosition: i + 1,
+        finishTimeSeconds: hasFinishTime ? boat.finishTime! : null,
+        dnf: false,
+        ocs: Boolean(boat.overEarly),
+        penalties: boat.penalties ?? 0,
+        protestPenalties: boat.protestPenalties ?? 0,
+      })
+    } else {
+      const dnf = !hasFinishTime
+      results.push({
+        boatId,
+        userId,
+        displayName: boat.name,
+        finishPosition: dnf ? null : results.filter((r) => !r.dnf).length + 1,
+        finishTimeSeconds: hasFinishTime ? boat.finishTime! : null,
+        dnf,
+        ocs: Boolean(boat.overEarly),
+        penalties: boat.penalties ?? 0,
+        protestPenalties: boat.protestPenalties ?? 0,
+      })
+    }
   }
 
   return results
@@ -103,13 +118,14 @@ export const saveRaceStats = async (
   recording: ReplayRecording,
   finalState: RaceState,
   userBoatMap: Map<string, string | null>,
+  dnfMode: 'dnf' | 'position' = 'dnf',
 ) => {
   const raceId = recording.meta.raceId
   const windStats = computeWindStats(recording.frames)
   const fleetSize = Object.keys(finalState.boats).length
   if (fleetSize === 0) return
 
-  const results = computeResults(finalState, userBoatMap)
+  const results = computeResults(finalState, userBoatMap, dnfMode)
   const dnfPoints = fleetSize + 1
 
   // Race duration: time of the last running frame
@@ -378,6 +394,7 @@ export type RaceHistoryEntry = {
   courseName: string | null
   finishPosition: number | null
   finishTimeSeconds: number | null
+  timeBehindFirst: number | null
   fleetSize: number
   points: number
   dnf: boolean
@@ -410,10 +427,16 @@ export const getUserRaceHistory = async (
         r.dnf,
         c.course_name,
         c.avg_wind_speed_kts,
-        c.wind_direction_stddev
+        c.wind_direction_stddev,
+        r.finish_time_seconds - first_place.finish_time_seconds AS time_behind_first
       FROM race_results r
       LEFT JOIN race_conditions c ON c.race_id = r.race_id
       LEFT JOIN races ON races.race_id = r.race_id
+      LEFT JOIN LATERAL (
+        SELECT finish_time_seconds FROM race_results
+        WHERE race_id = r.race_id AND finish_position = 1
+        LIMIT 1
+      ) first_place ON true
       WHERE r.user_id = $1
       ORDER BY r.created_at DESC
       LIMIT $2 OFFSET $3`,
@@ -427,6 +450,8 @@ export const getUserRaceHistory = async (
       finishPosition: row.finish_position != null ? Number(row.finish_position) : null,
       finishTimeSeconds:
         row.finish_time_seconds != null ? Number(row.finish_time_seconds) : null,
+      timeBehindFirst:
+        row.time_behind_first != null ? Number(Number(row.time_behind_first).toFixed(2)) : null,
       fleetSize: Number(row.fleet_size),
       points: Number(row.points),
       dnf: Boolean(row.dnf),
