@@ -299,8 +299,9 @@ describe('RulesEngine – Rule 11', () => {
     const engine = new RulesEngine(0)
     // Wind from north. Both on port tack (heading ~45°).
     // Boat further upwind (north = lower y) is windward.
-    const windward = makeBoat({ id: 'windward', pos: { x: 0, y: -5 }, headingDeg: 45 })
-    const leeward = makeBoat({ id: 'leeward', pos: { x: 0, y: 5 }, headingDeg: 50 })
+    // Keep boats close so only stern-stern circles overlap (avoids cross stern-bow triggering sternRammer).
+    const windward = makeBoat({ id: 'windward', pos: { x: 0, y: -3 }, headingDeg: 45 })
+    const leeward = makeBoat({ id: 'leeward', pos: { x: 0, y: 3 }, headingDeg: 50 })
     const state = makeState([windward, leeward], 0)
 
     const results = engine.evaluate(state)
@@ -312,7 +313,7 @@ describe('RulesEngine – Rule 11', () => {
   it('windward/leeward correct for wind from east', () => {
     const engine = new RulesEngine(0)
     // Wind from east (90°). Both on port tack. Windward = more east = higher x.
-    const windward = makeBoat({ id: 'windward', pos: { x: 10, y: 0 }, headingDeg: 135 })
+    const windward = makeBoat({ id: 'windward', pos: { x: 6, y: 0 }, headingDeg: 135 })
     const leeward = makeBoat({ id: 'leeward', pos: { x: 0, y: 0 }, headingDeg: 140 })
     const state = makeState([windward, leeward], 90)
 
@@ -325,7 +326,7 @@ describe('RulesEngine – Rule 11', () => {
   it('windward/leeward correct for wind from south', () => {
     const engine = new RulesEngine(0)
     // Wind from south (180°). Windward = more south = higher y.
-    const windward = makeBoat({ id: 'windward', pos: { x: 0, y: 10 }, headingDeg: 225 })
+    const windward = makeBoat({ id: 'windward', pos: { x: 0, y: 6 }, headingDeg: 225 })
     const leeward = makeBoat({ id: 'leeward', pos: { x: 0, y: 0 }, headingDeg: 230 })
     const state = makeState([windward, leeward], 180)
 
@@ -338,7 +339,7 @@ describe('RulesEngine – Rule 11', () => {
   it('windward/leeward correct for wind from west', () => {
     const engine = new RulesEngine(0)
     // Wind from west (270°). Windward = more west = lower x.
-    const windward = makeBoat({ id: 'windward', pos: { x: -10, y: 0 }, headingDeg: 315 })
+    const windward = makeBoat({ id: 'windward', pos: { x: -6, y: 0 }, headingDeg: 315 })
     const leeward = makeBoat({ id: 'leeward', pos: { x: 0, y: 0 }, headingDeg: 320 })
     const state = makeState([windward, leeward], 270)
 
@@ -367,10 +368,10 @@ describe('RulesEngine – Rule 11', () => {
 
   it('no penalty when stand-on boat has rights suspended', () => {
     const engine = new RulesEngine(0)
-    const windward = makeBoat({ id: 'windward', pos: { x: 0, y: -5 }, headingDeg: 45 })
+    const windward = makeBoat({ id: 'windward', pos: { x: 0, y: -3 }, headingDeg: 45 })
     const leeward = makeBoat({
       id: 'leeward',
-      pos: { x: 0, y: 5 },
+      pos: { x: 0, y: 3 },
       headingDeg: 50,
       rightsSuspended: true,
     })
