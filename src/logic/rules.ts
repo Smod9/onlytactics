@@ -91,6 +91,22 @@ export const boatsTooClose = (a: BoatState, b: BoatState) => {
   return false
 }
 
+export const WARNING_RADIUS_SCALE = 1.3
+
+export const boatsNearby = (a: BoatState, b: BoatState, scale = WARNING_RADIUS_SCALE) => {
+  const ca = boatCircles(a)
+  const cb = boatCircles(b)
+  for (const c1 of ca) {
+    for (const c2 of cb) {
+      const dx = c1.x - c2.x
+      const dy = c1.y - c2.y
+      const rr = (c1.r + c2.r) * scale
+      if (dx * dx + dy * dy <= rr * rr) return true
+    }
+  }
+  return false
+}
+
 export type Tack = 'port' | 'starboard'
 
 /**
@@ -169,6 +185,38 @@ export class RulesEngine {
       }
     }
     return results
+  }
+
+  /**
+   * Detect boats that are about to collide and identify who would be at fault.
+   * Uses inflated detection radii (WARNING_RADIUS_SCALE) but excludes pairs
+   * that are already overlapping (those get actual penalties instead) and
+   * pairs in incident cooldown.
+   */
+  computeWarnings(state: RaceState): Map<string, string> {
+    const boats = Object.values(state.boats)
+    const warnings = new Map<string, string>()
+    for (let i = 0; i < boats.length; i += 1) {
+      for (let j = i + 1; j < boats.length; j += 1) {
+        const a = boats[i]
+        const b = boats[j]
+
+        const ipk = incidentPairKey(a.id, b.id)
+        if (this.incidentCooldowns.has(ipk)) continue
+        if (!boatsNearby(a, b)) continue
+        if (boatsTooClose(a, b)) continue
+
+        const r10 = this.warningRule10(state, a, b)
+        const r11 = r10 ? null : this.warningRule11(state, a, b)
+        const fault = r10 ?? r11
+        if (!fault) continue
+        const { offender, message } = fault
+        if (!warnings.has(offender.id)) {
+          warnings.set(offender.id, message)
+        }
+      }
+    }
+    return warnings
   }
 
   computeCollisionFaults(state: RaceState): Record<string, CollisionFault> {
@@ -317,6 +365,49 @@ export class RulesEngine {
     })
 
     return [resolution]
+  }
+
+  private warningRule10(state: RaceState, a: BoatState, b: BoatState) {
+    const tackA = getTack(a, state.wind.directionDeg)
+    const tackB = getTack(b, state.wind.directionDeg)
+    if (tackA === tackB) return null
+
+    const bothDeep =
+      isDeepDownwind(a, state.wind.directionDeg) &&
+      isDeepDownwind(b, state.wind.directionDeg)
+    if (bothDeep) return null
+
+    const offender = tackA === 'port' ? a : b
+    const standOn = offender === a ? b : a
+    if (isRightsSuspended(standOn) && !isRightsSuspended(offender)) return null
+    return { offender, message: `Starboard! Keep clear of ${standOn.name}` }
+  }
+
+  private warningRule11(state: RaceState, a: BoatState, b: BoatState) {
+    const tackA = getTack(a, state.wind.directionDeg)
+    const tackB = getTack(b, state.wind.directionDeg)
+    const bothDeep =
+      isDeepDownwind(a, state.wind.directionDeg) &&
+      isDeepDownwind(b, state.wind.directionDeg)
+    if (tackA !== tackB && !bothDeep) return null
+
+    const perpAngle = degToRad(state.wind.directionDeg + 90)
+    const lineNormal = {
+      x: Math.cos(perpAngle),
+      y: Math.sin(perpAngle),
+    }
+    const project = (boat: BoatState) =>
+      boat.pos.x * lineNormal.x + boat.pos.y * lineNormal.y
+
+    const aScore = project(a)
+    const bScore = project(b)
+    const windward = aScore < bScore ? a : b
+    const leeward = windward === a ? b : a
+
+    const offender = windward
+    const standOn = leeward
+    if (isRightsSuspended(standOn) && !isRightsSuspended(offender)) return null
+    return { offender, message: `Keep clear! You're windward of ${standOn.name}` }
   }
 }
 

@@ -327,6 +327,12 @@ export class HostLoop {
 
     this.applySpinLocks(next)
     const startEvents = this.updateStartLine(next)
+
+    const warnings = this.rules.computeWarnings(next)
+    Object.values(next.boats).forEach((boat) => {
+      boat.collisionWarning = warnings.get(boat.id) ?? ''
+    })
+
     const resolutions = this.rules.evaluate(next)
     resolutions.forEach((violation) => {
       const offender = next.boats[violation.offenderId]

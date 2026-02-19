@@ -3,6 +3,7 @@ import {
   RulesEngine,
   getTack,
   boatsTooClose,
+  boatsNearby,
   circlesOverlap,
   isBehind,
   sternRammer,
@@ -548,5 +549,109 @@ describe('Deep downwind dead-zone', () => {
     const results = engine.evaluate(state)
     const rule10 = results.filter((r) => r.ruleId === '10')
     expect(rule10.length).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// boatsNearby (proximity check with scaled radii)
+// ---------------------------------------------------------------------------
+
+describe('boatsNearby', () => {
+  it('returns true when boats are within scaled radius but not overlapping', () => {
+    // Heading 0°: A stern at (0,6) r=9, B bow at (0,Y-12) r=4.5
+    // Overlap at dist <= 13.5 → Y <= 31.5. Warning zone at 1.3x → Y <= 35.55.
+    const a = makeBoat({ id: 'a', pos: { x: 0, y: 0 }, headingDeg: 0 })
+    const b = makeBoat({ id: 'b', pos: { x: 0, y: 33 }, headingDeg: 0 })
+    expect(boatsTooClose(a, b)).toBe(false)
+    expect(boatsNearby(a, b)).toBe(true)
+  })
+
+  it('returns false when boats are far apart', () => {
+    const a = makeBoat({ id: 'a', pos: { x: 0, y: 0 }, headingDeg: 0 })
+    const b = makeBoat({ id: 'b', pos: { x: 100, y: 100 }, headingDeg: 0 })
+    expect(boatsNearby(a, b)).toBe(false)
+  })
+
+  it('returns true when boats are already overlapping', () => {
+    const a = makeBoat({ id: 'a', pos: { x: 0, y: 0 }, headingDeg: 0 })
+    const b = makeBoat({ id: 'b', pos: { x: 5, y: 0 }, headingDeg: 0 })
+    expect(boatsTooClose(a, b)).toBe(true)
+    expect(boatsNearby(a, b)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// computeWarnings
+// ---------------------------------------------------------------------------
+
+describe('computeWarnings', () => {
+  it('warns the would-be offender when boats are approaching (Rule 10)', () => {
+    const engine = new RulesEngine(0)
+    // Port (heading 45°) and starboard (heading 315°) converging.
+    // At x=±14, bow-bow distance ≈ 11.0 — outside exact overlap (9) but inside 1.3x (11.7).
+    const portBoat = makeBoat({ id: 'port', pos: { x: -14, y: 0 }, headingDeg: 45 })
+    const stbdBoat = makeBoat({ id: 'stbd', pos: { x: 14, y: 0 }, headingDeg: 315 })
+    const state = makeState([portBoat, stbdBoat], 0)
+
+    expect(boatsTooClose(portBoat, stbdBoat)).toBe(false)
+    expect(boatsNearby(portBoat, stbdBoat)).toBe(true)
+
+    const warnings = engine.computeWarnings(state)
+    expect(warnings.has('port')).toBe(true)
+    expect(warnings.has('stbd')).toBe(false)
+  })
+
+  it('warns the windward boat when approaching same-tack (Rule 11)', () => {
+    const engine = new RulesEngine(0)
+    // Both on port tack, windward boat north of leeward.
+    // At y=-20, stern-stern dist ≈ 19.6 — outside exact overlap (18) but inside 1.3x (23.4).
+    const windward = makeBoat({ id: 'windward', pos: { x: 0, y: -20 }, headingDeg: 45 })
+    const leeward = makeBoat({ id: 'leeward', pos: { x: 0, y: 0 }, headingDeg: 50 })
+    const state = makeState([windward, leeward], 0)
+
+    expect(boatsTooClose(windward, leeward)).toBe(false)
+    expect(boatsNearby(windward, leeward)).toBe(true)
+
+    const warnings = engine.computeWarnings(state)
+    expect(warnings.has('windward')).toBe(true)
+    expect(warnings.has('leeward')).toBe(false)
+  })
+
+  it('returns no warnings when boats are already overlapping', () => {
+    const engine = new RulesEngine(0)
+    const portBoat = makeBoat({ id: 'port', pos: { x: 0, y: 0 }, headingDeg: 45 })
+    const stbdBoat = makeBoat({ id: 'stbd', pos: { x: 5, y: 0 }, headingDeg: 315 })
+    const state = makeState([portBoat, stbdBoat], 0)
+
+    expect(boatsTooClose(portBoat, stbdBoat)).toBe(true)
+
+    const warnings = engine.computeWarnings(state)
+    expect(warnings.size).toBe(0)
+  })
+
+  it('returns no warnings when boats are far apart', () => {
+    const engine = new RulesEngine(0)
+    const a = makeBoat({ id: 'a', pos: { x: 0, y: 0 }, headingDeg: 45 })
+    const b = makeBoat({ id: 'b', pos: { x: 200, y: 200 }, headingDeg: 315 })
+    const state = makeState([a, b], 0)
+
+    const warnings = engine.computeWarnings(state)
+    expect(warnings.size).toBe(0)
+  })
+
+  it('suppresses warnings for pairs in incident cooldown', () => {
+    const engine = new RulesEngine(5)
+    // First, trigger a penalty to create incident cooldown
+    const portClose = makeBoat({ id: 'port', pos: { x: 0, y: 0 }, headingDeg: 45 })
+    const stbdClose = makeBoat({ id: 'stbd', pos: { x: 5, y: 0 }, headingDeg: 315 })
+    const state1 = makeState([portClose, stbdClose], 0, 10)
+    engine.evaluate(state1)
+
+    // Now place them in warning range (separated but still nearby)
+    const portNearby = makeBoat({ id: 'port', pos: { x: 0, y: 0 }, headingDeg: 45 })
+    const stbdNearby = makeBoat({ id: 'stbd', pos: { x: 0, y: 22 }, headingDeg: 315 })
+    const state2 = makeState([portNearby, stbdNearby], 0, 12)
+    const warnings = engine.computeWarnings(state2)
+    expect(warnings.size).toBe(0)
   })
 })

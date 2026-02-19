@@ -148,6 +148,9 @@ export class BoatStateSchema extends Schema {
   @type('boolean')
   rightsSuspended = false
 
+  @type('string')
+  collisionWarning = ''
+
   @type('boolean')
   vmgMode = false
 }
