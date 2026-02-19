@@ -1162,7 +1162,10 @@ export const LiveClient = () => {
                   >
                     <span className="spin-button-title">Do your 360</span>
                     <span className="spin-button-subtitle">
-                      Hit the P key if you dont believe you deserve the penalty
+                      Press <span className="kbd">S</span> or click this button to
+                      spin.{' '}
+                      Press <span className="kbd">P</span> to protest if you
+                      disagree with the call.
                     </span>
                   </button>
                 </div>

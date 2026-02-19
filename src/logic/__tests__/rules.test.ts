@@ -413,7 +413,7 @@ describe('RulesEngine – Cooldown', () => {
     expect(engine.evaluate(state2)).toHaveLength(0)
   })
 
-  it('fires again after cooldown expires', () => {
+  it('fires again after cooldown expires and boats have separated', () => {
     const engine = new RulesEngine(5)
     const portBoat = makeBoat({ id: 'port', pos: { x: 0, y: 0 }, headingDeg: 45 })
     const stbdBoat = makeBoat({ id: 'stbd', pos: { x: 5, y: 0 }, headingDeg: 315 })
@@ -421,8 +421,19 @@ describe('RulesEngine – Cooldown', () => {
     const state1 = makeState([portBoat, stbdBoat], 0, 10)
     expect(engine.evaluate(state1)).toHaveLength(1)
 
+    // Still overlapping after cooldown time — incident cooldown blocks it
     const state2 = makeState([portBoat, stbdBoat], 0, 16)
-    expect(engine.evaluate(state2)).toHaveLength(1)
+    expect(engine.evaluate(state2)).toHaveLength(0)
+
+    // Boats separate (clear the incident cooldown's separation requirement)
+    const portFar = makeBoat({ id: 'port', pos: { x: -100, y: 0 }, headingDeg: 45 })
+    const stbdFar = makeBoat({ id: 'stbd', pos: { x: 100, y: 0 }, headingDeg: 315 })
+    const stateSep = makeState([portFar, stbdFar], 0, 16.5)
+    expect(engine.evaluate(stateSep)).toHaveLength(0)
+
+    // Boats converge again after separation — penalty fires
+    const state3 = makeState([portBoat, stbdBoat], 0, 17)
+    expect(engine.evaluate(state3)).toHaveLength(1)
   })
 
   it('offender cooldown blocks different pair with same offender', () => {

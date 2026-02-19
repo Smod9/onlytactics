@@ -115,9 +115,23 @@ const boatPairKey = (rule: RuleId, a: string, b: string) =>
 
 const isRightsSuspended = (boat: BoatState) => Boolean(boat.rightsSuspended)
 
+const incidentPairKey = (a: string, b: string) => [a, b].sort().join(':')
+
+type IncidentState = { expiry: number; separated: boolean }
+
 export class RulesEngine {
   private pairCooldowns = new Map<string, number>()
   private offenderCooldowns = new Map<string, number>()
+  /**
+   * Mutual incident cooldown between two boats, regardless of rule or who
+   * was at fault.  After any penalty fires between A and B, ALL further
+   * penalties between them are suppressed until:
+   *   1. The boats have physically separated (no circle overlap), AND
+   *   2. The minimum cooldown time has elapsed.
+   * This prevents cascading penalties when the penalised boat manoeuvres
+   * to escape (e.g. tacking away) and its stern swings into the other boat.
+   */
+  private incidentCooldowns = new Map<string, IncidentState>()
 
   constructor(private cooldownSeconds = 5) {}
 
@@ -129,6 +143,19 @@ export class RulesEngine {
       for (let j = i + 1; j < boats.length; j += 1) {
         const a = boats[i]
         const b = boats[j]
+
+        const ipk = incidentPairKey(a.id, b.id)
+        const incident = this.incidentCooldowns.get(ipk)
+        if (incident) {
+          if (!incident.separated) {
+            incident.separated = !boatsTooClose(a, b)
+          }
+          if (!incident.separated || state.t < incident.expiry) {
+            continue
+          }
+          this.incidentCooldowns.delete(ipk)
+        }
+
         const pairs = [...this.checkRule10(state, a, b), ...this.checkRule11(state, a, b)]
         if (pairs.length && state.t < 0) {
           console.debug('[rules] prestart violation', {
@@ -282,6 +309,13 @@ export class RulesEngine {
 
     this.pairCooldowns.set(pairKey, state.t + this.cooldownSeconds)
     this.offenderCooldowns.set(offenderKey, state.t + this.cooldownSeconds)
+
+    const ipk = incidentPairKey(offenderId, otherBoatId)
+    this.incidentCooldowns.set(ipk, {
+      expiry: state.t + this.cooldownSeconds,
+      separated: false,
+    })
+
     return [resolution]
   }
 }
