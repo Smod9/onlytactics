@@ -4,12 +4,13 @@ import './styles/global.css'
 import { App } from './App'
 import { LandingPage } from './LandingPage'
 
-const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/admin']
+const APP_ROUTES = [
+  '/app', '/lobby',
+  '/login', '/register', '/forgot-password', '/reset-password',
+  '/admin', '/leaderboard', '/profile',
+]
 
-const isAppRoute =
-  window.location.pathname.startsWith('/app') ||
-  window.location.pathname.startsWith('/lobby') ||
-  AUTH_ROUTES.some((r) => window.location.pathname.startsWith(r))
+const isAppRoute = APP_ROUTES.some((r) => window.location.pathname.startsWith(r))
 
 if (isAppRoute) {
   document.documentElement.classList.add('game-root')

@@ -87,7 +87,7 @@ export type RaceMeta = {
   seed: number
 }
 
-export type RacePhase = 'prestart' | 'running' | 'finished'
+export type RacePhase = 'prestart' | 'running' | 'finished' | 'results'
 
 export type RaceState = {
   t: number

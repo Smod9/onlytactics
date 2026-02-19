@@ -367,6 +367,70 @@ export const LiveClient = () => {
   const hostNameDisplay = hostName ?? 'Host'
   const showWaitingOverlay =
     role !== 'host' && race.phase === 'prestart' && !race.countdownArmed
+  const showResultsOverlay = race.phase === 'results'
+  const allBoatsFinished =
+    race.phase === 'running' &&
+    Object.keys(race.boats).length > 0 &&
+    Object.values(race.boats).every((b) => b.finished)
+
+  const [editableLeaderboard, setEditableLeaderboard] = useState<string[]>([])
+  const [rcScored, setRcScored] = useState(true)
+  const [rcDnfMode, setRcDnfMode] = useState<'dnf' | 'position'>('dnf')
+  const [editingPositionIdx, setEditingPositionIdx] = useState<number | null>(null)
+  const [editingPositionValue, setEditingPositionValue] = useState('')
+  const leaderboardDirty = useRef(false)
+  const [statsToast, setStatsToast] = useState<{ message: string; success: boolean } | null>(null)
+
+  useEffect(() => {
+    const unsub = network.onStatsSaved((payload) => {
+      if (payload.scored === false) {
+        setStatsToast({ message: 'Race not scored', success: true })
+      } else if (payload.success) {
+        setStatsToast({ message: 'Race results saved', success: true })
+      } else {
+        setStatsToast({ message: payload.error ?? 'Failed to save results', success: false })
+      }
+    })
+    return unsub
+  }, [network])
+
+  useEffect(() => {
+    if (!statsToast) return
+    const timer = setTimeout(() => setStatsToast(null), 4000)
+    return () => clearTimeout(timer)
+  }, [statsToast])
+
+  useEffect(() => {
+    if (showResultsOverlay && race.leaderboard.length > 0 && editableLeaderboard.length === 0) {
+      setEditableLeaderboard([...race.leaderboard])
+      leaderboardDirty.current = false
+    }
+    if (!showResultsOverlay && editableLeaderboard.length > 0) {
+      setEditableLeaderboard([])
+      setRcScored(true)
+      setRcDnfMode('dnf')
+      setEditingPositionIdx(null)
+      leaderboardDirty.current = false
+    }
+  }, [showResultsOverlay, race.leaderboard])
+
+  const hasUnfinishedBoats = useMemo(() => {
+    const lb = editableLeaderboard.length ? editableLeaderboard : race.leaderboard
+    return lb.some((id) => {
+      const boat = race.boats[id]
+      return boat && !(typeof boat.finishTime === 'number' && boat.finishTime > 0)
+    })
+  }, [editableLeaderboard, race.leaderboard, race.boats])
+
+  const applyPositionEdit = (fromIdx: number, toPosition: number) => {
+    const lb = [...editableLeaderboard]
+    const toIdx = Math.max(0, Math.min(lb.length - 1, toPosition - 1))
+    if (toIdx === fromIdx) return
+    const [item] = lb.splice(fromIdx, 1)
+    lb.splice(toIdx, 0, item)
+    setEditableLeaderboard(lb)
+    leaderboardDirty.current = true
+  }
 
   const elapsedRaceLabel = formatRaceTime(Math.max(0, race.t))
   const finishSplitsByBoatId = new Map<string, number>()
@@ -484,26 +548,25 @@ export const LiveClient = () => {
           <div style={{ display: 'none' }}>
             <ReplaySaveButton />
           </div>
-          {role === 'host' && (
-            <>
-              <button
-                type="button"
-                className="start-sequence"
-                onClick={() => network.setAiEnabled(!race.aiEnabled)}
-                style={{ display: 'none' }}
-              >
-                {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
-              </button>
-              <button
-                type="button"
-                className="start-sequence"
-                onClick={() => network.resetRace()}
-              >
-                Restart Race
-              </button>
-            </>
+          {role === 'host' && race.phase === 'prestart' && race.countdownArmed && (
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => network.resetRace()}
+            >
+              Cancel Start
+            </button>
           )}
-          {(role === 'host' || role === 'god') && (
+          {role === 'host' && (race.phase === 'running' || race.phase === 'finished') && (
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => network.finishRace()}
+            >
+              Finish Race
+            </button>
+          )}
+          {(role === 'host' || role === 'god') && race.phase !== 'results' && (
             <button
               type="button"
               className="start-sequence"
@@ -735,6 +798,186 @@ export const LiveClient = () => {
               </div>
             </div>
           )}
+          {allBoatsFinished && role === 'host' && (
+            <div className="finish-prompt">
+              All boats finished &mdash;{' '}
+              <button
+                type="button"
+                className="start-sequence"
+                onClick={() => network.finishRace()}
+              >
+                Mark Race Complete
+              </button>
+            </div>
+          )}
+          {showResultsOverlay && (() => {
+            const displayLeaderboard = editableLeaderboard.length ? editableLeaderboard : race.leaderboard
+            const fleetSize = Object.keys(race.boats).length
+            const firstFinishTime = (() => {
+              for (const id of displayLeaderboard) {
+                const b = race.boats[id]
+                if (b && typeof b.finishTime === 'number' && b.finishTime > 0) return b.finishTime
+              }
+              return null
+            })()
+
+            return (
+            <div className="start-sequence-overlay results-overlay">
+              <div className="start-sequence-card results-card">
+                <h2>Race Results</h2>
+                <p className="results-subtitle">
+                  {race.meta.courseName} &middot;{' '}
+                  {fleetSize}-boat fleet &middot;{' '}
+                  {formatRaceTime(Math.max(0, race.t))}
+                </p>
+                <ol className="results-list">
+                  {displayLeaderboard.map((boatId, index) => {
+                    const boat = race.boats[boatId]
+                    if (!boat) return null
+                    const hasTime =
+                      typeof boat.finishTime === 'number' && boat.finishTime > 0
+                    const isDnf = !hasTime
+                    const usePosition = rcDnfMode === 'position'
+                    const points = (isDnf && !usePosition) ? fleetSize + 1 : index + 1
+                    const medal =
+                      !isDnf && index === 0
+                        ? '🥇'
+                        : !isDnf && index === 1
+                          ? '🥈'
+                          : !isDnf && index === 2
+                            ? '🥉'
+                            : ''
+                    const timeBehind = hasTime && firstFinishTime !== null
+                      ? boat.finishTime! - firstFinishTime
+                      : null
+
+                    return (
+                      <li key={boatId} className={(isDnf && !usePosition) ? 'results-dnf' : ''}>
+                        {role === 'host' && editingPositionIdx === index ? (
+                          <input
+                            className="results-position-input"
+                            type="number"
+                            min={1}
+                            max={displayLeaderboard.length}
+                            value={editingPositionValue}
+                            onChange={(e) => setEditingPositionValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const val = parseInt(editingPositionValue, 10)
+                                if (val >= 1 && val <= displayLeaderboard.length) {
+                                  applyPositionEdit(index, val)
+                                }
+                                setEditingPositionIdx(null)
+                              } else if (e.key === 'Escape') {
+                                setEditingPositionIdx(null)
+                              }
+                            }}
+                            onBlur={() => {
+                              const val = parseInt(editingPositionValue, 10)
+                              if (val >= 1 && val <= displayLeaderboard.length && val !== index + 1) {
+                                applyPositionEdit(index, val)
+                              }
+                              setEditingPositionIdx(null)
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            className={`results-pos${role === 'host' ? ' results-position-editable' : ''}`}
+                            onClick={() => {
+                              if (role !== 'host') return
+                              setEditingPositionIdx(index)
+                              setEditingPositionValue(String(index + 1))
+                            }}
+                          >
+                            {index + 1}.
+                          </span>
+                        )}
+                        <span className="results-medal">{medal}</span>
+                        <span className="results-name">{boat.name}</span>
+                        <span className="results-time">
+                          {isDnf
+                            ? (usePosition ? 'OCF' : 'DNF')
+                            : formatRaceTime(boat.finishTime!)}
+                        </span>
+                        <span className="results-split">
+                          {hasTime && timeBehind !== null && timeBehind > 0.005
+                            ? formatSplit(timeBehind)
+                            : hasTime && timeBehind !== null
+                              ? ''
+                              : ''}
+                        </span>
+                        <span className="results-points">{points} pt{points !== 1 ? 's' : ''}</span>
+                      </li>
+                    )
+                  })}
+                </ol>
+                {role === 'host' ? (
+                  <div className="results-options">
+                    <label className="results-option-row">
+                      <input
+                        type="checkbox"
+                        checked={rcScored && Object.keys(race.boats).length >= 3}
+                        disabled={Object.keys(race.boats).length < 3}
+                        onChange={(e) => setRcScored(e.target.checked)}
+                      />
+                      <span>Include in rankings</span>
+                      {Object.keys(race.boats).length < 3 && (
+                        <span className="results-fleet-hint">Min 3 boats required</span>
+                      )}
+                    </label>
+                    {hasUnfinishedBoats && (
+                      <div className="results-option-row">
+                        <span className="results-option-label">Unfinished boats:</span>
+                        <label>
+                          <input
+                            type="radio"
+                            name="dnfMode"
+                            value="dnf"
+                            checked={rcDnfMode === 'dnf'}
+                            onChange={() => setRcDnfMode('dnf')}
+                          />
+                          DNF
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            name="dnfMode"
+                            value="position"
+                            checked={rcDnfMode === 'position'}
+                            onChange={() => setRcDnfMode('position')}
+                          />
+                          On-Course Finish
+                        </label>
+                      </div>
+                    )}
+                    {!rcScored && (
+                      <p className="results-not-scored-badge">Race will not be scored</p>
+                    )}
+                    <button
+                      type="button"
+                      className="start-sequence"
+                      onClick={() => {
+                        network.confirmResults({
+                          scored: rcScored,
+                          dnfMode: rcDnfMode,
+                          leaderboard: leaderboardDirty.current ? editableLeaderboard : undefined,
+                        })
+                      }}
+                      style={{ marginTop: 8 }}
+                    >
+                      Confirm &amp; Start New Race
+                    </button>
+                  </div>
+                ) : (
+                  <p className="results-waiting">
+                    Waiting for RC ({hostNameDisplay}) to start the next race...
+                  </p>
+                )}
+              </div>
+            </div>
+            )
+          })()}
           <div className="speed-heading-row">
             <div className="speed-heading-stack">
               <div
@@ -1415,6 +1658,11 @@ export const LiveClient = () => {
               )
             })()}
           </div>
+        </div>
+      )}
+      {statsToast && (
+        <div className={`stats-toast ${statsToast.success ? 'stats-toast--success' : 'stats-toast--error'}`}>
+          {statsToast.message}
         </div>
       )}
     </div>

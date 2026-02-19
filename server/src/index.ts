@@ -9,6 +9,7 @@ import { getRace, getRecentRaces, queryRaces } from './db/raceStorage'
 import { RaceRoom } from './rooms/RaceRoom'
 import authRoutes from './routes/authRoutes'
 import adminRoutes from './routes/adminRoutes'
+import statsRoutes from './routes/statsRoutes'
 
 const attachGlobalPolyfills = () => {
   const globalAny = globalThis as typeof globalThis & {
@@ -59,9 +60,10 @@ expressApp.use((req, res, next) => {
 // Enable JSON body parsing for POST requests
 expressApp.use(express.json())
 
-// Mount auth and admin routes
+// Mount auth, admin, and stats routes
 expressApp.use('/api/auth', authRoutes)
 expressApp.use('/api/admin', adminRoutes)
+expressApp.use('/api/stats', statsRoutes)
 
 expressApp.get('/', (_req, res) => {
   res.json({
@@ -149,7 +151,7 @@ expressApp.get('/api/rooms', async (_req, res) => {
               createdAt: number
               createdBy: string
               status: 'waiting' | 'in-progress' | 'finished'
-              phase: 'prestart' | 'running' | 'finished'
+              phase: 'prestart' | 'running' | 'finished' | 'results'
               timeToStartSeconds: number
             }>) ?? {}
           return {

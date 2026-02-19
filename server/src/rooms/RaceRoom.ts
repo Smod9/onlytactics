@@ -14,6 +14,7 @@ import type {
   RaceEvent,
   RaceRole,
   RaceState,
+  ReplayRecording,
   PlayerInput,
   ProtestStatus,
 } from '@/types/race'
@@ -27,6 +28,7 @@ import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
 import { saveRace } from '../db/raceStorage'
+import { saveRaceStats } from '../db/statsStorage'
 
 const roomDebug = (...args: unknown[]) => {
   if (!appEnv.debugNetLogs) return
@@ -60,6 +62,8 @@ type ProtestCommand =
 
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
+  | { kind: 'finish_race' }
+  | { kind: 'confirm_results'; scored: boolean; dnfMode: 'dnf' | 'position'; leaderboard?: string[] }
   | { kind: 'reset' }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'wind_field'; enabled: boolean }
@@ -169,12 +173,14 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       onTimeout: () => this.handleTimeout(),
       onTick: (state) => {
         this.replayRecorder.recordFrame(state, [])
-        const anyFinished = Object.values(state.boats ?? {}).some((boat) => boat.finished)
-        if (anyFinished && !this.replaySaved) {
-          void this.persistReplay('winner_recorded')
-        }
-        if (state.phase === 'finished' && !this.replaySaved) {
-          void this.persistReplay('race_finished')
+        if (state.phase !== 'results') {
+          const anyFinished = Object.values(state.boats ?? {}).some((boat) => boat.finished)
+          if (anyFinished && !this.replaySaved) {
+            void this.persistReplay('winner_recorded')
+          }
+          if (state.phase === 'finished' && !this.replaySaved) {
+            void this.persistReplay('race_finished')
+          }
         }
         // Debug: confirm countdown is ticking server-side.
         // Logs at most once per second while countdown is armed.
@@ -307,6 +313,10 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       roomDebug('host_command', { clientId: client.sessionId, command })
       if (command.kind === 'arm') {
         this.armCountdown(command.seconds ?? appEnv.countdownSeconds)
+      } else if (command.kind === 'finish_race') {
+        this.finishRace()
+      } else if (command.kind === 'confirm_results') {
+        this.confirmResults(command)
       } else if (command.kind === 'reset') {
         this.resetRaceState()
       } else if (command.kind === 'pause') {
@@ -546,7 +556,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   getStatus(): 'waiting' | 'in-progress' | 'finished' {
     if (!this.raceStore) return 'waiting'
     const state = this.raceStore.getState()
-    // Check if all boats finished
+    if (state.phase === 'results') return 'finished'
     const allFinished = Object.values(state.boats).every((boat) => boat.finished)
     if (allFinished && Object.keys(state.boats).length > 0) return 'finished'
     if (
@@ -1310,6 +1320,111 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     } finally {
       this.persistingReplay = false
     }
+  }
+
+  private finishRace() {
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    if (state.phase !== 'running' && state.phase !== 'finished') {
+      roomDebug('finishRace ignored – wrong phase', { phase: state.phase })
+      return
+    }
+
+    roomDebug('finishRace', { ...this.describeHost(this.hostSessionId) })
+
+    this.mutateState((draft) => {
+      for (const boat of Object.values(draft.boats)) {
+        if (!boat.finished) {
+          boat.finished = true
+        }
+      }
+      draft.phase = 'results'
+    })
+
+    this.loop?.setPaused?.(true)
+    void this.persistReplay('race_finished')
+  }
+
+  private confirmResults(command: { scored: boolean; dnfMode: 'dnf' | 'position'; leaderboard?: string[] }) {
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    if (state.phase !== 'results') {
+      roomDebug('confirmResults ignored – wrong phase', { phase: state.phase })
+      return
+    }
+
+    roomDebug('confirmResults', { scored: command.scored, dnfMode: command.dnfMode })
+
+    if (command.leaderboard?.length) {
+      const currentIds = new Set(state.leaderboard)
+      const newIds = new Set(command.leaderboard)
+      const valid = currentIds.size === newIds.size && [...newIds].every((id) => currentIds.has(id))
+      if (valid) {
+        this.mutateState((draft) => {
+          draft.leaderboard = command.leaderboard!
+        })
+      } else {
+        console.warn('[RaceRoom] confirmResults: invalid leaderboard override', {
+          expected: state.leaderboard,
+          received: command.leaderboard,
+        })
+      }
+    }
+
+    const hostSessionId = this.hostSessionId
+
+    if (command.scored) {
+      const recording = this.replayRecorder.getRecording()
+      const finalState = this.raceStore?.getState()
+      if (recording && finalState) {
+        const snapshot = cloneRaceState(finalState)
+        const userBoatMap = this.buildUserBoatMap()
+        void this.persistStats(recording, snapshot, userBoatMap, command.dnfMode, hostSessionId)
+      }
+    } else if (hostSessionId) {
+      const hostClient = this.clients.find((c) => c.sessionId === hostSessionId)
+      hostClient?.send('stats_saved', { success: true, scored: false })
+    }
+
+    this.resetRaceState()
+  }
+
+  private async persistStats(
+    recording: ReplayRecording,
+    finalState: RaceState,
+    userBoatMap: Map<string, string | null>,
+    dnfMode: 'dnf' | 'position',
+    hostSessionId?: string,
+  ) {
+    const raceId = recording.meta.raceId
+    try {
+      await saveRaceStats(recording, finalState, userBoatMap, dnfMode)
+      console.info('[RaceRoom] saved race stats', { raceId })
+      if (hostSessionId) {
+        const hostClient = this.clients.find((c) => c.sessionId === hostSessionId)
+        hostClient?.send('stats_saved', { success: true, raceId })
+      }
+    } catch (error) {
+      console.error('[RaceRoom] failed to save race stats', { raceId, error })
+      if (hostSessionId) {
+        const hostClient = this.clients.find((c) => c.sessionId === hostSessionId)
+        hostClient?.send('stats_saved', { success: false, raceId, error: 'Failed to save race stats' })
+      }
+    }
+  }
+
+  private buildUserBoatMap(): Map<string, string | null> {
+    const map = new Map<string, string | null>()
+    for (const [sessionId, boatId] of this.clientBoatMap.entries()) {
+      const clientId = this.clientIdentityMap.get(sessionId) ?? null
+      const isUuid =
+        clientId !== null &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          clientId,
+        )
+      map.set(boatId, isUuid ? clientId : null)
+    }
+    return map
   }
 
   private resetRaceState() {

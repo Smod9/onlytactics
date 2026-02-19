@@ -14,8 +14,17 @@ import { cloneRaceState } from '@/state/factories'
 
 type ColyseusStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
+export type StatsSavedPayload = {
+  success: boolean
+  raceId?: string
+  scored?: boolean
+  error?: string
+}
+
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
+  | { kind: 'finish_race' }
+  | { kind: 'confirm_results'; scored: boolean; dnfMode: 'dnf' | 'position'; leaderboard?: string[] }
   | { kind: 'reset' }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'wind_field'; enabled: boolean }
@@ -39,6 +48,7 @@ export class ColyseusBridge {
   private chatListeners = new Set<(message: ChatMessage) => void>()
   private roleListeners = new Set<(role: Exclude<RaceRole, 'host'>) => void>()
   private roomClosedListeners = new Set<(payload: { reason?: string }) => void>()
+  private statsSavedListeners = new Set<(payload: StatsSavedPayload) => void>()
 
   private sessionId?: string
 
@@ -75,6 +85,13 @@ export class ColyseusBridge {
     this.roomClosedListeners.add(listener)
     return () => {
       this.roomClosedListeners.delete(listener)
+    }
+  }
+
+  onStatsSaved(listener: (payload: StatsSavedPayload) => void) {
+    this.statsSavedListeners.add(listener)
+    return () => {
+      this.statsSavedListeners.delete(listener)
     }
   }
 
@@ -232,6 +249,9 @@ export class ColyseusBridge {
     })
     room.onMessage('room_closed', (payload: { reason?: string }) => {
       this.roomClosedListeners.forEach((listener) => listener(payload ?? {}))
+    })
+    room.onMessage('stats_saved', (payload: StatsSavedPayload) => {
+      this.statsSavedListeners.forEach((listener) => listener(payload ?? {}))
     })
     room.onDrop((code, reason) => {
       if (appEnv.debugNetLogs) {

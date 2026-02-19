@@ -278,7 +278,7 @@ export class HostLoop {
     this.lastTick = now
 
     const next = cloneRaceState(this.store.getState())
-    if (this.paused || next.paused) {
+    if (this.paused || next.paused || next.phase === 'results') {
       return
     }
     const inputs = this.store.consumeInputs()
