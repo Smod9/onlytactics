@@ -25,8 +25,8 @@ export const WIND_SPEED_MIN_KTS = 12
 export const WIND_SPEED_MAX_KTS = 22
 
 // Collision footprint (capsule-like: small bow circle + larger stern circle)
-export const BOAT_BOW_RADIUS = 4.5
-export const BOAT_STERN_RADIUS = 9
+export const BOAT_BOW_RADIUS = 5
+export const BOAT_STERN_RADIUS = 9.5
 export const BOAT_BOW_OFFSET = 12 // forward offset from boat center (scene units)
 export const BOAT_STERN_OFFSET = -6 // aft offset from boat center
 export const BOAT_LENGTH = BOAT_BOW_OFFSET - BOAT_STERN_OFFSET // total boat length (scene units)
