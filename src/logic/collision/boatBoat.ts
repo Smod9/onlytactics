@@ -1,5 +1,6 @@
 import type { RaceState, Vec2 } from '@/types/race'
 import { boatCapsuleCircles, type BoatCircle } from '@/logic/boatGeometry'
+import type { CollisionFault } from '@/logic/rules'
 
 export type BoatBoatCollisionResult = {
   correctedPositions: Map<string, Vec2>
@@ -8,11 +9,14 @@ export type BoatBoatCollisionResult = {
 
 /**
  * Resolve boat-to-boat penetrations by pushing overlapping capsule circles apart.
- * Each boat accumulates push vectors from all its overlapping circle pairs with
- * every other boat. The push is split 50/50 between the two boats.
+ *
+ * When fault information is provided, the stand-on boat receives no push
+ * (sails straight through) and the offending boat absorbs 100% of the
+ * separation. When fault is unknown the push is split 50/50.
  */
 export const resolveBoatBoatCollisions = (
   state: RaceState,
+  faults?: Record<string, CollisionFault>,
 ): BoatBoatCollisionResult => {
   const boats = Object.values(state.boats)
   const pushes = new Map<string, Vec2>()
@@ -27,13 +31,20 @@ export const resolveBoatBoatCollisions = (
 
       let pairCollided = false
 
+      const faultA = faults?.[a.id]
+      const faultB = faults?.[b.id]
+      const aIsOffender = faultA === 'at_fault' && faultB === 'stand_on'
+      const bIsOffender = faultB === 'at_fault' && faultA === 'stand_on'
+      const shareA = aIsOffender ? 1 : bIsOffender ? 0 : 0.5
+      const shareB = 1 - shareA
+
       for (const cA of circlesA) {
         for (const cB of circlesB) {
           const push = circlePenetration(cA, cB)
           if (!push) continue
           pairCollided = true
-          accumPush(pushes, a.id, push.x * 0.5, push.y * 0.5)
-          accumPush(pushes, b.id, -push.x * 0.5, -push.y * 0.5)
+          accumPush(pushes, a.id, push.x * shareA, push.y * shareA)
+          accumPush(pushes, b.id, -push.x * shareB, -push.y * shareB)
         }
       }
 

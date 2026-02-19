@@ -91,9 +91,32 @@ export const boatsTooClose = (a: BoatState, b: BoatState) => {
   return false
 }
 
-export const WARNING_RADIUS_SCALE = 2.0
+export const WARNING_RADIUS_RULE10 = 4.0
+export const WARNING_RADIUS_RULE11 = 1.6
 
-export const boatsNearby = (a: BoatState, b: BoatState, scale = WARNING_RADIUS_SCALE) => {
+/**
+ * True when the gap between two boats is shrinking — i.e. they are on a
+ * converging course.  Uses velocity vectors derived from heading + speed.
+ */
+const boatsClosing = (a: BoatState, b: BoatState): boolean => {
+  const radA = degToRad(a.headingDeg)
+  const radB = degToRad(b.headingDeg)
+  const vax = Math.sin(radA) * a.speed
+  const vay = -Math.cos(radA) * a.speed
+  const vbx = Math.sin(radB) * b.speed
+  const vby = -Math.cos(radB) * b.speed
+
+  const dx = a.pos.x - b.pos.x
+  const dy = a.pos.y - b.pos.y
+  const dvx = vax - vbx
+  const dvy = vay - vby
+
+  // Dot product of relative position and relative velocity.
+  // Negative means the distance is decreasing.
+  return dx * dvx + dy * dvy < 0
+}
+
+export const boatsNearby = (a: BoatState, b: BoatState, scale = WARNING_RADIUS_RULE10) => {
   const ca = boatCircles(a)
   const cb = boatCircles(b)
   for (const c1 of ca) {
@@ -189,9 +212,8 @@ export class RulesEngine {
 
   /**
    * Detect boats that are about to collide and identify who would be at fault.
-   * Uses inflated detection radii (WARNING_RADIUS_SCALE) but excludes pairs
-   * that are already overlapping (those get actual penalties instead) and
-   * pairs in incident cooldown.
+   * Port/starboard (Rule 10) uses a larger warning radius because closing
+   * speeds are roughly double those of same-tack situations.
    */
   computeWarnings(state: RaceState): Map<string, string> {
     const boats = Object.values(state.boats)
@@ -203,16 +225,24 @@ export class RulesEngine {
 
         const ipk = incidentPairKey(a.id, b.id)
         if (this.incidentCooldowns.has(ipk)) continue
-        if (!boatsNearby(a, b)) continue
         if (boatsTooClose(a, b)) continue
 
-        const r10 = this.warningRule10(state, a, b)
-        const r11 = r10 ? null : this.warningRule11(state, a, b)
-        const fault = r10 ?? r11
-        if (!fault) continue
-        const { offender, message } = fault
-        if (!warnings.has(offender.id)) {
-          warnings.set(offender.id, message)
+        // Try Rule 10 first with the larger radius (opposite tacks converge fast).
+        // Skip if boats are diverging — no collision risk (e.g. ducking behind).
+        if (boatsNearby(a, b, WARNING_RADIUS_RULE10) && boatsClosing(a, b)) {
+          const r10 = this.warningRule10(state, a, b)
+          if (r10 && !warnings.has(r10.offender.id)) {
+            warnings.set(r10.offender.id, r10.message)
+            continue
+          }
+        }
+
+        // Rule 11 with the tighter radius (same tack, slower closing)
+        if (boatsNearby(a, b, WARNING_RADIUS_RULE11)) {
+          const r11 = this.warningRule11(state, a, b)
+          if (r11 && !warnings.has(r11.offender.id)) {
+            warnings.set(r11.offender.id, r11.message)
+          }
         }
       }
     }

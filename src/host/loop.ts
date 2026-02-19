@@ -1,5 +1,5 @@
 import { stepRaceState, clamp as physicsClamp, normalizeDeg } from '@/logic/physics'
-import { RulesEngine, type RuleResolution } from '@/logic/rules'
+import { RulesEngine } from '@/logic/rules'
 import { resolveBoatBoatCollisions } from '@/logic/collision/boatBoat'
 import { cloneRaceState } from '@/state/factories'
 import { raceStore, RaceStore } from '@/state/raceStore'
@@ -348,7 +348,8 @@ export class HostLoop {
 
     // Apply boat-to-boat repulsion AFTER rules evaluation so the rules
     // engine can detect overlapping boats before they're pushed apart.
-    const { correctedPositions: boatCorrected } = resolveBoatBoatCollisions(next)
+    const faults = this.rules.computeCollisionFaults(next)
+    const { correctedPositions: boatCorrected } = resolveBoatBoatCollisions(next, faults)
     boatCorrected.forEach((pos, boatId) => {
       const boat = next.boats[boatId]
       if (!boat) return

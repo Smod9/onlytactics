@@ -1152,6 +1152,12 @@ export const LiveClient = () => {
                 enabled={race.windField?.enabled}
                 intensityKts={race.windField?.intensityKts}
               />
+              {canShowBoatInfo && playerBoat?.collisionWarning && (
+                <div className="collision-warning-banner">
+                  <span className="collision-warning-icon">⚠</span>
+                  <span>{playerBoat.collisionWarning}</span>
+                </div>
+              )}
               {canShowBoatInfo && playerBoat && playerBoat.penalties > 0 && (
                 <div className="spin-under-hud">
                   <button

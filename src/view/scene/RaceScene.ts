@@ -86,16 +86,6 @@ class BoatView {
       align: 'center',
     },
   })
-  warningTag = new Text({
-    text: '⚠',
-    style: {
-      fill: '#ffaa00',
-      fontSize: 16,
-      fontWeight: 'bold',
-      align: 'center',
-    },
-  })
-
   private lastLeewardSign: 1 | -1 = 1
   private lastNameText = ''
   private lastNameFill = '#ffffff'
@@ -103,9 +93,6 @@ class BoatView {
 
   constructor(private color: number) {
     this.drawBoat()
-    this.warningTag.anchor.set(0.5)
-    this.warningTag.position.set(0, -(BOAT_BOW_OFFSET + 28))
-    this.warningTag.visible = false
     // Draw hull/sail first, then overlay collision outlines for visibility
     this.container.addChild(
       this.projection,
@@ -115,7 +102,6 @@ class BoatView {
       this.wakeIndicator,
       this.wakeLabel,
       this.nameTag,
-      this.warningTag,
     )
     // Collision footprint circles are a debug overlay; hide unless debug HUD is enabled.
     this.collision.visible = appEnv.debugHud
@@ -252,22 +238,19 @@ class BoatView {
       this.lastNameFill = nextFill
     }
 
+    const hasWarning = isPlayer && Boolean(boat.collisionWarning)
+
     if (showFouled) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100)
       this.hull.alpha = 0.4 + 0.6 * pulse
       this.hull.tint = 0xff4444
+    } else if (hasWarning) {
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 150)
+      this.hull.alpha = 0.7 + 0.3 * pulse
+      this.hull.tint = 0xffaa00
     } else {
       this.hull.alpha = 1
       this.hull.tint = 0xffffff
-    }
-
-    const hasWarning = Boolean(boat.collisionWarning)
-    this.warningTag.visible = hasWarning
-    if (hasWarning) {
-      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 150)
-      this.warningTag.alpha = pulse
-      // Counter-rotate so the warning stays upright regardless of boat heading
-      this.warningTag.rotation = -degToRad(boat.headingDeg)
     }
 
     this.drawProjection(isPlayer)

@@ -1111,6 +1111,34 @@ button {
   z-index: 9;
 }
 
+.collision-warning-banner {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(255, 170, 0, 0.5);
+  background: rgba(50, 35, 0, 0.85);
+  color: #ffcc44;
+  font-size: 0.82rem;
+  font-weight: 600;
+  animation: warning-pulse 1.2s ease-in-out infinite;
+  max-width: 22rem;
+  text-align: center;
+  justify-content: center;
+}
+
+.collision-warning-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+@keyframes warning-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
 .spin-under-hud {
   pointer-events: auto;
 }
@@ -3263,7 +3291,7 @@ kbd {
 @media (min-width: 1200px) {
   .lobby-layout {
     display: grid;
-    grid-template-columns: 420px 1fr;
+    grid-template-columns: 420px minmax(0, 720px);
     gap: 3rem;
     max-width: 100%;
     padding-left: 2.5rem;
@@ -3280,5 +3308,7 @@ kbd {
 
   .lobby-main {
     max-width: 720px;
+    min-width: 0;
+    width: 100%;
   }
 }
