@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/Smod9/onlytactics/compare/v1.37.0...v1.38.0) (2026-02-19)
+
+
+### Features
+
+* smoother performance - also fixes .env ([#128](https://github.com/Smod9/onlytactics/issues/128)) ([8980172](https://github.com/Smod9/onlytactics/commit/898017220f7ef24d13e7703ca0552f3673f7e068))
+
 # [1.37.0](https://github.com/Smod9/onlytactics/compare/v1.36.4...v1.37.0) (2026-02-19)
 
 
