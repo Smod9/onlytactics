@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { PixiStage } from '@/view/PixiStage'
-import { listReplayIndex, loadRecording, type ReplayIndexEntry } from '@/replay/storage'
+import {
+  listReplayIndex,
+  loadRecording,
+  refreshReplayIndex,
+  type ReplayIndexEntry,
+} from '@/replay/storage'
 import type { ReplayFrame, ReplayRecording } from '@/types/race'
 import { raceStore } from '@/state/raceStore'
 import { cloneRaceState } from '@/state/factories'
@@ -40,6 +45,7 @@ export const ReplayClient = () => {
         return
       }
       setRecording(data)
+      setIndex(listReplayIndex())
       const firstFrame = data.frames[0]
       if (firstFrame) {
         raceStore.reset(cloneRaceState(firstFrame.state))
@@ -51,6 +57,13 @@ export const ReplayClient = () => {
       setStatus('Failed to load replay.')
     }
   }
+
+  useEffect(() => {
+    void (async () => {
+      const merged = await refreshReplayIndex()
+      setIndex(merged)
+    })()
+  }, [])
 
   useEffect(() => {
     if (!playing || !recording) return
@@ -99,7 +112,13 @@ export const ReplayClient = () => {
     <div className="replay-client">
       <aside className="replay-sidebar">
         <h2>Saved Races</h2>
-        <button type="button" onClick={() => setIndex(listReplayIndex())}>
+        <button
+          type="button"
+          onClick={async () => {
+            const merged = await refreshReplayIndex()
+            setIndex(merged)
+          }}
+        >
           Refresh
         </button>
         <div className="replay-list">

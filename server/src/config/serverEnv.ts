@@ -30,7 +30,7 @@ export const appEnv = {
     15,
   ),
   debugHud: toBool(rawEnv.DEBUG_HUD ?? rawEnv.VITE_DEBUG_HUD, false),
-  debugNetLogs: toBool('true', true),
+  debugNetLogs: toBool(rawEnv.DEBUG_NET_LOGS ?? rawEnv.VITE_DEBUG_NET_LOGS, false),
   fixedWind: toBool(rawEnv.FIXED_WIND ?? rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(
     rawEnv.BASELINE_WIND_DEG ?? rawEnv.VITE_BASELINE_WIND_DEG,
@@ -49,6 +49,12 @@ export const appEnv = {
   // Example: lapsToFinish=2 => Start -> W -> Gate -> W -> Finish
   lapsToFinish: toNumber(rawEnv.LAPS_TO_FINISH ?? rawEnv.VITE_LAPS_TO_FINISH, 2),
   speedMultiplier: toNumber(rawEnv.SPEED_MULTIPLIER ?? rawEnv.VITE_SPEED_MULTIPLIER, 1),
+  databaseUrl: rawEnv.DATABASE_URL ?? rawEnv.POSTGRES_URL ?? '',
+  databaseSsl: toBool(rawEnv.DATABASE_SSL, false),
+  databasePoolMin: toNumber(rawEnv.DATABASE_POOL_MIN, 0),
+  databasePoolMax: toNumber(rawEnv.DATABASE_POOL_MAX, 5),
+  databaseConnectTimeoutMs: toNumber(rawEnv.DATABASE_CONNECT_TIMEOUT_MS, 5000),
+  databaseIdleTimeoutMs: toNumber(rawEnv.DATABASE_IDLE_TIMEOUT_MS, 10000),
   windFieldEnabled: toBool(
     rawEnv.WIND_FIELD_ENABLED ?? rawEnv.VITE_WIND_FIELD_ENABLED,
     true,

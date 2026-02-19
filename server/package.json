@@ -21,11 +21,14 @@
     "colyseus": "^0.17.4",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "fly": "^4.6.16",
+    "pg": "^8.16.3",
     "tsconfig-paths": "^4.2.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
+    "@types/pg": "^8.15.6",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.20.6",
