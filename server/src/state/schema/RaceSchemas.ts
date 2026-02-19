@@ -195,7 +195,7 @@ export class RaceStateSchema extends Schema {
   leewardGate = new GateSchema()
 
   @type('string')
-  phase: 'prestart' | 'running' | 'finished' = 'prestart'
+  phase: 'prestart' | 'running' | 'finished' | 'results' = 'prestart'
 
   @type('boolean')
   countdownArmed = false

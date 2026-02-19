@@ -27,6 +27,7 @@ import { RaceRoomState } from '../state/RaceRoomState'
 import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
 import { saveRace } from '../db/raceStorage'
+import { saveRaceStats } from '../db/statsStorage'
 
 const roomDebug = (...args: unknown[]) => {
   if (!appEnv.debugNetLogs) return
@@ -60,6 +61,7 @@ type ProtestCommand =
 
 type HostCommand =
   | { kind: 'arm'; seconds?: number }
+  | { kind: 'finish_race' }
   | { kind: 'reset' }
   | { kind: 'pause'; paused: boolean }
   | { kind: 'wind_field'; enabled: boolean }
@@ -169,12 +171,14 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       onTimeout: () => this.handleTimeout(),
       onTick: (state) => {
         this.replayRecorder.recordFrame(state, [])
-        const anyFinished = Object.values(state.boats ?? {}).some((boat) => boat.finished)
-        if (anyFinished && !this.replaySaved) {
-          void this.persistReplay('winner_recorded')
-        }
-        if (state.phase === 'finished' && !this.replaySaved) {
-          void this.persistReplay('race_finished')
+        if (state.phase !== 'results') {
+          const anyFinished = Object.values(state.boats ?? {}).some((boat) => boat.finished)
+          if (anyFinished && !this.replaySaved) {
+            void this.persistReplay('winner_recorded')
+          }
+          if (state.phase === 'finished' && !this.replaySaved) {
+            void this.persistReplay('race_finished')
+          }
         }
         // Debug: confirm countdown is ticking server-side.
         // Logs at most once per second while countdown is armed.
@@ -307,6 +311,8 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       roomDebug('host_command', { clientId: client.sessionId, command })
       if (command.kind === 'arm') {
         this.armCountdown(command.seconds ?? appEnv.countdownSeconds)
+      } else if (command.kind === 'finish_race') {
+        this.finishRace()
       } else if (command.kind === 'reset') {
         this.resetRaceState()
       } else if (command.kind === 'pause') {
@@ -546,7 +552,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   getStatus(): 'waiting' | 'in-progress' | 'finished' {
     if (!this.raceStore) return 'waiting'
     const state = this.raceStore.getState()
-    // Check if all boats finished
+    if (state.phase === 'results') return 'finished'
     const allFinished = Object.values(state.boats).every((boat) => boat.finished)
     if (allFinished && Object.keys(state.boats).length > 0) return 'finished'
     if (
@@ -1310,6 +1316,63 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     } finally {
       this.persistingReplay = false
     }
+  }
+
+  private finishRace() {
+    if (!this.raceStore) return
+    const state = this.raceStore.getState()
+    if (state.phase !== 'running' && state.phase !== 'finished') {
+      roomDebug('finishRace ignored – wrong phase', { phase: state.phase })
+      return
+    }
+
+    roomDebug('finishRace', { ...this.describeHost(this.hostSessionId) })
+
+    this.mutateState((draft) => {
+      for (const boat of Object.values(draft.boats)) {
+        if (!boat.finished) {
+          boat.finished = true
+        }
+      }
+      draft.phase = 'results'
+    })
+
+    this.loop?.setPaused?.(true)
+    void this.persistReplayAndStats()
+  }
+
+  private async persistReplayAndStats() {
+    const recording = this.replayRecorder.getRecording()
+    const finalState = this.raceStore?.getState()
+    if (!recording || !finalState) return
+
+    const cloned = cloneRaceState(finalState)
+    await this.persistReplay('race_finished')
+
+    const userBoatMap = this.buildUserBoatMap()
+    try {
+      await saveRaceStats(recording, cloned, userBoatMap)
+      console.info('[RaceRoom] saved race stats', { raceId: recording.meta.raceId })
+    } catch (error) {
+      console.error('[RaceRoom] failed to save race stats', {
+        raceId: recording.meta.raceId,
+        error,
+      })
+    }
+  }
+
+  private buildUserBoatMap(): Map<string, string | null> {
+    const map = new Map<string, string | null>()
+    for (const [sessionId, boatId] of this.clientBoatMap.entries()) {
+      const clientId = this.clientIdentityMap.get(sessionId) ?? null
+      const isUuid =
+        clientId !== null &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          clientId,
+        )
+      map.set(boatId, isUuid ? clientId : null)
+    }
+    return map
   }
 
   private resetRaceState() {

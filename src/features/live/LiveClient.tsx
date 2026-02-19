@@ -367,6 +367,11 @@ export const LiveClient = () => {
   const hostNameDisplay = hostName ?? 'Host'
   const showWaitingOverlay =
     role !== 'host' && race.phase === 'prestart' && !race.countdownArmed
+  const showResultsOverlay = race.phase === 'results'
+  const allBoatsFinished =
+    race.phase === 'running' &&
+    Object.keys(race.boats).length > 0 &&
+    Object.values(race.boats).every((b) => b.finished)
 
   const elapsedRaceLabel = formatRaceTime(Math.max(0, race.t))
   const finishSplitsByBoatId = new Map<string, number>()
@@ -484,26 +489,25 @@ export const LiveClient = () => {
           <div style={{ display: 'none' }}>
             <ReplaySaveButton />
           </div>
-          {role === 'host' && (
-            <>
-              <button
-                type="button"
-                className="start-sequence"
-                onClick={() => network.setAiEnabled(!race.aiEnabled)}
-                style={{ display: 'none' }}
-              >
-                {race.aiEnabled ? 'Disable AI Boats' : 'Enable AI Boats'}
-              </button>
-              <button
-                type="button"
-                className="start-sequence"
-                onClick={() => network.resetRace()}
-              >
-                Restart Race
-              </button>
-            </>
+          {role === 'host' && race.phase === 'prestart' && race.countdownArmed && (
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => network.resetRace()}
+            >
+              Cancel Start
+            </button>
           )}
-          {(role === 'host' || role === 'god') && (
+          {role === 'host' && (race.phase === 'running' || race.phase === 'finished') && (
+            <button
+              type="button"
+              className="start-sequence"
+              onClick={() => network.finishRace()}
+            >
+              Finish Race
+            </button>
+          )}
+          {(role === 'host' || role === 'god') && race.phase !== 'results' && (
             <button
               type="button"
               className="start-sequence"
@@ -732,6 +736,82 @@ export const LiveClient = () => {
               <div className="start-sequence-card">
                 <h2>Waiting for the start</h2>
                 <p>Waiting for Race Comittee ({hostNameDisplay}) to start the race.</p>
+              </div>
+            </div>
+          )}
+          {allBoatsFinished && role === 'host' && (
+            <div className="finish-prompt">
+              All boats finished &mdash;{' '}
+              <button
+                type="button"
+                className="start-sequence"
+                onClick={() => network.finishRace()}
+              >
+                Mark Race Complete
+              </button>
+            </div>
+          )}
+          {showResultsOverlay && (
+            <div className="start-sequence-overlay results-overlay">
+              <div className="start-sequence-card results-card">
+                <h2>Race Results</h2>
+                <p className="results-subtitle">
+                  {race.meta.courseName} &middot;{' '}
+                  {Object.keys(race.boats).length}-boat fleet &middot;{' '}
+                  {formatRaceTime(Math.max(0, race.t))}
+                </p>
+                <ol className="results-list">
+                  {race.leaderboard.map((boatId, index) => {
+                    const boat = race.boats[boatId]
+                    if (!boat) return null
+                    const hasTime =
+                      typeof boat.finishTime === 'number' && boat.finishTime > 0
+                    const isDnf = !hasTime
+                    const fleetSize = Object.keys(race.boats).length
+                    const points = isDnf ? fleetSize + 1 : index + 1
+                    const medal =
+                      !isDnf && index === 0
+                        ? '🥇'
+                        : !isDnf && index === 1
+                          ? '🥈'
+                          : !isDnf && index === 2
+                            ? '🥉'
+                            : ''
+                    const splitDelta = finishSplitsByBoatId.get(boatId)
+                    return (
+                      <li key={boatId} className={isDnf ? 'results-dnf' : ''}>
+                        <span className="results-pos">{index + 1}.</span>
+                        <span className="results-medal">{medal}</span>
+                        <span className="results-name">{boat.name}</span>
+                        <span className="results-time">
+                          {isDnf ? 'DNF' : formatRaceTime(boat.finishTime!)}
+                        </span>
+                        <span className="results-split">
+                          {!isDnf && typeof splitDelta === 'number'
+                            ? formatSplit(
+                                Math.abs(splitDelta) < 0.005 ? 0 : splitDelta,
+                              )
+                            : ''}
+                        </span>
+                        <span className="results-points">{points} pt{points !== 1 ? 's' : ''}</span>
+                      </li>
+                    )
+                  })}
+                </ol>
+                {role === 'host' ? (
+                  <button
+                    type="button"
+                    className="start-sequence"
+                    onClick={() => network.resetRace()}
+                    style={{ marginTop: 16 }}
+                  >
+                    Start New Race
+                  </button>
+                ) : (
+                  <p className="results-waiting">
+                    Waiting for RC ({hostNameDisplay}) to start the next race...
+                  </p>
+                )}
               </div>
             </div>
           )}

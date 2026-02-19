@@ -2828,3 +2828,269 @@ kbd {
     bottom: 8rem;
   }
 }
+
+/* Results overlay */
+.results-overlay {
+  z-index: 10;
+  background: rgba(2, 4, 12, 0.75);
+}
+
+.results-card {
+  max-width: 540px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.results-subtitle {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.results-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  width: 100%;
+}
+
+.results-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+}
+
+.results-list li.results-dnf {
+  opacity: 0.55;
+}
+
+.results-pos {
+  width: 1.6em;
+  text-align: right;
+  font-weight: 600;
+  color: #9fb7ff;
+  flex-shrink: 0;
+}
+
+.results-medal {
+  width: 1.4em;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.results-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.results-time {
+  font-variant-numeric: tabular-nums;
+  color: #c4cbe0;
+  flex-shrink: 0;
+}
+
+.results-split {
+  font-size: 0.8rem;
+  color: #7a8aaf;
+  width: 5.5em;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.results-points {
+  font-size: 0.8rem;
+  color: #9fb7ff;
+  width: 3.5em;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.results-waiting {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+
+.finish-prompt {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  background: rgba(8, 12, 24, 0.92);
+  border: 1px solid #3a5;
+  border-radius: 0.6rem;
+  padding: 0.5rem 1rem;
+  color: #c4cbe0;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+/* Stats pages (leaderboard, profile) */
+.stats-page {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+  min-height: 100vh;
+  background: #05070f;
+  color: #e4edff;
+}
+
+.stats-card {
+  background: rgba(8, 12, 24, 0.95);
+  border: 1px solid #2f3650;
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 700px;
+  width: 100%;
+}
+
+.stats-card h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.4rem;
+}
+
+.stats-card h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1rem;
+  color: #9fb7ff;
+}
+
+.stats-subtitle {
+  color: #7a8aaf;
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+}
+
+.stats-loading,
+.stats-empty {
+  color: #7a8aaf;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.stats-error {
+  color: #ff6b6b;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.stats-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #2f3650;
+  color: #7a8aaf;
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stats-table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid rgba(47, 54, 80, 0.4);
+}
+
+.stats-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stats-row-me {
+  background: rgba(100, 140, 255, 0.08);
+}
+
+.stats-row-dnf {
+  opacity: 0.55;
+}
+
+.stats-you-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(100, 140, 255, 0.2);
+  color: #9fb7ff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 0.25rem;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.stats-table a {
+  color: #9fb7ff;
+  text-decoration: none;
+}
+
+.stats-table a:hover {
+  text-decoration: underline;
+}
+
+.stats-nav {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.stats-nav a {
+  color: #9fb7ff;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.stats-nav a:hover {
+  text-decoration: underline;
+}
+
+/* Profile summary cards */
+.profile-summary {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.5rem;
+  min-width: 80px;
+}
+
+.profile-stat-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #e4edff;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7a8aaf;
+}
