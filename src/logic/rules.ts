@@ -91,7 +91,7 @@ export const boatsTooClose = (a: BoatState, b: BoatState) => {
   return false
 }
 
-export const WARNING_RADIUS_SCALE = 1.3
+export const WARNING_RADIUS_SCALE = 2.0
 
 export const boatsNearby = (a: BoatState, b: BoatState, scale = WARNING_RADIUS_SCALE) => {
   const ca = boatCircles(a)

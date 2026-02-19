@@ -104,7 +104,7 @@ class BoatView {
   constructor(private color: number) {
     this.drawBoat()
     this.warningTag.anchor.set(0.5)
-    this.warningTag.position.set(0, -(BOAT_BOW_OFFSET + 10))
+    this.warningTag.position.set(0, -(BOAT_BOW_OFFSET + 28))
     this.warningTag.visible = false
     // Draw hull/sail first, then overlay collision outlines for visibility
     this.container.addChild(
@@ -184,7 +184,7 @@ class BoatView {
     this.sail.fill()
   }
 
-  update(boat: BoatState, isPlayer = false) {
+  update(boat: BoatState, isPlayer = false, beforeStart = false) {
     this.container.position.set(boat.pos.x, boat.pos.y)
     this.container.rotation = degToRad(boat.headingDeg)
     const awa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
@@ -244,14 +244,15 @@ class BoatView {
       this.nameTag.text = nextNameText
       this.lastNameText = nextNameText
     }
+    const showFouled = beforeStart ? boat.overEarly : boat.fouled
     const nextFill =
-      boat.overEarly || boat.fouled || boat.penalties > 0 ? '#ff6b6b' : '#ffffff'
+      showFouled || boat.penalties > 0 ? '#ff6b6b' : '#ffffff'
     if (nextFill !== this.lastNameFill) {
       this.nameTag.style.fill = nextFill
       this.lastNameFill = nextFill
     }
 
-    if (boat.fouled) {
+    if (showFouled) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100)
       this.hull.alpha = 0.4 + 0.6 * pulse
       this.hull.tint = 0xff4444
@@ -1869,7 +1870,7 @@ export class RaceScene {
         this.boatLayer.addChild(view.container)
       }
       const isPlayer = boat.id === identity.boatId
-      this.boats.get(boat.id)?.update(boat, isPlayer)
+      this.boats.get(boat.id)?.update(boat, isPlayer, state.t < 0)
     })
 
     // cleanup
