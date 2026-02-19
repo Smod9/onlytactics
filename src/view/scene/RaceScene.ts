@@ -86,7 +86,6 @@ class BoatView {
       align: 'center',
     },
   })
-
   private lastLeewardSign: 1 | -1 = 1
   private lastNameText = ''
   private lastNameFill = '#ffffff'
@@ -171,7 +170,7 @@ class BoatView {
     this.sail.fill()
   }
 
-  update(boat: BoatState, isPlayer = false) {
+  update(boat: BoatState, isPlayer = false, beforeStart = false) {
     this.container.position.set(boat.pos.x, boat.pos.y)
     this.container.rotation = degToRad(boat.headingDeg)
     const awa = angleDiff(RaceScene.currentWindDeg, boat.headingDeg)
@@ -231,17 +230,24 @@ class BoatView {
       this.nameTag.text = nextNameText
       this.lastNameText = nextNameText
     }
+    const showFouled = beforeStart ? boat.overEarly : boat.fouled
     const nextFill =
-      boat.overEarly || boat.fouled || boat.penalties > 0 ? '#ff6b6b' : '#ffffff'
+      showFouled || boat.penalties > 0 ? '#ff6b6b' : '#ffffff'
     if (nextFill !== this.lastNameFill) {
       this.nameTag.style.fill = nextFill
       this.lastNameFill = nextFill
     }
 
-    if (boat.fouled) {
+    const hasWarning = isPlayer && Boolean(boat.collisionWarning)
+
+    if (showFouled) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 100)
       this.hull.alpha = 0.4 + 0.6 * pulse
       this.hull.tint = 0xff4444
+    } else if (hasWarning) {
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 150)
+      this.hull.alpha = 0.7 + 0.3 * pulse
+      this.hull.tint = 0xffaa00
     } else {
       this.hull.alpha = 1
       this.hull.tint = 0xffffff
@@ -1847,7 +1853,7 @@ export class RaceScene {
         this.boatLayer.addChild(view.container)
       }
       const isPlayer = boat.id === identity.boatId
-      this.boats.get(boat.id)?.update(boat, isPlayer)
+      this.boats.get(boat.id)?.update(boat, isPlayer, state.t < 0)
     })
 
     // cleanup

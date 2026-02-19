@@ -80,6 +80,7 @@ export type BoatState = {
   rightsSuspended: boolean
   vmgMode?: boolean
   ai?: BoatAiConfig
+  collisionWarning?: string
 }
 
 export type RaceMeta = {

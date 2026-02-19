@@ -38,6 +38,7 @@ const upsertBoat = (target: BoatStateSchema, source: BoatState) => {
   target.lastInputAppliedAt = source.lastInputAppliedAt ?? 0
   target.rightsSuspended = Boolean(source.rightsSuspended)
   target.vmgMode = Boolean(source.vmgMode)
+  target.collisionWarning = source.collisionWarning ?? ''
 }
 
 const upsertProtest = (
