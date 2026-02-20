@@ -8,6 +8,8 @@ primary_region = "sjc"
   NODE_ENV = "production"
   PORT = "8080"
   COUNTDOWN_SECONDS = "180"
+  TICK_RATE_HZ = "20"
+  HOST_PUBLISH_INTERVAL_MS = "50"
 
 [http_service]
   internal_port = 8080
