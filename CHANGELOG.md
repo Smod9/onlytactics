@@ -1,3 +1,10 @@
+## [1.38.4](https://github.com/Smod9/onlytactics/compare/v1.38.3...v1.38.4) (2026-02-20)
+
+
+### Bug Fixes
+
+* db migration included ([54ac8fe](https://github.com/Smod9/onlytactics/commit/54ac8fed804748a02d02ba1f034c57acfdbb5b8a))
+
 ## [1.38.3](https://github.com/Smod9/onlytactics/compare/v1.38.2...v1.38.3) (2026-02-20)
 
 
