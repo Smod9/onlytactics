@@ -624,7 +624,7 @@ export class HostLoop {
   /**
    * Check if boat crossed the start line (from pre-start side to course side)
    */
-  private checkStartLineCrossing(
+  private _checkStartLineCrossing(
     boat: BoatState,
     state: RaceState,
     committee: { x: number; y: number },
