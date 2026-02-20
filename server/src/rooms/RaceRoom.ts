@@ -1317,6 +1317,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       this.replaySaved = true
       console.info('[RaceRoom] saved replay', { raceId: recording.meta.raceId, reason })
     } catch (error) {
+      this.replaySaved = true
       console.error('[RaceRoom] failed to save replay', {
         raceId: recording?.meta.raceId,
         reason,

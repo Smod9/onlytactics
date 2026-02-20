@@ -66,6 +66,7 @@ const MIGRATIONS = [
   { filename: '002_users.sql' },
   { filename: '003_race_stats.sql' },
   { filename: '004_drop_fk_constraints.sql' },
+  { filename: '005_seed_bigint.sql' },
 ]
 
 export const runMigrations = async () => {
