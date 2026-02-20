@@ -161,22 +161,28 @@ class AuthStore {
   }
 
   async fetchCurrentUser(): Promise<void> {
-    if (!this.state.accessToken) {
-      return
-    }
+    const token = await this.getFreshAccessToken()
+    if (!token) return
 
     try {
-      const user = await auth.getMe(this.state.accessToken)
+      const user = await auth.getMe(token)
       this.setState({ user })
       this.saveToStorage()
     } catch {
-      // Token might be expired, try to refresh
-      const refreshed = await this.refreshSession()
-      if (!refreshed) {
-        this.setState({ user: null, accessToken: null, refreshToken: null })
-        this.clearStorage()
-      }
+      this.setState({ user: null, accessToken: null, refreshToken: null })
+      this.clearStorage()
     }
+  }
+
+  async updateProfile(updates: { displayName?: string }): Promise<void> {
+    const token = await this.getFreshAccessToken()
+    if (!token) throw new Error('Not authenticated')
+
+    const updatedUser = await auth.updateProfile(token, updates)
+    this.setState({
+      user: { ...this.state.user!, ...updatedUser },
+    })
+    this.saveToStorage()
   }
 
   clearError() {
@@ -233,6 +239,7 @@ const boundRefreshSession = authStore.refreshSession.bind(authStore)
 const boundClearError = authStore.clearError.bind(authStore)
 const boundGetAccessToken = authStore.getAccessToken.bind(authStore)
 const boundGetFreshAccessToken = authStore.getFreshAccessToken.bind(authStore)
+const boundUpdateProfile = authStore.updateProfile.bind(authStore)
 
 // React hook for using auth state
 import { useEffect, useSyncExternalStore } from 'react'
@@ -251,6 +258,7 @@ export const useAuth = () => {
     isAdmin: authStore.isAdmin(),
     getAccessToken: boundGetAccessToken,
     getFreshAccessToken: boundGetFreshAccessToken,
+    updateProfile: boundUpdateProfile,
   }
 }
 

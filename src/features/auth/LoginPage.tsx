@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '@/state/authStore'
+import { setGuestMode } from './AuthGatePage'
 
 export function LoginPage() {
   const { login, isLoading, error, clearError } = useAuth()
@@ -85,6 +86,12 @@ export function LoginPage() {
           }}>
             Create an account
           </a>
+        </div>
+
+        <div className="auth-gate-guest">
+          <button type="button" onClick={() => { setGuestMode(); window.location.href = '/lobby' }}>
+            or continue as guest
+          </button>
         </div>
       </div>
     </div>

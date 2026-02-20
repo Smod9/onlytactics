@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { appEnv } from '@/config/env'
 import { useAuth } from '@/state/authStore'
 
@@ -46,11 +46,40 @@ export function ProfilePage() {
   const [history, setHistory] = useState<RaceHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, updateProfile } = useAuth()
+  const [editName, setEditName] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editFeedback, setEditFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const pathParts = window.location.pathname.split('/')
   const profileUserId = pathParts[2] || user?.id
   const isOwnProfile = !pathParts[2] || pathParts[2] === user?.id
+
+  useEffect(() => {
+    if (user?.displayName) setEditName(user.displayName)
+  }, [user?.displayName])
+
+  const handleSaveProfile = async (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = editName.trim()
+    if (trimmed.length < 2 || trimmed.length > 50) {
+      setEditFeedback({ type: 'error', message: 'Name must be 2-50 characters' })
+      return
+    }
+    if (trimmed === user?.displayName) return
+
+    setEditSaving(true)
+    setEditFeedback(null)
+    try {
+      await updateProfile({ displayName: trimmed })
+      setEditFeedback({ type: 'success', message: 'Name updated!' })
+      setTimeout(() => setEditFeedback(null), 3000)
+    } catch (err) {
+      setEditFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Failed to save' })
+    } finally {
+      setEditSaving(false)
+    }
+  }
 
   useEffect(() => {
     if (!profileUserId) {
@@ -87,6 +116,38 @@ export function ProfilePage() {
     <div className="stats-page">
       <div className="stats-card">
         <h2>{isOwnProfile ? 'Your Stats' : 'Sailor Stats'}</h2>
+
+        {isOwnProfile && user && (
+          <div className="profile-edit-section">
+            <h3>Edit Profile</h3>
+            <form className="profile-edit-form" onSubmit={handleSaveProfile}>
+              <div className="auth-field">
+                <label htmlFor="edit-displayName">Display Name</label>
+                <input
+                  id="edit-displayName"
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Your sailor name"
+                  maxLength={50}
+                />
+              </div>
+              <button
+                type="submit"
+                className="profile-edit-save"
+                disabled={editSaving || editName.trim() === user.displayName}
+              >
+                {editSaving ? 'Saving...' : 'Save'}
+              </button>
+            </form>
+            {editFeedback && (
+              <p className={`profile-edit-feedback ${editFeedback.type}`}>
+                {editFeedback.message}
+              </p>
+            )}
+          </div>
+        )}
+
         {loading && <p className="stats-loading">Loading...</p>}
         {error && <p className="stats-error">{error}</p>}
         {!loading && !error && !stats && (
