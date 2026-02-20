@@ -10,6 +10,7 @@ import {
   verifyPasswordResetToken,
   markPasswordResetTokenUsed,
   updateUserPassword,
+  updateUser,
   validateEmail,
 } from '@/auth/userService'
 import {
@@ -235,6 +236,42 @@ router.get('/me', authenticate, async (req, res) => {
   } catch (error) {
     console.error('[auth] Get user error:', error)
     res.status(500).json({ error: 'fetch_failed', message: 'Failed to fetch user' })
+  }
+})
+
+/**
+ * PATCH /api/auth/profile
+ * Update own profile (display name, etc.)
+ */
+router.patch('/profile', authenticate, async (req, res) => {
+  try {
+    const { displayName } = req.body
+
+    if (displayName !== undefined) {
+      if (typeof displayName !== 'string' || displayName.trim().length < 2 || displayName.trim().length > 50) {
+        res.status(400).json({ error: 'validation_error', message: 'Display name must be 2-50 characters' })
+        return
+      }
+    }
+
+    const user = await updateUser(req.user!.sub, { displayName: displayName?.trim() })
+    if (!user) {
+      res.status(404).json({ error: 'user_not_found', message: 'User not found' })
+      return
+    }
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    })
+  } catch (error) {
+    console.error('[auth] Update profile error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to update profile'
+    res.status(400).json({ error: 'update_failed', message })
   }
 })
 

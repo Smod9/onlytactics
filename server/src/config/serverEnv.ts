@@ -87,7 +87,7 @@ export const appEnv = {
 
   // Authentication
   jwtSecret: rawEnv.JWT_SECRET ?? 'dev-jwt-secret-change-in-production',
-  jwtAccessExpiresIn: rawEnv.JWT_ACCESS_EXPIRES_IN ?? '15m',
+  jwtAccessExpiresIn: rawEnv.JWT_ACCESS_EXPIRES_IN ?? '1h',
   jwtRefreshExpiresIn: rawEnv.JWT_REFRESH_EXPIRES_IN ?? '7d',
   bcryptCostFactor: toNumber(rawEnv.BCRYPT_COST_FACTOR, 12),
   passwordResetExpiresMinutes: toNumber(rawEnv.PASSWORD_RESET_EXPIRES_MINUTES, 60),

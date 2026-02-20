@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { LiveClient } from './features/live/LiveClient'
 import { ReplayClient } from './features/replay/ReplayClient'
 import { LobbyClient } from './features/live/LobbyClient'
@@ -6,11 +6,12 @@ import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
+import { AuthGatePage, isGuestMode, clearGuestMode } from './features/auth/AuthGatePage'
 import { AdminDashboard } from './features/admin/AdminDashboard'
 import { LeaderboardPage } from './features/stats/LeaderboardPage'
 import { ProfilePage } from './features/stats/ProfilePage'
 import { useAuth } from './state/authStore'
-import { TrophyIcon, ReplayIcon, UserIcon, SignInIcon, RegisterIcon, AdminIcon, LogOutIcon } from './view/icons'
+import { TrophyIcon, ReplayIcon, UserIcon, AdminIcon, LogOutIcon, LobbyIcon } from './view/icons'
 import './styles/auth.css'
 
 type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile'
@@ -31,11 +32,25 @@ const getInitialMode = (): AppMode => {
   return 'live'
 }
 
+function HamburgerIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  )
+}
+
 export function App() {
   const [mode, setMode] = useState<AppMode>(getInitialMode)
+  const [gatePassedThisSession, setGatePassedThisSession] = useState(false)
   const { user: authUser, isAuthenticated, isAdmin, logout: authLogout } = useAuth()
   const appVersion = `v${__APP_VERSION__}`
   const releaseUrl = __APP_RELEASE_URL__
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleLocationChange = () => {
@@ -69,6 +84,18 @@ export function App() {
     return () => window.removeEventListener('popstate', handleLocationChange)
   }, [])
 
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
+
   // Auth pages render without the app shell
   if (mode === 'login') return <LoginPage />
   if (mode === 'register') return <RegisterPage />
@@ -77,6 +104,29 @@ export function App() {
   if (mode === 'admin') return <AdminDashboard />
   if (mode === 'leaderboard') return <LeaderboardPage />
   if (mode === 'profile') return <ProfilePage />
+
+  // Auth gate: require login/register or guest opt-in before lobby/game
+  const needsGate = (mode === 'lobby' || mode === 'live') && !isAuthenticated && !isGuestMode() && !gatePassedThisSession
+
+  if (needsGate) {
+    return <AuthGatePage onAuthenticated={() => setGatePassedThisSession(true)} />
+  }
+
+  const handleLogout = async () => {
+    setMenuOpen(false)
+    await authLogout()
+    clearGuestMode()
+    window.location.href = '/lobby'
+  }
+
+  const navigateTo = (path: string) => {
+    setMenuOpen(false)
+    window.location.href = path
+  }
+
+  const displayName = isAuthenticated
+    ? (authUser?.displayName ?? 'Sailor')
+    : 'Guest'
 
   return (
     <div className="app-shell">
@@ -98,47 +148,53 @@ export function App() {
         </div>
         <div className="header-right">
           <div id="header-cta-root" className="header-cta" />
-          {mode !== 'live' && (
-            <div className="header-auth">
-              <a href="/leaderboard" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/leaderboard' }}>
-                <TrophyIcon /> Leaderboard
-              </a>
-              <a href="/replay" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/replay' }}>
-                <ReplayIcon /> Replays
-              </a>
-              {isAuthenticated ? (
-                <>
-                  <a href="/profile" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/profile' }}>
-                    <UserIcon /> {authUser?.displayName ?? 'Account'}
-                  </a>
-                  {isAdmin && (
-                    <a href="/admin" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/admin' }}>
-                      <AdminIcon /> Admin
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    className="header-auth-link header-auth-logout"
-                    onClick={async () => {
-                      await authLogout()
-                      window.location.href = '/lobby'
-                    }}
-                  >
+          <span className="header-user-label">{displayName}</span>
+          <div className="header-menu-wrapper" ref={menuRef}>
+            <button
+              type="button"
+              className="header-hamburger"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+            >
+              <HamburgerIcon />
+            </button>
+            {menuOpen && (
+              <div className="header-menu-dropdown">
+                {isAuthenticated && (
+                  <button type="button" className="header-menu-item" onClick={() => navigateTo('/profile')}>
+                    <UserIcon /> Profile
+                  </button>
+                )}
+                <button type="button" className="header-menu-item" onClick={() => navigateTo('/leaderboard')}>
+                  <TrophyIcon /> Leaderboard
+                </button>
+                <button type="button" className="header-menu-item" onClick={() => navigateTo('/replay')}>
+                  <ReplayIcon /> Replays
+                </button>
+                {isAuthenticated && (
+                  <button type="button" className="header-menu-item" onClick={() => navigateTo('/lobby')}>
+                    <LobbyIcon /> Lobby
+                  </button>
+                )}
+                {isAdmin && (
+                  <button type="button" className="header-menu-item" onClick={() => navigateTo('/admin')}>
+                    <AdminIcon /> Admin
+                  </button>
+                )}
+                <div className="header-menu-divider" />
+                {isAuthenticated ? (
+                  <button type="button" className="header-menu-item header-menu-item-danger" onClick={handleLogout}>
                     <LogOutIcon /> Log Out
                   </button>
-                </>
-              ) : (
-                <>
-                  <a href="/login" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/login' }}>
-                    <SignInIcon /> Sign In
-                  </a>
-                  <a href="/register" className="header-auth-link header-auth-register" onClick={(e) => { e.preventDefault(); window.location.href = '/register' }}>
-                    <RegisterIcon /> Register
-                  </a>
-                </>
-              )}
-            </div>
-          )}
+                ) : (
+                  <button type="button" className="header-menu-item" onClick={() => navigateTo('/register')}>
+                    Create Account
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
       <main className="app-main">

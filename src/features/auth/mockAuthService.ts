@@ -229,6 +229,28 @@ export const mockAuthService = {
     }
   },
 
+  async updateProfile(accessToken: string, updates: { displayName?: string }): Promise<User> {
+    await delay(200)
+
+    const userId = getUserIdFromToken(accessToken)
+    if (!userId) {
+      throw new MockAuthError('unauthorized', 'Invalid or expired token')
+    }
+
+    const users = getUsers()
+    const userIndex = users.findIndex((u) => u.id === userId)
+    if (userIndex === -1) {
+      throw new MockAuthError('user_not_found', 'User not found')
+    }
+
+    if (updates.displayName) {
+      users[userIndex].displayName = updates.displayName.trim()
+    }
+
+    saveUsers(users)
+    return userToPublic(users[userIndex])
+  },
+
   // Admin endpoints
   async listUsers(
     accessToken: string,

@@ -4,6 +4,7 @@ import { identity } from '@/net/identity'
 import { removeKey } from '@/utils/storage'
 import { appEnv } from '@/config/env'
 import { useAuth } from '@/state/authStore'
+import { TrophyIcon, ReplayIcon } from '@/view/icons'
 
 const apiBase = appEnv.apiUrl.replace(/\/$/, '')
 
@@ -552,7 +553,15 @@ export const LobbyClient = () => {
       )}
       </div>
       <aside className="lobby-sidebar">
-        <h2 style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>Leaderboard</h2>
+        <div className="lobby-quick-nav">
+          <a href="/leaderboard" className="lobby-quick-nav-link" onClick={(e) => { e.preventDefault(); window.location.href = '/leaderboard' }}>
+            <TrophyIcon /> Leaderboard
+          </a>
+          <a href="/replay" className="lobby-quick-nav-link" onClick={(e) => { e.preventDefault(); window.location.href = '/replay' }}>
+            <ReplayIcon /> Replays
+          </a>
+        </div>
+        <h2 style={{ fontSize: '1.2rem', marginBottom: '0.75rem' }}>Top Sailors</h2>
         {lbLoading ? (
           <p style={{ opacity: 0.6, fontSize: '0.9rem' }}>Loading&hellip;</p>
         ) : lbEntries.length === 0 ? (
