@@ -622,31 +622,6 @@ export class HostLoop {
   }
 
   /**
-   * Check if boat crossed the start line (from pre-start side to course side)
-   */
-  private _checkStartLineCrossing(
-    boat: BoatState,
-    state: RaceState,
-    committee: { x: number; y: number },
-    pin: { x: number; y: number },
-  ): boolean {
-    const prevPos = boat.prevPos ?? boat.pos
-
-    // Line vector from committee to pin
-    const lineVec = { x: pin.x - committee.x, y: pin.y - committee.y }
-
-    // Determine course side based on wind direction
-    const windRad = (state.baselineWindDeg * Math.PI) / 180
-    const windVec = { x: Math.sin(windRad), y: -Math.cos(windRad) }
-    const cross = lineVec.x * windVec.y - lineVec.y * windVec.x
-    const courseSideSign = cross >= 0 ? 1 : -1
-
-    const prevOver = boatOverStartLine(boat, prevPos, committee, pin, courseSideSign)
-    const currOver = boatOverStartLine(boat, boat.pos, committee, pin, courseSideSign)
-    return !prevOver && currOver
-  }
-
-  /**
    * Handle finish line crossing.
    * Boat must cross between committee and pin marks.
    */
