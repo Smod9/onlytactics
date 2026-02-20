@@ -183,17 +183,20 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
             void this.persistReplay('race_finished')
           }
         }
-        // Debug: confirm countdown is ticking server-side.
-        // Logs at most once per second while countdown is armed.
-        if (state.phase === 'prestart' && state.countdownArmed) {
+        {
           const now = Date.now()
-          if (now - this.lastCountdownLogAtMs > 1000) {
+          if (now - this.lastCountdownLogAtMs > 5000) {
             this.lastCountdownLogAtMs = now
-            console.info('[RaceRoom]', 'countdown_tick', {
+            const boatCount = Object.keys(state.boats ?? {}).length
+            const finished = Object.values(state.boats ?? {}).filter((b) => b.finished).length
+            console.info('[RaceRoom]', 'tick', {
               t: Number.isFinite(state.t) ? state.t.toFixed(2) : state.t,
               phase: state.phase,
-              countdownArmed: state.countdownArmed,
+              boats: boatCount,
+              finished,
               clockStartMs: state.clockStartMs ?? null,
+              countdownArmed: state.countdownArmed,
+              hostId: state.hostId?.slice(0, 8) || null,
             })
           }
         }
@@ -1243,14 +1246,17 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   }
 
   private armCountdown(seconds: number) {
-    roomDebug('armCountdown', {
+    const clockStartMs = Date.now() + seconds * 1000
+    console.info('[RaceRoom] armCountdown', {
       seconds,
-      ...this.describeHost(this.hostSessionId),
+      clockStartMs,
+      hostSession: this.hostSessionId?.slice(0, 8),
+      hostClient: this.hostClientId?.slice(0, 8),
     })
     this.mutateState((draft) => {
       draft.phase = 'prestart'
       draft.countdownArmed = true
-      draft.clockStartMs = Date.now() + seconds * 1000
+      draft.clockStartMs = clockStartMs
       draft.t = -seconds
       const hostBoatId = this.hostSessionId
         ? this.clientBoatMap.get(this.hostSessionId)

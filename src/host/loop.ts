@@ -225,11 +225,29 @@ export class HostLoop {
   private pendingSpinClears = new Set<string>()
   private spinSeq = 0
 
+  private tickErrorCount = 0
+
   start() {
     if (this.timer) return
     this.lastTick = performance.now()
     const intervalMs = 1000 / this.tickRate
-    this.timer = setInterval(() => this.tick(), intervalMs)
+    this.timer = setInterval(() => {
+      try {
+        this.tick()
+        this.tickErrorCount = 0
+      } catch (error) {
+        this.tickErrorCount++
+        console.error('[HostLoop] tick error', {
+          errorCount: this.tickErrorCount,
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined,
+        })
+        if (this.tickErrorCount >= 30) {
+          console.error('[HostLoop] too many consecutive tick errors, stopping loop')
+          this.stop()
+        }
+      }
+    }, intervalMs)
   }
 
   setPaused(paused: boolean) {
@@ -275,6 +293,9 @@ export class HostLoop {
     const rawDt = (now - this.lastTick) / 1000
     const dt = Math.min(rawDt, 0.25)
     this.lastTick = now
+    if (rawDt > 1) {
+      console.warn('[HostLoop] long tick gap', { rawDtMs: (rawDt * 1000).toFixed(0), dtCapped: dt.toFixed(3) })
+    }
 
     const next = cloneRaceState(this.store.getState())
     if (this.paused || next.paused || next.phase === 'results') {
@@ -488,6 +509,13 @@ export class HostLoop {
     }
     if (completed) {
       this.advanceToNextSequence(boat, state, progress, currentLeg, lapTarget)
+      events.push({
+        eventId: createId('mark'),
+        kind: 'mark_rounding',
+        t: state.t,
+        boats: [boat.id],
+        message: `${boat.name} rounded the ${currentLeg.id} mark`,
+      })
     }
     return events
   }
@@ -546,8 +574,7 @@ export class HostLoop {
 
       events.push({
         eventId: createId('start'),
-        kind: 'rule_hint',
-        ruleId: 'other',
+        kind: 'boat_started',
         t: state.t,
         boats: [boat.id],
         message: `${boat.name} crossed the start line`,
@@ -801,10 +828,18 @@ export class HostLoop {
 
     if (!step) {
       // All stages complete!
+      const side = progress.gateSide
       progress.stage = 0
       progress.gateSide = undefined
       progress.activeMarkIndex = undefined
       this.advanceToNextSequence(boat, state, progress, leg, lapTarget)
+      events.push({
+        eventId: createId('mark'),
+        kind: 'mark_rounding',
+        t: state.t,
+        boats: [boat.id],
+        message: `${boat.name} rounded the ${side ?? 'gate'} gate mark`,
+      })
       return events
     }
 
@@ -833,10 +868,18 @@ export class HostLoop {
       progress.stage += 1
       // Check if all radials done
       if (radialStage + 1 >= radials.length) {
+        const side = progress.gateSide
         progress.stage = 0
         progress.gateSide = undefined
         progress.activeMarkIndex = undefined
         this.advanceToNextSequence(boat, state, progress, leg, lapTarget)
+        events.push({
+          eventId: createId('mark'),
+          kind: 'mark_rounding',
+          t: state.t,
+          boats: [boat.id],
+          message: `${boat.name} rounded the ${side ?? 'gate'} gate mark`,
+        })
       }
     }
 

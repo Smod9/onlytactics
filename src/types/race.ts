@@ -144,6 +144,8 @@ export type RaceEventKind =
   | 'rule_hint'
   | 'general_recall'
   | 'finish'
+  | 'mark_rounding'
+  | 'boat_started'
 
 export type RaceEvent = {
   eventId: string
