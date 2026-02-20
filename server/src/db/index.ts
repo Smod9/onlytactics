@@ -69,9 +69,12 @@ const MIGRATIONS = [
   { filename: '005_seed_bigint.sql' },
 ]
 
+const MIGRATION_LOCK_ID = 839_201_741
+
 export const runMigrations = async () => {
   const client = await pool.connect()
   try {
+    await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_ID])
     await client.query('BEGIN')
     for (const migration of MIGRATIONS) {
       const sql = readMigration(migration.filename, migration.fallback)
@@ -83,6 +86,7 @@ export const runMigrations = async () => {
     await client.query('ROLLBACK')
     throw error
   } finally {
+    await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]).catch(() => {})
     client.release()
   }
 }
