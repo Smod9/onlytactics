@@ -6,7 +6,7 @@ import {
   refreshReplayIndex,
   type ReplayIndexEntry,
 } from '@/replay/storage'
-import type { ReplayFrame } from '@/types/race'
+import type { ReplayFrame, ReplayRecording } from '@/types/race'
 import { raceStore } from '@/state/raceStore'
 import { cloneRaceState } from '@/state/factories'
 
