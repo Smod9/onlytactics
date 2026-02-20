@@ -11,7 +11,7 @@ import { AdminDashboard } from './features/admin/AdminDashboard'
 import { LeaderboardPage } from './features/stats/LeaderboardPage'
 import { ProfilePage } from './features/stats/ProfilePage'
 import { useAuth } from './state/authStore'
-import { TrophyIcon, ReplayIcon, UserIcon, AdminIcon, LogOutIcon } from './view/icons'
+import { TrophyIcon, ReplayIcon, UserIcon, AdminIcon, LogOutIcon, LobbyIcon } from './view/icons'
 import './styles/auth.css'
 
 type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile'
@@ -174,7 +174,7 @@ export function App() {
                 </button>
                 {isAuthenticated && (
                   <button type="button" className="header-menu-item" onClick={() => navigateTo('/lobby')}>
-                    Lobby
+                    <LobbyIcon /> Lobby
                   </button>
                 )}
                 {isAdmin && (

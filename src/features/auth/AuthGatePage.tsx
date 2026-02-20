@@ -85,6 +85,7 @@ export function AuthGatePage({ onAuthenticated }: { onAuthenticated: () => void 
 
   return (
     <div className="auth-page">
+      <div className="auth-gate-wrapper">
       <div className="auth-card">
         <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>
           Only Tactics
@@ -208,11 +209,12 @@ export function AuthGatePage({ onAuthenticated }: { onAuthenticated: () => void 
           </>
         )}
 
-        <div className="auth-gate-guest">
-          <button type="button" onClick={handleGuest}>
-            or continue as guest
-          </button>
-        </div>
+      </div>
+      <button type="button" className="auth-gate-guest-sticker" onClick={handleGuest}>
+        <span className="auth-gate-guest-emoji">🏄</span>
+        <span>Just wanna sail?</span>
+        <span className="auth-gate-guest-cta">Jump in as guest &rarr;</span>
+      </button>
       </div>
     </div>
   )
