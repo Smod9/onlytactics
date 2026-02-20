@@ -4,7 +4,7 @@ import { auth, type User } from '@/features/auth'
 
 export function AdminDashboard() {
   const { isLoading: authLoading, shouldRedirect } = useRequireAdmin('/')
-  const { user: currentUser, getAccessToken } = useAuth()
+  const { user: currentUser, getFreshAccessToken } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -16,7 +16,7 @@ export function AdminDashboard() {
   const limit = 20
 
   const fetchUsers = useCallback(async () => {
-    const token = getAccessToken()
+    const token = await getFreshAccessToken()
     if (!token) return
 
     setIsLoading(true)
@@ -30,7 +30,7 @@ export function AdminDashboard() {
     } finally {
       setIsLoading(false)
     }
-  }, [getAccessToken, page])
+  }, [getFreshAccessToken, page])
 
   useEffect(() => {
     if (!authLoading && !shouldRedirect) {
