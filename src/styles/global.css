@@ -2629,6 +2629,13 @@ kbd {
   white-space: nowrap;
 }
 
+.replay-hint {
+  font-size: 0.75rem;
+  color: #667;
+  text-align: center;
+  padding-top: 0.25rem;
+}
+
 /* Landing page */
 
 .landing-shell {

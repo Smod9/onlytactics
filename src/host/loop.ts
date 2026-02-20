@@ -120,6 +120,10 @@ type RoundingProgress = {
   activeMarkIndex?: number
   /** For gates: which side ('left' or 'right') after crossing gate line */
   gateSide?: 'left' | 'right'
+  /** For angular rounding: cumulative signed angle swept around the mark (radians) */
+  sweepAngle?: number
+  /** Previous angle relative to mark (radians) */
+  prevAngle?: number
 }
 
 type HostLoopOptions = {
@@ -217,6 +221,11 @@ export class HostLoop {
   private startSignalSent = false
 
   private ocsBoats = new Set<string>()
+  /** Tracks whether each boat was over the start line at the moment of the gun.
+   *  `true` = was over (OCS side), needs to return below before crossing counts.
+   *  `false` = was below, normal transition detection will work.
+   *  Entry is deleted once the first crossing is detected. */
+  private startLineBaseState = new Map<string, boolean>()
 
   private courseSideSign?: number
   private raceStartWallClockMs: number | null = null
@@ -225,11 +234,29 @@ export class HostLoop {
   private pendingSpinClears = new Set<string>()
   private spinSeq = 0
 
+  private tickErrorCount = 0
+
   start() {
     if (this.timer) return
     this.lastTick = performance.now()
     const intervalMs = 1000 / this.tickRate
-    this.timer = setInterval(() => this.tick(), intervalMs)
+    this.timer = setInterval(() => {
+      try {
+        this.tick()
+        this.tickErrorCount = 0
+      } catch (error) {
+        this.tickErrorCount++
+        console.error('[HostLoop] tick error', {
+          errorCount: this.tickErrorCount,
+          error: error instanceof Error ? error.message : error,
+          stack: error instanceof Error ? error.stack : undefined,
+        })
+        if (this.tickErrorCount >= 30) {
+          console.error('[HostLoop] too many consecutive tick errors, stopping loop')
+          this.stop()
+        }
+      }
+    }, intervalMs)
   }
 
   setPaused(paused: boolean) {
@@ -256,6 +283,7 @@ export class HostLoop {
     this.windTargetShift = 0
     this.startSignalSent = false
     this.ocsBoats.clear()
+    this.startLineBaseState.clear()
     this.courseSideSign = undefined
     this.raceStartWallClockMs = state.clockStartMs
     this.cancelSpinSequences()
@@ -275,6 +303,9 @@ export class HostLoop {
     const rawDt = (now - this.lastTick) / 1000
     const dt = Math.min(rawDt, 0.25)
     this.lastTick = now
+    if (rawDt > 1) {
+      console.warn('[HostLoop] long tick gap', { rawDtMs: (rawDt * 1000).toFixed(0), dtCapped: dt.toFixed(3) })
+    }
 
     const next = cloneRaceState(this.store.getState())
     if (this.paused || next.paused || next.phase === 'results') {
@@ -473,10 +504,12 @@ export class HostLoop {
 
     if (distance > ROUND_MAX_RADIUS || distance < ROUND_MIN_RADIUS) {
       progress.stage = 0
+      progress.sweepAngle = undefined
+      progress.prevAngle = undefined
       return events
     }
 
-    // Track rounding using radials
+    // Track rounding using radials (primary detection)
     const { completed, debugEvent } = this.trackRadialCrossings(
       boat,
       progress,
@@ -486,8 +519,23 @@ export class HostLoop {
     if (debugEvent) {
       events.push(debugEvent)
     }
-    if (completed) {
+
+    // Angular sweep fallback: track cumulative angle swept around the mark.
+    // This catches roundings where the boat's approach angle doesn't trigger
+    // all radial stages in sequence (e.g., tight layline approach).
+    const sweepCompleted = !completed && this.trackAngularSweep(boat, progress, targetMark, currentLeg)
+
+    if (completed || sweepCompleted) {
+      progress.sweepAngle = undefined
+      progress.prevAngle = undefined
       this.advanceToNextSequence(boat, state, progress, currentLeg, lapTarget)
+      events.push({
+        eventId: createId('mark'),
+        kind: 'mark_rounding',
+        t: state.t,
+        boats: [boat.id],
+        message: `${boat.name} rounded the ${currentLeg.id} mark`,
+      })
     }
     return events
   }
@@ -520,15 +568,32 @@ export class HostLoop {
     boat.nextMarkIndex = committeeIdx
     boat.distanceToNextMark = distance
 
-    // Only allow crossing after race has started (t >= 0)
+    const courseSide = this.courseSideSign ?? 1
+
+    // During prestart, snapshot each boat's side of the line so we have a
+    // reliable baseline for the transition check after the gun fires.
     if (state.t < 0) {
+      const over = boatOverStartLine(boat, boat.pos, committee, pin, courseSide)
+      this.startLineBaseState.set(boat.id, over)
       return events
     }
 
-    // Check if boat crossed the start line (from pre-start side TO course side)
-    const crossed = this.checkStartLineCrossing(boat, state, committee, pin)
+    // After the gun: detect when a boat crosses FROM the pre-start side TO
+    // the course side. We use the stored baseline to know where the boat was
+    // at the gun. A boat that was already over must return below first.
+    const wasOver = this.startLineBaseState.get(boat.id) ?? false
+    const isOver = boatOverStartLine(boat, boat.pos, committee, pin, courseSide)
+
+    // Update baseline: once below the line, record that so the next
+    // transition above counts as a proper crossing.
+    if (!isOver) {
+      this.startLineBaseState.set(boat.id, false)
+    }
+
+    const crossed = !wasOver && isOver
 
     if (crossed) {
+      this.startLineBaseState.delete(boat.id)
       lapDebug('boat_started', {
         boatId: boat.id,
         startTime: state.t.toFixed(2),
@@ -546,8 +611,7 @@ export class HostLoop {
 
       events.push({
         eventId: createId('start'),
-        kind: 'rule_hint',
-        ruleId: 'other',
+        kind: 'boat_started',
         t: state.t,
         boats: [boat.id],
         message: `${boat.name} crossed the start line`,
@@ -555,31 +619,6 @@ export class HostLoop {
     }
 
     return events
-  }
-
-  /**
-   * Check if boat crossed the start line (from pre-start side to course side)
-   */
-  private checkStartLineCrossing(
-    boat: BoatState,
-    state: RaceState,
-    committee: { x: number; y: number },
-    pin: { x: number; y: number },
-  ): boolean {
-    const prevPos = boat.prevPos ?? boat.pos
-
-    // Line vector from committee to pin
-    const lineVec = { x: pin.x - committee.x, y: pin.y - committee.y }
-
-    // Determine course side based on wind direction
-    const windRad = (state.baselineWindDeg * Math.PI) / 180
-    const windVec = { x: Math.sin(windRad), y: -Math.cos(windRad) }
-    const cross = lineVec.x * windVec.y - lineVec.y * windVec.x
-    const courseSideSign = cross >= 0 ? 1 : -1
-
-    const prevOver = boatOverStartLine(boat, prevPos, committee, pin, courseSideSign)
-    const currOver = boatOverStartLine(boat, boat.pos, committee, pin, courseSideSign)
-    return !prevOver && currOver
   }
 
   /**
@@ -801,10 +840,18 @@ export class HostLoop {
 
     if (!step) {
       // All stages complete!
+      const side = progress.gateSide
       progress.stage = 0
       progress.gateSide = undefined
       progress.activeMarkIndex = undefined
       this.advanceToNextSequence(boat, state, progress, leg, lapTarget)
+      events.push({
+        eventId: createId('mark'),
+        kind: 'mark_rounding',
+        t: state.t,
+        boats: [boat.id],
+        message: `${boat.name} rounded the ${side ?? 'gate'} gate mark`,
+      })
       return events
     }
 
@@ -833,10 +880,18 @@ export class HostLoop {
       progress.stage += 1
       // Check if all radials done
       if (radialStage + 1 >= radials.length) {
+        const side = progress.gateSide
         progress.stage = 0
         progress.gateSide = undefined
         progress.activeMarkIndex = undefined
         this.advanceToNextSequence(boat, state, progress, leg, lapTarget)
+        events.push({
+          eventId: createId('mark'),
+          kind: 'mark_rounding',
+          t: state.t,
+          boats: [boat.id],
+          message: `${boat.name} rounded the ${side ?? 'gate'} gate mark`,
+        })
       }
     }
 
@@ -1144,6 +1199,45 @@ export class HostLoop {
       completed: finished,
       debugEvent: undefined,
     }
+  }
+
+  /**
+   * Fallback rounding detection using cumulative angular sweep.
+   * Tracks the total angle the boat has swept around the mark;
+   * if it exceeds ~150° in the correct direction, the rounding counts.
+   * This handles cases where the radial stages fail due to unusual approach angles.
+   */
+  private trackAngularSweep(
+    boat: BoatState,
+    progress: RoundingProgress,
+    mark: { x: number; y: number },
+    leg: (typeof courseLegs)[number],
+  ): boolean {
+    const dx = boat.pos.x - mark.x
+    const dy = boat.pos.y - mark.y
+    const angle = Math.atan2(dy, dx)
+
+    if (progress.prevAngle === undefined) {
+      progress.prevAngle = angle
+      progress.sweepAngle = 0
+      return false
+    }
+
+    let delta = angle - progress.prevAngle
+    // Normalize to [-PI, PI] to handle wrapping
+    if (delta > Math.PI) delta -= 2 * Math.PI
+    if (delta < -Math.PI) delta += 2 * Math.PI
+    progress.prevAngle = angle
+    progress.sweepAngle = (progress.sweepAngle ?? 0) + delta
+
+    // Port rounding = clockwise = negative sweep in standard math coords
+    // Starboard rounding = counter-clockwise = positive sweep
+    const isPort = leg.rounding === 'port'
+    const sweep = progress.sweepAngle
+    const THRESHOLD = (150 * Math.PI) / 180 // ~150°
+
+    const completed = isPort ? sweep < -THRESHOLD : sweep > THRESHOLD
+    return completed
   }
 
   private updateStartLine(state: RaceState): RaceEvent[] {

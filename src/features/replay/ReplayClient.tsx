@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PixiStage } from '@/view/PixiStage'
+import type { CameraMode } from '@/view/scene/RaceScene'
 import {
   listReplayIndex,
   loadRecording,
@@ -29,6 +30,8 @@ export const ReplayClient = () => {
   const [time, setTime] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [cameraMode, setCameraMode] = useState<CameraMode>('birdseye')
+  const [followBoatId, setFollowBoatId] = useState<string | null>(null)
   const duration = recording?.frames.at(-1)?.t ?? 0
 
   const handleSelect = async (raceId: string) => {
@@ -90,11 +93,55 @@ export const ReplayClient = () => {
     raceStore.setEvents(frame.events)
   }, [recording, time])
 
+  const recordingRef = useRef(recording)
+  recordingRef.current = recording
+  const followBoatIdRef = useRef(followBoatId)
+  followBoatIdRef.current = followBoatId
+  const timeRef = useRef(time)
+  timeRef.current = time
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      const rec = recordingRef.current
+      if (e.code === 'Space' && rec) {
+        e.preventDefault()
+        setPlaying((v) => !v)
+      } else if ((e.code === 'Escape' || e.code === 'KeyZ') && followBoatIdRef.current) {
+        setFollowBoatId(null)
+      } else if (e.code === 'ArrowRight' && rec) {
+        e.preventDefault()
+        const next = rec.frames.find((f) => f.t > timeRef.current && f.events.length)
+        if (next) setTime(next.t)
+      } else if (e.code === 'ArrowLeft' && rec) {
+        e.preventDefault()
+        let prev: typeof rec.frames[number] | null = null
+        for (const f of rec.frames) {
+          if (f.t >= timeRef.current) break
+          if (f.events.length) prev = f
+        }
+        if (prev) setTime(prev.t)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const nextEventTime = useMemo(() => {
     if (!recording) return null
     const future = recording.frames.find((frame) => frame.t > time && frame.events.length)
     return future?.t ?? null
   }, [recording, time])
+
+  const currentFrame = useMemo(() => {
+    if (!recording) return null
+    return findFrame(recording.frames, time)
+  }, [recording, time])
+
+  const effectiveCameraMode: CameraMode = followBoatId ? 'follow' : cameraMode
+  const followBoatName = followBoatId && currentFrame
+    ? currentFrame.state.boats[followBoatId]?.name
+    : null
 
   return (
     <div className="replay-client">
@@ -127,7 +174,16 @@ export const ReplayClient = () => {
         </div>
       </aside>
       <section className="replay-stage">
-        <PixiStage cameraMode="birdseye" />
+        <PixiStage
+          cameraMode={effectiveCameraMode}
+          followBoatId={followBoatId}
+          scrollZoom
+          onPickBoat={(boatId) => {
+            if (boatId) {
+              setFollowBoatId(boatId)
+            }
+          }}
+        />
         <div className="replay-controls">
           <div className="playback-controls">
             <button
@@ -150,6 +206,23 @@ export const ReplayClient = () => {
             >
               ⏭ Next Event
             </button>
+            <button
+              type="button"
+              className="playback-btn"
+              onClick={() => {
+                if (followBoatId) {
+                  setFollowBoatId(null)
+                } else {
+                  setCameraMode((m) => (m === 'follow' ? 'birdseye' : 'follow'))
+                }
+              }}
+            >
+              {followBoatId
+                ? `✕ Unfollow ${followBoatName ?? 'boat'}`
+                : cameraMode === 'birdseye'
+                  ? '🔍 Birdseye'
+                  : '🚤 Follow'}
+            </button>
             <input
               type="range"
               className="playback-scrubber"
@@ -167,6 +240,9 @@ export const ReplayClient = () => {
               {time.toFixed(1)}s / {duration.toFixed(1)}s
             </span>
           </div>
+          {!followBoatId && recording && (
+            <div className="replay-hint">Click a boat to follow it. Scroll to zoom.</div>
+          )}
         </div>
         {status && <p className="replay-status">{status}</p>}
       </section>

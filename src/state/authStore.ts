@@ -194,6 +194,30 @@ class AuthStore {
   getAccessToken(): string | null {
     return this.state.accessToken
   }
+
+  /**
+   * Returns a valid access token, refreshing first if the current one
+   * is expired or about to expire. Callers can await this before making
+   * authenticated API calls to avoid 401s.
+   */
+  async getFreshAccessToken(): Promise<string | null> {
+    const token = this.state.accessToken
+    if (!token) return null
+
+    // Check if the JWT is expired or expires within 60s
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      const expiresAt = (payload.exp ?? 0) * 1000
+      if (Date.now() < expiresAt - 60_000) {
+        return token
+      }
+    } catch {
+      // Malformed token, try to refresh
+    }
+
+    const refreshed = await this.refreshSession()
+    return refreshed ? this.state.accessToken : null
+  }
 }
 
 // Singleton instance
@@ -208,6 +232,7 @@ const boundLogout = authStore.logout.bind(authStore)
 const boundRefreshSession = authStore.refreshSession.bind(authStore)
 const boundClearError = authStore.clearError.bind(authStore)
 const boundGetAccessToken = authStore.getAccessToken.bind(authStore)
+const boundGetFreshAccessToken = authStore.getFreshAccessToken.bind(authStore)
 
 // React hook for using auth state
 import { useEffect, useSyncExternalStore } from 'react'
@@ -225,6 +250,7 @@ export const useAuth = () => {
     isAuthenticated: authStore.isAuthenticated(),
     isAdmin: authStore.isAdmin(),
     getAccessToken: boundGetAccessToken,
+    getFreshAccessToken: boundGetFreshAccessToken,
   }
 }
 

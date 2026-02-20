@@ -9,6 +9,7 @@ type Props = {
   onPickBoat?: (boatId: string | null, anchorPx?: { x: number; y: number }) => void
   godDragEnabled?: boolean
   onDragBoat?: (boatId: string, worldPos: { x: number; y: number }) => void
+  scrollZoom?: boolean
 }
 
 export const PixiStage = ({
@@ -17,6 +18,7 @@ export const PixiStage = ({
   onPickBoat,
   godDragEnabled,
   onDragBoat,
+  scrollZoom,
 }: Props) => {
   const mountRef = useRef<HTMLDivElement>(null)
   const appRef = useRef<Application | null>(null)
@@ -28,6 +30,7 @@ export const PixiStage = ({
   const onPickBoatRef = useRef<Props['onPickBoat']>(onPickBoat)
   const onDragBoatRef = useRef<Props['onDragBoat']>(onDragBoat)
   const godDragEnabledRef = useRef<boolean>(Boolean(godDragEnabled))
+  const scrollZoomRef = useRef<boolean>(Boolean(scrollZoom))
 
   useEffect(() => {
     raceStateRef.current = raceState
@@ -44,6 +47,10 @@ export const PixiStage = ({
   useEffect(() => {
     godDragEnabledRef.current = Boolean(godDragEnabled)
   }, [godDragEnabled])
+
+  useEffect(() => {
+    scrollZoomRef.current = Boolean(scrollZoom)
+  }, [scrollZoom])
 
   useEffect(() => {
     if (!mountRef.current) return
@@ -150,15 +157,31 @@ export const PixiStage = ({
         }
       }
 
+      const handleWheel = (event: WheelEvent) => {
+        if (!scrollZoomRef.current || !sceneRef.current) return
+        event.preventDefault()
+        const rect = canvas.getBoundingClientRect()
+        const scaleX = rect.width > 0 ? canvas.width / rect.width : 1
+        const scaleY = rect.height > 0 ? canvas.height / rect.height : 1
+        const canvasX = (event.clientX - rect.left) * scaleX
+        const canvasY = (event.clientY - rect.top) * scaleY
+        const current = sceneRef.current.getZoomOverride()
+        const direction = event.deltaY < 0 ? 1.15 : 1 / 1.15
+        sceneRef.current.zoomAtCanvasPoint(canvasX, canvasY, current * direction, raceStateRef.current)
+        sceneRef.current.update(raceStateRef.current)
+      }
+
       canvas.addEventListener('pointerdown', handlePointerDown)
       canvas.addEventListener('pointermove', handlePointerMove)
       canvas.addEventListener('pointerup', stopDrag)
       canvas.addEventListener('pointercancel', stopDrag)
+      canvas.addEventListener('wheel', handleWheel, { passive: false })
       return () => {
         canvas.removeEventListener('pointerdown', handlePointerDown)
         canvas.removeEventListener('pointermove', handlePointerMove)
         canvas.removeEventListener('pointerup', stopDrag)
         canvas.removeEventListener('pointercancel', stopDrag)
+        canvas.removeEventListener('wheel', handleWheel)
       }
     }
 
@@ -185,10 +208,12 @@ export const PixiStage = ({
 
   useEffect(() => {
     sceneRef.current?.setCameraMode(cameraMode)
+    sceneRef.current?.update(raceStateRef.current)
   }, [cameraMode])
 
   useEffect(() => {
     sceneRef.current?.setFollowBoatId(followBoatId ?? null)
+    sceneRef.current?.update(raceStateRef.current)
   }, [followBoatId])
 
   return <div className="pixi-stage" ref={mountRef} />

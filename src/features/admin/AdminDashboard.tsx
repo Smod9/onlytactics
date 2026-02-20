@@ -4,7 +4,7 @@ import { auth, type User } from '@/features/auth'
 
 export function AdminDashboard() {
   const { isLoading: authLoading, shouldRedirect } = useRequireAdmin('/')
-  const { user: currentUser, getAccessToken } = useAuth()
+  const { user: currentUser, getFreshAccessToken } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -16,7 +16,7 @@ export function AdminDashboard() {
   const limit = 20
 
   const fetchUsers = useCallback(async () => {
-    const token = getAccessToken()
+    const token = await getFreshAccessToken()
     if (!token) return
 
     setIsLoading(true)
@@ -30,7 +30,7 @@ export function AdminDashboard() {
     } finally {
       setIsLoading(false)
     }
-  }, [getAccessToken, page])
+  }, [getFreshAccessToken, page])
 
   useEffect(() => {
     if (!authLoading && !shouldRedirect) {
@@ -39,7 +39,7 @@ export function AdminDashboard() {
   }, [authLoading, shouldRedirect, fetchUsers])
 
   const handleResetPassword = async (userId: string) => {
-    const token = getAccessToken()
+    const token = await getFreshAccessToken()
     if (!token) return
 
     if (!confirm('Are you sure you want to reset this user\'s password? They will receive an email with a temporary password.')) {
@@ -58,7 +58,7 @@ export function AdminDashboard() {
   }
 
   const handleDeleteUser = async (userId: string, displayName: string) => {
-    const token = getAccessToken()
+    const token = await getFreshAccessToken()
     if (!token) return
 
     if (!confirm(`Are you sure you want to delete user "${displayName}"? This cannot be undone.`)) {
@@ -77,7 +77,7 @@ export function AdminDashboard() {
   }
 
   const handleRoleChange = async (userId: string, newRole: 'admin' | 'player') => {
-    const token = getAccessToken()
+    const token = await getFreshAccessToken()
     if (!token) return
 
     setActionLoading(true)

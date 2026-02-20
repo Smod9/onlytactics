@@ -359,6 +359,8 @@ export class RaceScene {
   private readonly birdseyeZoomFactor = appEnv.birdseyeZoomFactor
   private cameraMode: CameraMode = 'follow'
   private followBoatId: string | null = null
+  private zoomOverride = 1
+  private panOffset = { x: 0, y: 0 }
 
   private boats = new Map<string, BoatView>()
   private lastCourseKey: string | null = null
@@ -446,10 +448,53 @@ export class RaceScene {
 
   setCameraMode(mode: CameraMode) {
     this.cameraMode = mode
+    this.panOffset = { x: 0, y: 0 }
+    this.zoomOverride = 1
   }
 
   setFollowBoatId(boatId: string | null) {
     this.followBoatId = boatId
+    this.panOffset = { x: 0, y: 0 }
+  }
+
+  setZoomOverride(zoom: number) {
+    this.zoomOverride = Math.max(0.2, Math.min(5, zoom))
+  }
+
+  getZoomOverride() {
+    return this.zoomOverride
+  }
+
+  /**
+   * Zoom so that the world point under (canvasX, canvasY) stays fixed on screen.
+   */
+  zoomAtCanvasPoint(canvasX: number, canvasY: number, newZoom: number, state: RaceState) {
+    const { width, height } = this.app.canvas
+    const oldScale = this.getCurrentScale(state)
+    this.zoomOverride = Math.max(0.2, Math.min(5, newZoom))
+    const newScale = this.getCurrentScale(state)
+
+    const dx = canvasX - width / 2
+    const dy = canvasY - height / 2
+    this.panOffset.x += dx * (1 / oldScale - 1 / newScale)
+    this.panOffset.y += dy * (1 / oldScale - 1 / newScale)
+  }
+
+  private getCurrentScale(state: RaceState): number {
+    const baseScale = this.getMapScale()
+    if (this.cameraMode === 'birdseye') {
+      const { width, height } = this.app.canvas
+      const paddingPx = 96
+      const availableW = Math.max(1, width - paddingPx * 2)
+      const availableH = Math.max(1, height - paddingPx * 2)
+      const bounds = this.getCourseBounds(state)
+      const worldW = Math.max(1, bounds.maxX - bounds.minX)
+      const worldH = Math.max(1, bounds.maxY - bounds.minY)
+      const fitScale = Math.min(availableW / worldW, availableH / worldH)
+      const computed = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : baseScale
+      return computed * Math.max(0.1, this.birdseyeZoomFactor) * this.zoomOverride
+    }
+    return baseScale * this.followZoomFactor * this.zoomOverride
   }
 
   update(state: RaceState) {
@@ -541,17 +586,28 @@ export class RaceScene {
       const worldH = Math.max(1, bounds.maxY - bounds.minY)
       const fitScale = Math.min(availableW / worldW, availableH / worldH)
       const computed = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : baseScale
-      // Slightly zoom out in birdseye so pre-start spawn (often just below the line) is still visible.
-      const scale = computed * Math.max(0.1, this.birdseyeZoomFactor)
-      return { scale, centerWorld: courseCenter }
+      const scale = computed * Math.max(0.1, this.birdseyeZoomFactor) * this.zoomOverride
+      return {
+        scale,
+        centerWorld: {
+          x: courseCenter.x + this.panOffset.x,
+          y: courseCenter.y + this.panOffset.y,
+        },
+      }
     }
 
     // follow
     const targetId = this.followBoatId ?? identity.boatId
     const targetBoat = state.boats[targetId]
     const centerWorld = targetBoat?.pos ?? courseCenter
-    const scale = baseScale * this.followZoomFactor
-    return { scale, centerWorld }
+    const scale = baseScale * this.followZoomFactor * this.zoomOverride
+    return {
+      scale,
+      centerWorld: {
+        x: centerWorld.x + this.panOffset.x,
+        y: centerWorld.y + this.panOffset.y,
+      },
+    }
   }
 
   /**
