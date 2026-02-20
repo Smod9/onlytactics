@@ -1,3 +1,10 @@
+## [1.38.3](https://github.com/Smod9/onlytactics/compare/v1.38.2...v1.38.3) (2026-02-20)
+
+
+### Bug Fixes
+
+* increase tick rate ([f95cc30](https://github.com/Smod9/onlytactics/commit/f95cc30afb3f3137e2baadbe3ce1ec9339f9bb80))
+
 ## [1.38.2](https://github.com/Smod9/onlytactics/compare/v1.38.1...v1.38.2) (2026-02-20)
 
 
