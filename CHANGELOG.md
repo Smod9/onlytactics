@@ -1,3 +1,10 @@
+## [1.38.1](https://github.com/Smod9/onlytactics/compare/v1.38.0...v1.38.1) (2026-02-20)
+
+
+### Bug Fixes
+
+* resolves deploy problem ([cb6f795](https://github.com/Smod9/onlytactics/commit/cb6f79583dd4274c8f08c17975999d4d1084aa14))
+
 # [1.38.0](https://github.com/Smod9/onlytactics/compare/v1.37.0...v1.38.0) (2026-02-19)
 
 
