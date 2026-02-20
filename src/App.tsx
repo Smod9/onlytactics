@@ -10,6 +10,7 @@ import { AdminDashboard } from './features/admin/AdminDashboard'
 import { LeaderboardPage } from './features/stats/LeaderboardPage'
 import { ProfilePage } from './features/stats/ProfilePage'
 import { useAuth } from './state/authStore'
+import { TrophyIcon, ReplayIcon, UserIcon, SignInIcon, RegisterIcon, AdminIcon, LogOutIcon } from './view/icons'
 import './styles/auth.css'
 
 type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile'
@@ -24,6 +25,7 @@ const getInitialMode = (): AppMode => {
   if (path.startsWith('/admin')) return 'admin'
   if (path.startsWith('/leaderboard')) return 'leaderboard'
   if (path.startsWith('/profile')) return 'profile'
+  if (path.startsWith('/replay')) return 'replay'
   if (path.startsWith('/lobby')) return 'lobby'
   if (path.startsWith('/app')) return 'live'
   return 'live'
@@ -53,6 +55,8 @@ export function App() {
         setMode('leaderboard')
       } else if (path.startsWith('/profile')) {
         setMode('profile')
+      } else if (path.startsWith('/replay')) {
+        setMode('replay')
       } else if (path.startsWith('/lobby')) {
         setMode('lobby')
       } else if (path.startsWith('/app')) {
@@ -97,16 +101,19 @@ export function App() {
           {mode !== 'live' && (
             <div className="header-auth">
               <a href="/leaderboard" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/leaderboard' }}>
-                Leaderboard
+                <TrophyIcon /> Leaderboard
+              </a>
+              <a href="/replay" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/replay' }}>
+                <ReplayIcon /> Replays
               </a>
               {isAuthenticated ? (
                 <>
                   <a href="/profile" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/profile' }}>
-                    {authUser?.displayName ?? 'Account'}
+                    <UserIcon /> {authUser?.displayName ?? 'Account'}
                   </a>
                   {isAdmin && (
                     <a href="/admin" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/admin' }}>
-                      Admin
+                      <AdminIcon /> Admin
                     </a>
                   )}
                   <button
@@ -117,16 +124,16 @@ export function App() {
                       window.location.href = '/lobby'
                     }}
                   >
-                    Log Out
+                    <LogOutIcon /> Log Out
                   </button>
                 </>
               ) : (
                 <>
                   <a href="/login" className="header-auth-link" onClick={(e) => { e.preventDefault(); window.location.href = '/login' }}>
-                    Sign In
+                    <SignInIcon /> Sign In
                   </a>
                   <a href="/register" className="header-auth-link header-auth-register" onClick={(e) => { e.preventDefault(); window.location.href = '/register' }}>
-                    Register
+                    <RegisterIcon /> Register
                   </a>
                 </>
               )}

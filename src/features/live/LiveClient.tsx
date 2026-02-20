@@ -14,6 +14,7 @@ import { GameNetwork } from '@/net/gameNetwork'
 import { roomService, RoomNotFoundError } from '@/net/roomService'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
+import { persistReplay } from '@/replay/manager'
 import { useTacticianControls } from './useTacticianControls'
 import { DebugPanel } from './DebugPanel'
 import { identity, setClientName } from '@/net/identity'
@@ -415,6 +416,17 @@ export const LiveClient = () => {
       leaderboardDirty.current = false
     }
   }, [showResultsOverlay, race.leaderboard])
+
+  const replaySavedRef = useRef(false)
+  useEffect(() => {
+    if (race.phase === 'results' && !replaySavedRef.current) {
+      replaySavedRef.current = true
+      void persistReplay()
+    }
+    if (race.phase === 'prestart') {
+      replaySavedRef.current = false
+    }
+  }, [race.phase])
 
   const hasUnfinishedBoats = useMemo(() => {
     const lb = editableLeaderboard.length ? editableLeaderboard : race.leaderboard

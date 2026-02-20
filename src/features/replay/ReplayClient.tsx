@@ -6,7 +6,7 @@ import {
   refreshReplayIndex,
   type ReplayIndexEntry,
 } from '@/replay/storage'
-import type { ReplayFrame, ReplayRecording } from '@/types/race'
+import type { ReplayFrame } from '@/types/race'
 import { raceStore } from '@/state/raceStore'
 import { cloneRaceState } from '@/state/factories'
 
@@ -21,9 +21,6 @@ const findFrame = (frames: ReplayFrame[], t: number) => {
   }
   return candidate
 }
-
-const chatTime = (recording: ReplayRecording, ts: number) =>
-  (ts - recording.meta.createdAt) / 1000
 
 export const ReplayClient = () => {
   const [index, setIndex] = useState<ReplayIndexEntry[]>(() => listReplayIndex())
@@ -99,15 +96,6 @@ export const ReplayClient = () => {
     return future?.t ?? null
   }, [recording, time])
 
-  const visibleChat = useMemo(() => {
-    if (!recording) return []
-    return recording.chat.filter(
-      (message) =>
-        chatTime(recording, message.ts) <= time &&
-        chatTime(recording, message.ts) >= time - 20,
-    )
-  }, [recording, time])
-
   return (
     <div className="replay-client">
       <aside className="replay-sidebar">
@@ -141,16 +129,18 @@ export const ReplayClient = () => {
       <section className="replay-stage">
         <PixiStage cameraMode="birdseye" />
         <div className="replay-controls">
-          <div className="playback-controls" style={{ display: 'none' }}>
+          <div className="playback-controls">
             <button
               type="button"
+              className="playback-btn"
               disabled={!recording}
               onClick={() => setPlaying((value) => !value)}
             >
-              {playing ? 'Pause' : 'Play'}
+              {playing ? '⏸ Pause' : '▶ Play'}
             </button>
             <button
               type="button"
+              className="playback-btn"
               disabled={!recording || nextEventTime === null}
               onClick={() => {
                 if (nextEventTime !== null) {
@@ -158,10 +148,11 @@ export const ReplayClient = () => {
                 }
               }}
             >
-              Next Event
+              ⏭ Next Event
             </button>
             <input
               type="range"
+              className="playback-scrubber"
               min={recording?.frames[0]?.t ?? 0}
               max={duration || 1}
               step={0.5}
@@ -172,28 +163,9 @@ export const ReplayClient = () => {
               }}
               disabled={!recording}
             />
-            <span>
+            <span className="playback-time">
               {time.toFixed(1)}s / {duration.toFixed(1)}s
             </span>
-          </div>
-          <div className="replay-chat">
-            <h3>Chat</h3>
-            <div className="replay-chat-log">
-              {visibleChat.map((message) => (
-                <div
-                  key={message.messageId}
-                  className={`chat-message chat-${message.senderRole}`}
-                >
-                  <span className="chat-author">
-                    {message.senderName} ({message.senderRole})
-                  </span>
-                  <span className="chat-text">{message.text}</span>
-                </div>
-              ))}
-              {!visibleChat.length && (
-                <p className="chat-empty">No messages in this window.</p>
-              )}
-            </div>
           </div>
         </div>
         {status && <p className="replay-status">{status}</p>}

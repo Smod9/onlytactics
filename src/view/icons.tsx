@@ -76,3 +76,68 @@ export const LogOutIcon = () => (
     />
   </svg>
 )
+
+export const TrophyIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M8 21h8m-4-4v4M6 4H4a2 2 0 00-2 2v1a4 4 0 004 4h.5M18 4h2a2 2 0 012 2v1a4 4 0 01-4 4h-.5M6 4h12v6a6 6 0 01-12 0V4z"
+    />
+  </svg>
+)
+
+export const ReplayIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M5 3l14 9-14 9V3z"
+    />
+  </svg>
+)
+
+export const UserIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2m8-10a4 4 0 100-8 4 4 0 000 8z"
+    />
+  </svg>
+)
+
+export const SignInIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4m-5-4l5-5-5-5m5 5H3"
+    />
+  </svg>
+)
+
+export const RegisterIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
+    <path
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m7-10a4 4 0 100-8 4 4 0 000 8zm11 2h-6m3-3v6"
+    />
+  </svg>
+)

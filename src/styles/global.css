@@ -555,6 +555,9 @@ button {
 }
 
 .header-auth-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.85rem;
   color: #9fb7ff;
   text-decoration: none;
@@ -2588,16 +2591,42 @@ kbd {
 .playback-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
-.playback-controls input[type='range'] {
+.playback-btn {
+  background: rgba(79, 125, 255, 0.15);
+  border: 1px solid rgba(79, 125, 255, 0.3);
+  color: #c4d4ff;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.playback-btn:hover:not(:disabled) {
+  background: rgba(79, 125, 255, 0.25);
+  border-color: rgba(79, 125, 255, 0.5);
+}
+
+.playback-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.playback-scrubber {
   flex: 1;
+  min-width: 80px;
+  accent-color: #5b89ff;
 }
 
-.replay-chat {
-  border-top: 1px solid #28304a;
-  padding-top: 0.5rem;
+.playback-time {
+  font-size: 0.8rem;
+  color: #8a9cc0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* Landing page */

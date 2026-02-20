@@ -66,10 +66,10 @@ export const saveRace = async (recording: ReplayRecording, finalState: RaceState
         finishedAt,
         recording.meta.courseName,
         recording.meta.seed,
-        finalState.leaderboard,
+        JSON.stringify(finalState.leaderboard),
         winnerId,
-        recording,
-        metadata,
+        JSON.stringify(recording),
+        JSON.stringify(metadata),
       ],
     )
   })

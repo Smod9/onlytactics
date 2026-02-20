@@ -5,7 +5,7 @@ import { App } from './App'
 import { LandingPage } from './LandingPage'
 
 const APP_ROUTES = [
-  '/app', '/lobby',
+  '/app', '/lobby', '/replay',
   '/login', '/register', '/forgot-password', '/reset-password',
   '/admin', '/leaderboard', '/profile',
 ]

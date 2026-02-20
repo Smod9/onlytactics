@@ -12,6 +12,7 @@ import { identity, setBoatId } from '@/net/identity'
 import { appEnv } from '@/config/env'
 import { cloneRaceState } from '@/state/factories'
 import { patchRateStore } from '@/state/patchRateStore'
+import { replayRecorder } from '@/replay/manager'
 
 type ColyseusStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
 
@@ -221,6 +222,7 @@ export class ColyseusBridge {
       }
 
       raceStore.setState(cloneRaceState(next))
+      replayRecorder.recordFrame(next, [])
     }
 
     pushState()

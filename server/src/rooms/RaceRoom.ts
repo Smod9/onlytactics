@@ -158,6 +158,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     })
     const initialRaceId = createId(`race-${this.roomId}`)
     const initialState = createInitialRaceState(initialRaceId)
+    initialState.meta.courseName = this.metadataRoomName
     this.raceStore = new RaceStore(initialState)
     applyRaceStateToSchema(this.state.race, initialState)
     this.replayRecorder.start(initialState)
@@ -1461,6 +1462,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       draft.clockStartMs = null
       draft.t = -appEnv.countdownSeconds
       draft.meta = createRaceMeta(createId('race'))
+      draft.meta.courseName = this.metadataRoomName
       const nextBoats: RaceState['boats'] = {}
       assignment.forEach(({ boatId, name, index }) => {
         nextBoats[boatId] = createBoatState(name, index, boatId)
