@@ -10,6 +10,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -17,17 +20,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
-
-      - name: Install Surge
-        run: npm install --global surge
-
-      - name: Deploy to Surge (test)
+      - name: Deploy to Fly (test)
+        working-directory: server
         env:
-          SURGE_TOKEN: ${{ secrets.SURGE_TOKEN }}
-          SURGE_DOMAIN: ${{ secrets.SURGE_TEST_DOMAIN || 'onlytactics-test.surge.sh' }}
-        run: surge ./dist "$SURGE_DOMAIN"
+          FLY_API_TOKEN: ${{ secrets.FLY_IO_DEPLOY_KEY }}
+        run: ./deploy.sh

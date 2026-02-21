@@ -3,6 +3,8 @@ import { WebSocketTransport } from '@colyseus/ws-transport'
 import express from 'express'
 import { createServer } from 'http'
 import { performance } from 'node:perf_hooks'
+import path from 'node:path'
+import fs from 'node:fs'
 import { env } from './lib/env'
 import { runMigrations } from './db'
 import { getRace, getRecentRaces, queryRaces } from './db/raceStorage'
@@ -67,16 +69,18 @@ expressApp.use('/api/admin', adminRoutes)
 expressApp.use('/api/stats', statsRoutes)
 expressApp.use('/api/regattas', regattaRoutes)
 
-expressApp.get('/', (_req, res) => {
-  res.json({
-    service: 'Only Tactics Colyseus Server',
-    status: 'ok',
-  })
-})
-
 expressApp.get('/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() })
 })
+
+// Serve the client SPA from the public directory (built client assets).
+const clientDir = path.resolve(__dirname, '../../public')
+const clientIndexPath = path.join(clientDir, 'index.html')
+const hasClientBuild = fs.existsSync(clientIndexPath)
+
+if (hasClientBuild) {
+  expressApp.use(express.static(clientDir))
+}
 
 expressApp.get('/api/replays/:raceId', async (req, res) => {
   try {
@@ -250,6 +254,13 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
     res.status(500).json({ error: 'Failed to get room' })
   }
 })
+
+// SPA fallback: serve index.html for any non-API, non-file request.
+if (hasClientBuild) {
+  expressApp.get('*', (_req, res) => {
+    res.sendFile(clientIndexPath)
+  })
+}
 
 const start = async () => {
   try {

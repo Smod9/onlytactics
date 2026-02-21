@@ -19,6 +19,7 @@ dist-ssr
 
 # Build artifacts
 server/src-parent
+server/client-root
 
 # Editor directories and files
 .vscode/*
