@@ -1,3 +1,10 @@
+## [1.38.5](https://github.com/Smod9/onlytactics/compare/v1.38.4...v1.38.5) (2026-02-21)
+
+
+### Bug Fixes
+
+* resolves path issue in new env ([e6f6031](https://github.com/Smod9/onlytactics/commit/e6f60312dac0931013dab8a3a03a4da496d8f3d2))
+
 ## [1.38.4](https://github.com/Smod9/onlytactics/compare/v1.38.3...v1.38.4) (2026-02-20)
 
 
