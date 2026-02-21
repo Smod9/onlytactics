@@ -1,3 +1,10 @@
+# [1.41.0](https://github.com/Smod9/onlytactics/compare/v1.40.0...v1.41.0) (2026-02-21)
+
+
+### Features
+
+* regatta management with authorization, dedicated page, and post-race standings ([#137](https://github.com/Smod9/onlytactics/issues/137)) ([fa87e44](https://github.com/Smod9/onlytactics/commit/fa87e44fbd2b6f5f1e1c4dda8512f82762166e8a))
+
 # [1.40.0](https://github.com/Smod9/onlytactics/compare/v1.39.1...v1.40.0) (2026-02-21)
 
 
