@@ -215,11 +215,9 @@ export function App() {
                 <button type="button" className="header-menu-item" onClick={() => navigateTo('/replay')}>
                   <ReplayIcon /> Replays
                 </button>
-                {isAuthenticated && (
-                  <button type="button" className="header-menu-item" onClick={() => navigateTo('/lobby')}>
-                    <LobbyIcon /> Lobby
-                  </button>
-                )}
+                <button type="button" className="header-menu-item" onClick={() => navigateTo('/lobby')}>
+                  <LobbyIcon /> Lobby
+                </button>
                 {isAdmin && (
                   <button type="button" className="header-menu-item" onClick={() => navigateTo('/admin')}>
                     <AdminIcon /> Admin
