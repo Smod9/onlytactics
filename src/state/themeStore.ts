@@ -10,6 +10,7 @@ class ThemeStore {
   private resolved: ResolvedTheme = 'dark'
   private listeners = new Set<Listener>()
   private mediaQuery: MediaQueryList | null = null
+  private cachedSnapshot: ThemeSnapshot
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -17,6 +18,7 @@ class ThemeStore {
       this.mediaQuery.addEventListener('change', this.handleMediaChange)
     }
     this.resolve()
+    this.cachedSnapshot = { preference: this.preference, resolved: this.resolved }
   }
 
   private handleMediaChange = () => {
@@ -42,6 +44,7 @@ class ThemeStore {
   }
 
   private notify() {
+    this.cachedSnapshot = { preference: this.preference, resolved: this.resolved }
     this.listeners.forEach((l) => l())
   }
 
@@ -51,6 +54,10 @@ class ThemeStore {
 
   getResolved(): ResolvedTheme {
     return this.resolved
+  }
+
+  getSnapshot(): ThemeSnapshot {
+    return this.cachedSnapshot
   }
 
   setPreference(pref: ThemePreference) {
@@ -75,10 +82,7 @@ interface ThemeSnapshot {
   resolved: ResolvedTheme
 }
 
-const getSnapshot = (): ThemeSnapshot => ({
-  preference: themeStore.getPreference(),
-  resolved: themeStore.getResolved(),
-})
+const getSnapshot = (): ThemeSnapshot => themeStore.getSnapshot()
 
 export const useTheme = () => {
   const state = useSyncExternalStore(subscribe, getSnapshot)
