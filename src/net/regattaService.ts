@@ -1,11 +1,14 @@
 import { appEnv } from '@/config/env'
 
+export type RegattaStatus = 'active' | 'completed' | 'cancelled'
+
 export type Regatta = {
   id: string
   name: string
   description: string
   numRaces: number
   throwoutCount: number
+  status: RegattaStatus
   createdBy: string | null
   createdAt: string
   updatedAt: string
@@ -53,9 +56,12 @@ const authHeaders = (token: string | null): Record<string, string> => {
 }
 
 export const regattaService = {
-  async listRegattas(): Promise<Regatta[]> {
+  async listRegattas(statusFilter?: RegattaStatus): Promise<Regatta[]> {
     const baseUrl = getApiBaseUrl()
-    const response = await fetch(`${baseUrl}/api/regattas`)
+    const url = statusFilter
+      ? `${baseUrl}/api/regattas?status=${encodeURIComponent(statusFilter)}`
+      : `${baseUrl}/api/regattas`
+    const response = await fetch(url)
     if (!response.ok) throw new Error(`Failed to list regattas: ${response.statusText}`)
     return response.json()
   },
@@ -83,7 +89,7 @@ export const regattaService = {
 
   async updateRegatta(
     id: string,
-    fields: Partial<Pick<Regatta, 'name' | 'description' | 'numRaces' | 'throwoutCount'>>,
+    fields: Partial<Pick<Regatta, 'name' | 'description' | 'numRaces' | 'throwoutCount' | 'status'>>,
     accessToken: string | null,
   ): Promise<Regatta> {
     const baseUrl = getApiBaseUrl()
@@ -94,6 +100,15 @@ export const regattaService = {
     })
     if (!response.ok) throw new Error(`Failed to update regatta: ${response.statusText}`)
     return response.json()
+  },
+
+  async deleteRegatta(id: string, accessToken: string | null): Promise<void> {
+    const baseUrl = getApiBaseUrl()
+    const response = await fetch(`${baseUrl}/api/regattas/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: authHeaders(accessToken),
+    })
+    if (!response.ok) throw new Error(`Failed to delete regatta: ${response.statusText}`)
   },
 
   async addRace(

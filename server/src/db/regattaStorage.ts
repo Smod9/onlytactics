@@ -4,12 +4,15 @@ import { withClient } from './index'
 // Types
 // ---------------------------------------------------------------------------
 
+export type RegattaStatus = 'active' | 'completed' | 'cancelled'
+
 export type Regatta = {
   id: string
   name: string
   description: string
   numRaces: number
   throwoutCount: number
+  status: RegattaStatus
   createdBy: string | null
   createdAt: string
   updatedAt: string
@@ -49,8 +52,8 @@ export const createRegatta = async (
 ): Promise<Regatta> => {
   return withClient(async (client) => {
     const result = await client.query(
-      `INSERT INTO regattas (name, description, num_races, throwout_count, created_by)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO regattas (name, description, num_races, throwout_count, created_by, status)
+       VALUES ($1, $2, $3, $4, $5, 'active')
        RETURNING *`,
       [name, description, numRaces, throwoutCount, createdBy],
     )
@@ -66,16 +69,25 @@ export const getRegatta = async (id: string): Promise<Regatta | null> => {
   })
 }
 
-export const listRegattas = async (): Promise<Regatta[]> => {
+export const listRegattas = async (statusFilter?: RegattaStatus): Promise<Regatta[]> => {
   return withClient(async (client) => {
+    if (statusFilter) {
+      const result = await client.query(
+        'SELECT * FROM regattas WHERE status = $1 ORDER BY created_at DESC',
+        [statusFilter],
+      )
+      return result.rows.map(rowToRegatta)
+    }
     const result = await client.query('SELECT * FROM regattas ORDER BY created_at DESC')
     return result.rows.map(rowToRegatta)
   })
 }
 
+export type UpdatableRegattaFields = Partial<Pick<Regatta, 'name' | 'description' | 'numRaces' | 'throwoutCount' | 'status'>>
+
 export const updateRegatta = async (
   id: string,
-  fields: Partial<Pick<Regatta, 'name' | 'description' | 'numRaces' | 'throwoutCount'>>,
+  fields: UpdatableRegattaFields,
 ): Promise<Regatta | null> => {
   const sets: string[] = []
   const values: unknown[] = []
@@ -97,6 +109,10 @@ export const updateRegatta = async (
     sets.push(`throwout_count = $${idx++}`)
     values.push(fields.throwoutCount)
   }
+  if (fields.status !== undefined) {
+    sets.push(`status = $${idx++}`)
+    values.push(fields.status)
+  }
 
   if (sets.length === 0) return getRegatta(id)
 
@@ -110,6 +126,21 @@ export const updateRegatta = async (
     )
     if (result.rows.length === 0) return null
     return rowToRegatta(result.rows[0])
+  })
+}
+
+export const deleteRegatta = async (id: string): Promise<boolean> => {
+  return withClient(async (client) => {
+    const result = await client.query('DELETE FROM regattas WHERE id = $1', [id])
+    return (result.rowCount ?? 0) > 0
+  })
+}
+
+export const getRegattaOwner = async (id: string): Promise<{ createdBy: string | null } | null> => {
+  return withClient(async (client) => {
+    const result = await client.query('SELECT created_by FROM regattas WHERE id = $1', [id])
+    if (result.rows.length === 0) return null
+    return { createdBy: (result.rows[0].created_by as string) ?? null }
   })
 }
 
@@ -259,7 +290,7 @@ const computeStandings = async (
  * Low-point scoring with throwouts: drop the N worst results and sum the rest.
  * Races the sailor did not participate in are scored as null (not counted).
  */
-const computeWithThrowouts = (
+export const computeWithThrowouts = (
   racePoints: (number | null)[],
   throwoutCount: number,
 ): { total: number; droppedIndices: number[] } => {
@@ -292,12 +323,13 @@ const computeWithThrowouts = (
 // Helpers
 // ---------------------------------------------------------------------------
 
-const rowToRegatta = (row: Record<string, unknown>): Regatta => ({
+export const rowToRegatta = (row: Record<string, unknown>): Regatta => ({
   id: row.id as string,
   name: row.name as string,
   description: (row.description as string) ?? '',
   numRaces: Number(row.num_races),
   throwoutCount: Number(row.throwout_count),
+  status: ((row.status as string) ?? 'active') as RegattaStatus,
   createdBy: (row.created_by as string) ?? null,
   createdAt: String(row.created_at),
   updatedAt: String(row.updated_at),

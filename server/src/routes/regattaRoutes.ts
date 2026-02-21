@@ -5,10 +5,31 @@ import {
   listRegattas,
   getRegattaDetail,
   updateRegatta,
+  deleteRegatta,
+  getRegattaOwner,
   addRaceToRegatta,
   removeRaceFromRegatta,
   getNextRaceNumber,
+  type RegattaStatus,
 } from '../db/regattaStorage'
+import type { Request, Response } from 'express'
+
+const VALID_STATUSES: RegattaStatus[] = ['active', 'completed', 'cancelled']
+
+const isCreatorOrAdmin = async (req: Request, res: Response, regattaId: string): Promise<boolean> => {
+  const owner = await getRegattaOwner(regattaId)
+  if (!owner) {
+    res.status(404).json({ error: 'not_found' })
+    return false
+  }
+  const isOwner = req.user?.sub != null && owner.createdBy === req.user.sub
+  const isAdmin = req.user?.role === 'admin'
+  if (!isOwner && !isAdmin) {
+    res.status(403).json({ error: 'forbidden', message: 'Only the creator or an admin can modify this regatta' })
+    return false
+  }
+  return true
+}
 
 const router = Router()
 
@@ -33,9 +54,13 @@ router.post('/', authenticate, async (req, res) => {
   }
 })
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const regattas = await listRegattas()
+    const statusParam = req.query.status as string | undefined
+    const statusFilter = statusParam && VALID_STATUSES.includes(statusParam as RegattaStatus)
+      ? (statusParam as RegattaStatus)
+      : undefined
+    const regattas = await listRegattas(statusFilter)
     res.json(regattas)
   } catch (error) {
     console.error('[api] failed to list regattas', error)
@@ -61,12 +86,15 @@ router.get('/:id', async (req, res) => {
 router.patch('/:id', authenticate, async (req, res) => {
   try {
     const id = String(req.params.id)
-    const { name, description, numRaces, throwoutCount } = req.body
+    if (!(await isCreatorOrAdmin(req, res, id))) return
+
+    const { name, description, numRaces, throwoutCount, status } = req.body
     const fields: Record<string, unknown> = {}
     if (typeof name === 'string') fields.name = name.trim()
     if (typeof description === 'string') fields.description = description.trim()
     if (typeof numRaces === 'number' && numRaces >= 1) fields.numRaces = Math.floor(numRaces)
     if (typeof throwoutCount === 'number' && throwoutCount >= 0) fields.throwoutCount = Math.floor(throwoutCount)
+    if (typeof status === 'string' && VALID_STATUSES.includes(status as RegattaStatus)) fields.status = status
 
     const updated = await updateRegatta(id, fields)
     if (!updated) {
@@ -76,6 +104,23 @@ router.patch('/:id', authenticate, async (req, res) => {
     res.json(updated)
   } catch (error) {
     console.error('[api] failed to update regatta', error)
+    res.status(500).json({ error: 'internal_error' })
+  }
+})
+
+router.delete('/:id', authenticate, async (req, res) => {
+  try {
+    const id = String(req.params.id)
+    if (!(await isCreatorOrAdmin(req, res, id))) return
+
+    const deleted = await deleteRegatta(id)
+    if (!deleted) {
+      res.status(404).json({ error: 'not_found' })
+      return
+    }
+    res.json({ success: true })
+  } catch (error) {
+    console.error('[api] failed to delete regatta', error)
     res.status(500).json({ error: 'internal_error' })
   }
 })
@@ -100,6 +145,8 @@ router.post('/:id/races', authenticate, async (req, res) => {
 router.delete('/:id/races/:raceId', authenticate, async (req, res) => {
   try {
     const id = String(req.params.id)
+    if (!(await isCreatorOrAdmin(req, res, id))) return
+
     const raceId = String(req.params.raceId)
     await removeRaceFromRegatta(id, raceId)
     res.json({ success: true })
