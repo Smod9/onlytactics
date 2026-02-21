@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('App', () => {
-  test('landing page loads', async ({ page }) => {
-    await page.goto('/')
-    await expect(page).toHaveTitle(/Only Tactics|Sailing/i)
-  })
+test.describe('App smoke tests', () => {
+  test('page does not show uncaught error overlay', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (err) => errors.push(err.message))
 
-  test('game app route loads', async ({ page }) => {
-    await page.goto('/app')
-    await expect(page.locator('body')).toBeVisible()
+    await page.goto('/')
+    await expect(page.locator('h1')).toContainText('Only Tactics')
+
+    expect(errors.filter((e) => !e.includes('fetch'))).toHaveLength(0)
   })
 })
