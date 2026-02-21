@@ -13,12 +13,14 @@ export type RoomInfo = {
   createdAt: number
   timeToStartSeconds?: number | null
   phase?: 'prestart' | 'running' | 'finished' | 'results'
+  regattaId?: string
 }
 
 export type CreateRoomRequest = {
   roomName: string
   description?: string
   createdBy?: string
+  regattaId?: string
 }
 
 export type CreateRoomResponse = {

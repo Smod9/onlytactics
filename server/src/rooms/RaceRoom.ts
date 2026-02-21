@@ -29,6 +29,7 @@ import { RaceStore } from '../state/serverRaceStore'
 import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
 import { saveRace } from '../db/raceStorage'
 import { saveRaceStats } from '../db/statsStorage'
+import { addRaceToRegatta, getNextRaceNumber } from '../db/regattaStorage'
 
 const roomDebug = (...args: unknown[]) => {
   if (!appEnv.debugNetLogs) return
@@ -115,6 +116,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   public description: string = ''
   public createdAt: number = Date.now()
   public createdBy?: string
+  public regattaId?: string
   private lastPlayerLeaveTime?: number
   private cleanupTimer?: NodeJS.Timeout
 
@@ -134,6 +136,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     this.description = this.normalizeRoomDescription(options.description)
     this.createdAt = Date.now()
     this.createdBy = typeof options.createdBy === 'string' ? options.createdBy : undefined
+    this.regattaId = typeof options.regattaId === 'string' && options.regattaId ? options.regattaId : undefined
 
     // Expose metadata to matchMaker listings if needed.
     this.setMetadata({
@@ -141,6 +144,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       description: this.description,
       createdAt: this.createdAt,
       createdBy: this.createdBy ?? '',
+      regattaId: this.regattaId ?? '',
       status: 'waiting',
       timeToStartSeconds: null,
       phase: 'prestart',
@@ -1414,6 +1418,17 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     try {
       await saveRaceStats(recording, finalState, userBoatMap, dnfMode)
       console.info('[RaceRoom] saved race stats', { raceId })
+
+      if (this.regattaId) {
+        try {
+          const raceNumber = await getNextRaceNumber(this.regattaId)
+          await addRaceToRegatta(this.regattaId, raceId, raceNumber)
+          console.info('[RaceRoom] linked race to regatta', { raceId, regattaId: this.regattaId, raceNumber })
+        } catch (regattaError) {
+          console.error('[RaceRoom] failed to link race to regatta', { raceId, regattaId: this.regattaId, error: regattaError })
+        }
+      }
+
       if (hostSessionId) {
         const hostClient = this.clients.find((c) => c.sessionId === hostSessionId)
         hostClient?.send('stats_saved', { success: true, raceId })
