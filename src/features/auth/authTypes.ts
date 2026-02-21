@@ -1,10 +1,12 @@
 export type UserRole = 'admin' | 'player'
+export type ThemePreference = 'light' | 'dark' | 'auto'
 
 export interface User {
   id: string
   email: string
   displayName: string
   role: UserRole
+  themePreference?: ThemePreference
   createdAt?: string
 }
 

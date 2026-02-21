@@ -12,7 +12,8 @@ import { AdminDashboard } from './features/admin/AdminDashboard'
 import { LeaderboardPage } from './features/stats/LeaderboardPage'
 import { ProfilePage } from './features/stats/ProfilePage'
 import { useAuth } from './state/authStore'
-import { TrophyIcon, ReplayIcon, UserIcon, AdminIcon, LogOutIcon, LobbyIcon } from './view/icons'
+import { useTheme, type ThemePreference } from './state/themeStore'
+import { TrophyIcon, ReplayIcon, UserIcon, AdminIcon, LogOutIcon, LobbyIcon, SunIcon, MoonIcon, MonitorIcon } from './view/icons'
 import './styles/auth.css'
 
 type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile'
@@ -31,6 +32,42 @@ const getInitialMode = (): AppMode => {
   if (path.startsWith('/lobby')) return 'lobby'
   if (path.startsWith('/app')) return 'live'
   return 'live'
+}
+
+function ThemeToggle() {
+  const { preference, setPreference } = useTheme()
+  const { isAuthenticated, updateProfile } = useAuth()
+
+  const handleChange = (pref: ThemePreference) => {
+    setPreference(pref)
+    if (isAuthenticated) {
+      updateProfile({ themePreference: pref }).catch(() => {})
+    }
+  }
+
+  const options: { value: ThemePreference; label: string; icon: React.ReactNode }[] = [
+    { value: 'light', label: 'Light', icon: <SunIcon /> },
+    { value: 'dark', label: 'Dark', icon: <MoonIcon /> },
+    { value: 'auto', label: 'Auto', icon: <MonitorIcon /> },
+  ]
+
+  return (
+    <div className="theme-toggle" role="radiogroup" aria-label="Theme">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          role="radio"
+          aria-checked={preference === opt.value}
+          className={`theme-toggle-option${preference === opt.value ? ' active' : ''}`}
+          onClick={() => handleChange(opt.value)}
+        >
+          {opt.icon}
+          <span>{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 function HamburgerIcon() {
@@ -183,6 +220,10 @@ export function App() {
                     <AdminIcon /> Admin
                   </button>
                 )}
+                <div className="header-menu-divider" />
+                <div className="header-menu-theme">
+                  <ThemeToggle />
+                </div>
                 <div className="header-menu-divider" />
                 {isAuthenticated ? (
                   <button type="button" className="header-menu-item header-menu-item-danger" onClick={handleLogout}>

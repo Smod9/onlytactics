@@ -4,12 +4,14 @@ import { getPool } from '@/db'
 import { appEnv } from '@/config/env'
 
 export type UserRole = 'admin' | 'player'
+export type ThemePreference = 'light' | 'dark' | 'auto'
 
 export interface User {
   id: string
   email: string
   displayName: string
   role: UserRole
+  themePreference: ThemePreference
   createdAt: Date
   updatedAt: Date
 }
@@ -20,6 +22,7 @@ interface UserRow {
   password_hash: string
   display_name: string
   role: UserRole
+  theme_preference: ThemePreference
   created_at: Date
   updated_at: Date
 }
@@ -60,6 +63,7 @@ const rowToUser = (row: UserRow): User => ({
   email: row.email,
   displayName: row.display_name,
   role: row.role,
+  themePreference: row.theme_preference ?? 'auto',
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 })
@@ -133,7 +137,7 @@ export const getUserWithPasswordHash = async (
 
 export const updateUser = async (
   id: string,
-  updates: Partial<{ email: string; displayName: string; role: UserRole }>,
+  updates: Partial<{ email: string; displayName: string; role: UserRole; themePreference: ThemePreference }>,
 ): Promise<User | null> => {
   const pool = getPool()
   const setClauses: string[] = []
@@ -154,6 +158,10 @@ export const updateUser = async (
   if (updates.role !== undefined) {
     setClauses.push(`role = $${paramIndex++}`)
     values.push(updates.role)
+  }
+  if (updates.themePreference !== undefined) {
+    setClauses.push(`theme_preference = $${paramIndex++}`)
+    values.push(updates.themePreference)
   }
 
   if (setClauses.length === 0) {

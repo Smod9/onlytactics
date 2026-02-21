@@ -1022,12 +1022,12 @@ export const LiveClient = () => {
                   const shiftIsOn = Math.abs(rawShift) < 0.5
                   const shiftDir = rawShift >= 0 ? 'R' : 'L'
                   const shiftMag = Math.abs(rawShift).toFixed(1)
-                  // Wind shift colors (match prior scheme): orange for R, blue for L, white for 0.
+                  // Wind shift colors: orange for R, blue for L, white for 0.
                   const shiftColor = shiftIsOn
-                    ? '#ffffff'
+                    ? 'var(--text-primary)'
                     : rawShift >= 0
-                      ? '#ff8f70'
-                      : '#70d6ff'
+                      ? 'var(--accent-warning)'
+                      : 'var(--accent-info)'
                   const exaggeratedWindDir =
                     (((race.baselineWindDeg + rawShift * 1.2) % 360) + 360) % 360
                   const downwindDeg = (((exaggeratedWindDir + 180) % 360) + 360) % 360

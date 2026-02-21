@@ -327,8 +327,8 @@ export const LobbyClient = () => {
             marginBottom: '1.25rem',
             padding: '0.6rem 1rem',
             borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--bg-subtle)',
           }}
         >
           <span style={{ fontSize: '0.85rem', opacity: 0.65 }}>
@@ -337,7 +337,7 @@ export const LobbyClient = () => {
               href="https://buymeacoffee.com/onlytactics"
               target="_blank"
               rel="noreferrer"
-              style={{ color: '#ffdd00', textDecoration: 'none' }}
+              style={{ color: 'var(--accent-heading)', textDecoration: 'none' }}
             >
               supporting the infrastructure costs
             </a>{' '}
@@ -355,8 +355,8 @@ export const LobbyClient = () => {
               maxWidth: 360,
               padding: '0.45rem 0.75rem',
               borderRadius: 999,
-              border: '1px solid rgba(255,255,255,0.2)',
-              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid var(--border-hover)',
+              background: 'var(--bg-subtle)',
               color: 'inherit',
             }}
           />
@@ -370,7 +370,7 @@ export const LobbyClient = () => {
             border: '1px solid rgba(255, 196, 0, 0.35)',
             borderRadius: '4px',
             marginBottom: '1rem',
-            color: '#f5d66b',
+            color: 'var(--accent-heading)',
           }}
         >
           {roomNotice}
@@ -381,11 +381,11 @@ export const LobbyClient = () => {
         <div
           style={{
             padding: '1rem',
-            backgroundColor: 'rgba(255, 0, 0, 0.1)',
-            border: '1px solid rgba(255, 0, 0, 0.3)',
+            backgroundColor: 'var(--accent-danger-bg)',
+            border: '1px solid var(--accent-danger-border)',
             borderRadius: '4px',
             marginBottom: '1rem',
-            color: '#ff6b6b',
+            color: 'var(--accent-danger)',
           }}
         >
           {error}
@@ -419,8 +419,8 @@ export const LobbyClient = () => {
                   disabled={creating}
                   style={{
                     padding: '0.5rem 0.6rem',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid var(--border-hover)',
+                    backgroundColor: 'var(--bg-hover)',
                     color: 'inherit',
                     borderRadius: '4px',
                     fontFamily: 'inherit',
@@ -454,8 +454,8 @@ export const LobbyClient = () => {
                 style={{
                   width: '100%',
                   padding: '0.5rem',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid var(--border-hover)',
+                  backgroundColor: 'var(--bg-hover)',
                   color: 'inherit',
                   borderRadius: '4px',
                   fontFamily: 'inherit',
@@ -473,8 +473,8 @@ export const LobbyClient = () => {
                     style={{
                       width: '100%',
                       padding: '0.5rem',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      border: '1px solid var(--border-hover)',
+                      backgroundColor: 'var(--bg-hover)',
                       color: 'inherit',
                       borderRadius: '4px',
                       fontFamily: 'inherit',
@@ -549,8 +549,8 @@ export const LobbyClient = () => {
                 style={{
                   width: '100%',
                   padding: '0.5rem',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid var(--border-hover)',
+                  backgroundColor: 'var(--bg-hover)',
                   color: 'inherit',
                   borderRadius: '4px',
                   fontFamily: 'inherit',
@@ -623,10 +623,10 @@ export const LobbyClient = () => {
                 <div
                   onClick={() => void toggleRegattaDetail(regatta.id)}
                   style={{
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    border: '1px solid var(--border-hover)',
                     borderRadius: expandedRegattaId === regatta.id ? '12px 12px 0 0' : '12px',
                     padding: '1rem 1.25rem',
-                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                    backgroundColor: 'var(--bg-subtle)',
                     cursor: 'pointer',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -655,11 +655,11 @@ export const LobbyClient = () => {
                 {expandedRegattaId === regatta.id && (
                   <div
                     style={{
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      border: '1px solid var(--border-hover)',
                       borderTop: 'none',
                       borderRadius: '0 0 12px 12px',
                       padding: '1rem 1.25rem',
-                      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                      backgroundColor: 'var(--bg-subtle)',
                     }}
                   >
                     {regattaDetailLoading ? (
@@ -731,7 +731,7 @@ export const LobbyClient = () => {
             textAlign: 'center',
             padding: '2.5rem',
             opacity: 0.7,
-            border: '1px dashed rgba(255,255,255,0.2)',
+            border: '1px dashed var(--border-hover)',
             borderRadius: 12,
           }}
         >
@@ -749,10 +749,10 @@ export const LobbyClient = () => {
             <div
               key={room.roomId}
               style={{
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                border: '1px solid var(--border-hover)',
                 borderRadius: '12px',
                 padding: '1.25rem 1.5rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                backgroundColor: 'var(--bg-subtle)',
                 display: 'grid',
                 gridTemplateColumns: '1.2fr 1fr auto',
                 gap: '1rem',
@@ -775,7 +775,7 @@ export const LobbyClient = () => {
                       fontSize: 12,
                       padding: '0.2rem 0.5rem',
                       borderRadius: 999,
-                      border: '1px solid rgba(255,255,255,0.2)',
+                      border: '1px solid var(--border-hover)',
                       opacity: 0.8,
                     }}
                   >
@@ -846,7 +846,7 @@ export const LobbyClient = () => {
                   }}
                   style={{
                     borderRadius: 999,
-                    border: '1px solid rgba(255,255,255,0.25)',
+                    border: '1px solid var(--border-hover)',
                     padding: '0.3rem 0.5rem',
                     background: 'transparent',
                     color: 'inherit',
@@ -961,7 +961,7 @@ export const LobbyClient = () => {
               width: '100%',
               height: 'auto',
               borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.15)',
+              border: '1px solid var(--border-hover)',
               cursor: 'pointer',
             }}
           />
@@ -996,7 +996,7 @@ export const LobbyClient = () => {
               maxWidth: '100%',
               maxHeight: '90vh',
               borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.2)',
+              border: '1px solid var(--border-hover)',
             }}
           />
         </div>
