@@ -12,6 +12,7 @@ import { PixiStage } from '@/view/PixiStage'
 import { useInputTelemetry, useRaceEvents, useRaceState } from '@/state/hooks'
 import { GameNetwork } from '@/net/gameNetwork'
 import { roomService, RoomNotFoundError } from '@/net/roomService'
+import { regattaService, type RegattaDetail } from '@/net/regattaService'
 import { ChatPanel } from './ChatPanel'
 import { ReplaySaveButton } from './ReplaySaveButton'
 import { persistReplay } from '@/replay/manager'
@@ -98,6 +99,7 @@ export const LiveClient = () => {
   const [userRoleDraft, setUserRoleDraft] = useState<NonHostRole>('player')
   const [userSettingsError, setUserSettingsError] = useState<string | null>(null)
   const [roomDisplayName, setRoomDisplayName] = useState<string | null>(null)
+  const [roomRegattaId, setRoomRegattaId] = useState<string | undefined>(undefined)
   const [roomResolved, setRoomResolved] = useState(!roomId)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(
@@ -133,6 +135,7 @@ export const LiveClient = () => {
         const room = await roomService.getRoomDetails(roomId)
         if (!active) return
         setRoomDisplayName(room.roomName)
+        if (room.regattaId) setRoomRegattaId(room.regattaId)
         setRoomResolved(true)
       } catch (err) {
         if (!active) return
@@ -383,6 +386,8 @@ export const LiveClient = () => {
   const [editingPositionValue, setEditingPositionValue] = useState('')
   const leaderboardDirty = useRef(false)
   const [statsToast, setStatsToast] = useState<{ message: string; success: boolean } | null>(null)
+  const [regattaStandings, setRegattaStandings] = useState<RegattaDetail | null>(null)
+  const [regattaStandingsLoading, setRegattaStandingsLoading] = useState(false)
 
   useEffect(() => {
     const unsub = network.onStatsSaved((payload) => {
@@ -390,12 +395,25 @@ export const LiveClient = () => {
         setStatsToast({ message: 'Race not scored', success: true })
       } else if (payload.success) {
         setStatsToast({ message: 'Race results saved', success: true })
+        if (roomRegattaId) {
+          setRegattaStandingsLoading(true)
+          regattaService.getRegatta(roomRegattaId)
+            .then((detail) => setRegattaStandings(detail))
+            .catch(() => setRegattaStandings(null))
+            .finally(() => setRegattaStandingsLoading(false))
+        }
       } else {
         setStatsToast({ message: payload.error ?? 'Failed to save results', success: false })
       }
     })
     return unsub
-  }, [network])
+  }, [network, roomRegattaId])
+
+  useEffect(() => {
+    if (!showResultsOverlay) {
+      setRegattaStandings(null)
+    }
+  }, [showResultsOverlay])
 
   useEffect(() => {
     if (!statsToast) return
@@ -988,6 +1006,58 @@ export const LiveClient = () => {
                   <p className="results-waiting">
                     Waiting for RC ({hostNameDisplay}) to start the next race...
                   </p>
+                )}
+                {roomRegattaId && (regattaStandings || regattaStandingsLoading) && (
+                  <div className="results-regatta-standings">
+                    <h3>Regatta Standings</h3>
+                    {regattaStandingsLoading ? (
+                      <p style={{ opacity: 0.6, fontSize: '0.85rem' }}>Loading standings...</p>
+                    ) : regattaStandings && regattaStandings.standings.length > 0 ? (
+                      <>
+                        <p style={{ fontSize: '0.8rem', opacity: 0.6, margin: '0 0 0.5rem' }}>
+                          {regattaStandings.name} &mdash; {regattaStandings.completedRaceCount} of {regattaStandings.numRaces} races
+                        </p>
+                        <table className="stats-table" style={{ fontSize: '0.78rem', width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Sailor</th>
+                              {regattaStandings.races.map((r, i) => (
+                                <th key={r.raceId} style={{ textAlign: 'center' }}>R{i + 1}</th>
+                              ))}
+                              <th style={{ textAlign: 'right' }}>Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {regattaStandings.standings.map((entry, rank) => {
+                              const isMe = authUser?.id === entry.userId
+                              return (
+                                <tr key={entry.userId} className={isMe ? 'stats-row-me' : ''}>
+                                  <td>{rank + 1}</td>
+                                  <td>{entry.displayName}{isMe && <span className="stats-you-badge">you</span>}</td>
+                                  {entry.racePoints.map((pts, i) => {
+                                    const dropped = entry.droppedIndices.includes(i)
+                                    return (
+                                      <td key={i} style={{
+                                        textAlign: 'center',
+                                        opacity: dropped ? 0.4 : 1,
+                                        textDecoration: dropped ? 'line-through' : 'none',
+                                      }}>
+                                        {pts !== null ? pts : '\u2014'}
+                                      </td>
+                                    )
+                                  })}
+                                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{entry.totalPoints}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </>
+                    ) : regattaStandings ? (
+                      <p style={{ opacity: 0.5, fontSize: '0.85rem' }}>No standings yet.</p>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </div>

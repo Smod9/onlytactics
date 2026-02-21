@@ -11,12 +11,13 @@ import { isGuestMode, clearGuestMode } from './features/auth/guestMode'
 import { AdminDashboard } from './features/admin/AdminDashboard'
 import { LeaderboardPage } from './features/stats/LeaderboardPage'
 import { ProfilePage } from './features/stats/ProfilePage'
+import { RegattasPage } from './features/regattas/RegattasPage'
 import { useAuth } from './state/authStore'
 import { useTheme, type ThemePreference } from './state/themeStore'
-import { TrophyIcon, ReplayIcon, UserIcon, AdminIcon, LogOutIcon, LobbyIcon, SunIcon, MoonIcon, MonitorIcon } from './view/icons'
+import { TrophyIcon, ReplayIcon, UserIcon, AdminIcon, LogOutIcon, LobbyIcon, FlagIcon, SunIcon, MoonIcon, MonitorIcon } from './view/icons'
 import './styles/auth.css'
 
-type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile'
+type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile' | 'regattas'
 
 const getInitialMode = (): AppMode => {
   if (typeof window === 'undefined') return 'live'
@@ -26,6 +27,7 @@ const getInitialMode = (): AppMode => {
   if (path.startsWith('/forgot-password')) return 'forgot-password'
   if (path.startsWith('/reset-password')) return 'reset-password'
   if (path.startsWith('/admin')) return 'admin'
+  if (path.startsWith('/regattas')) return 'regattas'
   if (path.startsWith('/leaderboard')) return 'leaderboard'
   if (path.startsWith('/profile')) return 'profile'
   if (path.startsWith('/replay')) return 'replay'
@@ -104,6 +106,8 @@ export function App() {
         setMode('reset-password')
       } else if (path.startsWith('/admin')) {
         setMode('admin')
+      } else if (path.startsWith('/regattas')) {
+        setMode('regattas')
       } else if (path.startsWith('/leaderboard')) {
         setMode('leaderboard')
       } else if (path.startsWith('/profile')) {
@@ -140,6 +144,7 @@ export function App() {
   if (mode === 'forgot-password') return <ForgotPasswordPage />
   if (mode === 'reset-password') return <ResetPasswordPage />
   if (mode === 'admin') return <AdminDashboard />
+  if (mode === 'regattas') return <RegattasPage />
   if (mode === 'leaderboard') return <LeaderboardPage />
   if (mode === 'profile') return <ProfilePage />
 
@@ -204,6 +209,9 @@ export function App() {
                     <UserIcon /> Profile
                   </button>
                 )}
+                <button type="button" className="header-menu-item" onClick={() => navigateTo('/regattas')}>
+                  <FlagIcon /> Regattas
+                </button>
                 <button type="button" className="header-menu-item" onClick={() => navigateTo('/leaderboard')}>
                   <TrophyIcon /> Leaderboard
                 </button>

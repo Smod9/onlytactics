@@ -8,7 +8,7 @@ import '@/state/themeStore'
 const APP_ROUTES = [
   '/app', '/lobby', '/replay',
   '/login', '/register', '/forgot-password', '/reset-password',
-  '/admin', '/leaderboard', '/profile',
+  '/admin', '/leaderboard', '/profile', '/regattas',
 ]
 
 const isAppRoute = APP_ROUTES.some((r) => window.location.pathname.startsWith(r))
