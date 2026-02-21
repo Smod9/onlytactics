@@ -94,11 +94,13 @@ export const ReplayClient = () => {
   }, [recording, time])
 
   const recordingRef = useRef(recording)
-  recordingRef.current = recording
   const followBoatIdRef = useRef(followBoatId)
-  followBoatIdRef.current = followBoatId
   const timeRef = useRef(time)
-  timeRef.current = time
+  useEffect(() => {
+    recordingRef.current = recording
+    followBoatIdRef.current = followBoatId
+    timeRef.current = time
+  }, [recording, followBoatId, time])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

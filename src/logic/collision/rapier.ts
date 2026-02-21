@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Rapier SDK types are opaque */
 import type { RaceState, Vec2 } from '@/types/race'
 import { boatCapsuleCircles } from '@/logic/boatGeometry'
 import {

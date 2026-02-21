@@ -175,19 +175,3 @@ export const sampleShadowTemplate = (
   return value * maxIntensity
 }
 
-/**
- * Print the template as ASCII art for debugging
- */
-export const printShadowTemplate = (template: number[][] = SHADOW_SHAPE_TEMPLATE): void => {
-  const chars = ' ░▒▓█'
-  console.log('Shadow Shape Template:')
-  console.log('(Boat is at top, downwind is down)')
-  console.log('')
-  template.forEach((row, i) => {
-    const line = row.map(v => {
-      const idx = Math.min(chars.length - 1, Math.floor(v / 25))
-      return chars[idx]
-    }).join('')
-    console.log(`Row ${i.toString().padStart(2)}: ${line}`)
-  })
-}

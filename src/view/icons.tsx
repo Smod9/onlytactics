@@ -115,29 +115,3 @@ export const UserIcon = () => (
     />
   </svg>
 )
-
-export const SignInIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
-    <path
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4m-5-4l5-5-5-5m5 5H3"
-    />
-  </svg>
-)
-
-export const RegisterIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16">
-    <path
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m7-10a4 4 0 100-8 4 4 0 000 8zm11 2h-6m3-3v6"
-    />
-  </svg>
-)

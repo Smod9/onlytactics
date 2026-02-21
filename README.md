@@ -20,6 +20,8 @@ I can't (and won't) maintain this on my own, I've never liked sailing single han
 
 ## Getting started
 
+Use Node 22+ (see [.nvmrc](.nvmrc)). If you use [nvm](https://github.com/nvm-sh/nvm): `nvm use`.
+
 ```bash
 npm install
 cp env.example .env    # adjust values if needed (contains Colyseus defaults)
@@ -54,8 +56,15 @@ postgresql://fly-user:<PASSWORD>@pgbouncer.z23750vx824r96d1.flympg.net:5432/fly-
 fly secrets set DATABASE_URL="postgresql://fly-user:<PASSWORD>@pgbouncer.z23750vx824r96d1.flympg.net:5432/fly-db?sslmode=require" -a onlytactics-server
 ```
 
+**Fly.io secrets** (production – set via `fly secrets set -a onlytactics-server`):
+- `DATABASE_URL` – Postgres connection string (use your pg role, not Fly account login)
+- `JWT_SECRET` – Secret for signing JWTs (auth)
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE` – Email for password reset
+- `APP_URL` – Base URL for email links (e.g. `https://onlytactics.surge.sh`)
+
+Keep real secrets out of the repo. Use `env.example` as a template; copy to `.env` for local dev.
+
 Notes:
-- `DATABASE_URL` uses your Postgres role (e.g., `fly-user`), not your Fly.io account login.
 - Tables are created automatically on server startup (runs migrations).
 - Optional tuning envs: `DATABASE_POOL_MAX`, `DATABASE_SSL`, `DATABASE_CONNECT_TIMEOUT_MS`, `DATABASE_IDLE_TIMEOUT_MS`.
 

@@ -280,25 +280,3 @@ export const computeWakeFactorsFromGrid = (
 
   return factors
 }
-
-/**
- * Get raw grid data for visualization.
- * Returns a copy of the grid data.
- */
-export const getGridDataForVisualization = (grid: WindShadowGrid): {
-  data: Float32Array
-  width: number
-  height: number
-  cellSize: number
-  originX: number
-  originY: number
-} => {
-  return {
-    data: new Float32Array(grid.data),
-    width: grid.width,
-    height: grid.height,
-    cellSize: grid.cellSize,
-    originX: grid.originX,
-    originY: grid.originY,
-  }
-}
