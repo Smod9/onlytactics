@@ -40,7 +40,10 @@ jobs:
           node-version-file: ".nvmrc"
           cache: npm
           cache-dependency-path: package-lock.json
-      - name: Install dependencies
+      - name: Install dependencies (root)
+        run: npm ci
+      - name: Install dependencies (server)
+        working-directory: server
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
