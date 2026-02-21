@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/Smod9/onlytactics/compare/v1.38.5...v1.39.0) (2026-02-21)
+
+
+### Features
+
+* migrate to fly ([66c58f8](https://github.com/Smod9/onlytactics/commit/66c58f851100881aa8a2a3e78c09fcb7ff373b0d))
+
 ## [1.38.5](https://github.com/Smod9/onlytactics/compare/v1.38.4...v1.38.5) (2026-02-21)
 
 
