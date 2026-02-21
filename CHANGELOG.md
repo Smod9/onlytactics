@@ -1,3 +1,10 @@
+# [1.40.0](https://github.com/Smod9/onlytactics/compare/v1.39.1...v1.40.0) (2026-02-21)
+
+
+### Features
+
+* add light/dark/auto theme system ([#136](https://github.com/Smod9/onlytactics/issues/136)) ([d56f7db](https://github.com/Smod9/onlytactics/commit/d56f7db8b62fe4375bedf2a847e9d881d70ebee1))
+
 ## [1.39.1](https://github.com/Smod9/onlytactics/compare/v1.39.0...v1.39.1) (2026-02-21)
 
 
