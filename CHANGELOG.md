@@ -1,3 +1,10 @@
+## [1.42.1](https://github.com/Smod9/onlytactics/compare/v1.42.0...v1.42.1) (2026-02-21)
+
+
+### Bug Fixes
+
+* admin tabs, light mode background, wider content pages ([#141](https://github.com/Smod9/onlytactics/issues/141)) ([bec3ea3](https://github.com/Smod9/onlytactics/commit/bec3ea32d02d6c6fa051e2503585cba3d90c2767))
+
 # [1.42.0](https://github.com/Smod9/onlytactics/compare/v1.41.1...v1.42.0) (2026-02-21)
 
 
