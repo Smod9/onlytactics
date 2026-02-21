@@ -74,7 +74,7 @@ expressApp.get('/health', (_req, res) => {
 })
 
 // Serve the client SPA from the public directory (built client assets).
-const clientDir = path.resolve(__dirname, '../../public')
+const clientDir = path.resolve(__dirname, '../../../public')
 const clientIndexPath = path.join(clientDir, 'index.html')
 const hasClientBuild = fs.existsSync(clientIndexPath)
 
