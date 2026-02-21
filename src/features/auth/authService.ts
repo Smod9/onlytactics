@@ -164,5 +164,3 @@ export const authService = {
     return handleResponse<{ success: boolean; message: string }>(response)
   },
 }
-
-export { AuthServiceError }

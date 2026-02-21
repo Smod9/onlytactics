@@ -262,14 +262,3 @@ export const getStampForWindDir = (
   return atlas.stamps[index]
 }
 
-/**
- * Get stamp by raw downwind angle.
- */
-export const getStampForAngle = (
-  atlas: ShadowStampAtlas,
-  downwindAngleDeg: number,
-): ShadowStamp => {
-  const normalized = normalizeAngle(downwindAngleDeg)
-  const index = Math.round(normalized / atlas.angleStep) % atlas.count
-  return atlas.stamps[index]
-}

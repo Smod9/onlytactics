@@ -1,4 +1,3 @@
-import { appEnv } from '@/config/env'
 import {
   WAKE_BIAS_DEG,
   WAKE_CORE_HALF_ANGLE_DEG,
@@ -39,11 +38,6 @@ export type WakeTuningParams = {
   minStrength: number
 }
 
-export type WakeTuningState = {
-  enabled: boolean
-  tuning: WakeTuningParams
-}
-
 export const wakeTuningDefaults: WakeTuningParams = {
   length: WAKE_LENGTH,
   widthStart: WAKE_HALF_WIDTH_START,
@@ -64,72 +58,4 @@ export const wakeTuningDefaults: WakeTuningParams = {
   minStrength: WAKE_MIN_STRENGTH,
 }
 
-const listeners = new Set<() => void>()
-
-let state: WakeTuningState = {
-  enabled: false,
-  tuning: { ...wakeTuningDefaults },
-}
-
-const clampPositive = (value: number, min = 0.001) =>
-  Number.isFinite(value) ? Math.max(min, value) : min
-
-const sanitize = (next: WakeTuningParams): WakeTuningParams => ({
-  ...next,
-  length: clampPositive(next.length, 1),
-  widthStart: clampPositive(next.widthStart, 1),
-  widthEnd: clampPositive(next.widthEnd, 1),
-  widthCurve: clampPositive(next.widthCurve, 0.1),
-  leewardWidthMult: clampPositive(next.leewardWidthMult, 0.1),
-  windwardWidthMult: clampPositive(next.windwardWidthMult, 0.1),
-  twaRotationScaleUpwind: Math.max(0, next.twaRotationScaleUpwind),
-  twaRotationScaleDownwind: Math.max(0, next.twaRotationScaleDownwind),
-  coreHalfAngleDeg: clampPositive(next.coreHalfAngleDeg, 1),
-  turbHalfAngleDeg: clampPositive(next.turbHalfAngleDeg, 1),
-  coreStrength: Math.max(0, next.coreStrength),
-  turbStrength: Math.max(0, next.turbStrength),
-  coreMaxSlowdown: Math.max(0, next.coreMaxSlowdown),
-  turbMaxSlowdown: Math.max(0, next.turbMaxSlowdown),
-  maxSlowdown: Math.max(0, next.maxSlowdown),
-  minStrength: Math.max(0, next.minStrength),
-})
-
-const emit = () => {
-  listeners.forEach((listener) => listener())
-}
-
-export const getWakeTuningState = () => state
-
-export const subscribeWakeTuning = (listener: () => void) => {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-export const setWakeTuningEnabled = (enabled: boolean) => {
-  if (state.enabled === enabled) return
-  state = { ...state, enabled }
-  emit()
-}
-
-export const updateWakeTuning = (partial: Partial<WakeTuningParams>) => {
-  state = {
-    ...state,
-    tuning: sanitize({ ...state.tuning, ...partial }),
-  }
-  emit()
-}
-
-export const resetWakeTuning = () => {
-  state = {
-    ...state,
-    tuning: { ...wakeTuningDefaults },
-  }
-  emit()
-}
-
-export const getEffectiveWakeTuning = (): WakeTuningParams => {
-  if (!appEnv.debugHud || !state.enabled) {
-    return wakeTuningDefaults
-  }
-  return state.tuning
-}
+export const getEffectiveWakeTuning = (): WakeTuningParams => wakeTuningDefaults

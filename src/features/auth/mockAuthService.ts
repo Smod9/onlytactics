@@ -403,4 +403,3 @@ export const mockAuthService = {
   },
 }
 
-export { MockAuthError }

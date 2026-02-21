@@ -40,9 +40,9 @@ const defaultApiUrl =
 export const appEnv = {
   apiUrl: stripInlineComment(rawEnv.VITE_API_URL ?? defaultApiUrl),
   mockAuth: toBool(rawEnv.VITE_MOCK_AUTH, false),
-  raceId: rawEnv.VITE_RACE_ID ?? 'debug-race',
-  clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'host') as ClientRole,
-  clientName: rawEnv.VITE_CLIENT_NAME ?? 'Debug Host',
+  raceId: rawEnv.VITE_RACE_ID ?? 'prod-race',
+  clientRole: (rawEnv.VITE_CLIENT_ROLE ?? 'player') as ClientRole,
+  clientName: rawEnv.VITE_CLIENT_NAME ?? 'Player',
   colyseusEndpoint: normalizeWsUrl(
     rawEnv.VITE_COLYSEUS_ENDPOINT ?? defaultColyseusEndpoint,
   ),
@@ -54,27 +54,27 @@ export const appEnv = {
   // Example: lapsToFinish=2 => Start -> W -> Gate -> W -> Finish
   lapsToFinish: toNumber(rawEnv.VITE_LAPS_TO_FINISH, 2),
   countdownSeconds: toNumber(rawEnv.VITE_COUNTDOWN_SECONDS, 180),
-  penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 5),
+  penaltyCooldownSeconds: toNumber(rawEnv.VITE_PENALTY_COOLDOWN_SECONDS, 15),
   // Camera zoom multiplier used in follow mode (applied on top of screen-derived base scale).
   // Smaller = zoomed out. Typical range: ~1.1 - 1.6.
-  followZoomFactor: toNumber(rawEnv.VITE_FOLLOW_ZOOM, 1.15),
+  followZoomFactor: toNumber(rawEnv.VITE_FOLLOW_ZOOM, 1.33),
   // Birdseye scale multiplier applied after computing the "fit course to screen" scale.
   // Smaller = zoomed out (shows more around the course). Typical range: ~0.85 - 1.0.
   birdseyeZoomFactor: toNumber(rawEnv.VITE_BIRDSEYE_ZOOM, 0.92),
   debugHud: toBool(rawEnv.VITE_DEBUG_HUD, false),
   perfHud: toBool(rawEnv.VITE_PERF_HUD, false),
-  debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, true),
+  debugNetLogs: toBool(rawEnv.VITE_DEBUG_NET_LOGS, false),
   fixedWind: toBool(rawEnv.VITE_FIXED_WIND, false),
   baselineWindDeg: toNumber(rawEnv.VITE_BASELINE_WIND_DEG, 360),
   aiEnabled: toBool(rawEnv.VITE_AI_ENABLED, false),
   raceTimeoutMinutes: toNumber(rawEnv.VITE_RACE_TIMEOUT_MINUTES, 25),
   windFieldEnabled: toBool(rawEnv.VITE_WIND_FIELD_ENABLED, true),
-  windFieldIntensityKts: toNumber(rawEnv.VITE_WIND_FIELD_INTENSITY_KTS, 2),
+  windFieldIntensityKts: toNumber(rawEnv.VITE_WIND_FIELD_INTENSITY_KTS, 3),
   windFieldCount: toNumber(rawEnv.VITE_WIND_FIELD_COUNT, 32),
   windFieldSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_SIZE_WORLD, 320),
   windFieldDomainLengthWorld: toNumber(rawEnv.VITE_WIND_FIELD_DOMAIN_LENGTH_WORLD, 1800),
   windFieldDomainWidthWorld: toNumber(rawEnv.VITE_WIND_FIELD_DOMAIN_WIDTH_WORLD, 900),
-  windFieldAdvectionFactor: toNumber(rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR, 0.1),
+  windFieldAdvectionFactor: toNumber(rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR, 0.6),
   windFieldTileSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD, 36),
   chatEnabled: toBool(rawEnv.VITE_CHAT_ENABLED, false),
 }

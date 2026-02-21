@@ -13,7 +13,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -21,8 +21,6 @@ jobs:
         run: npm ci
 
       - name: Build frontend
-        env:
-          VITE_COUNTDOWN_SECONDS: "180"
         run: npm run build
 
       - name: Install Surge

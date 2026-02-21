@@ -83,9 +83,6 @@ export const clamp = (value: number, min: number, max: number) =>
 /** Convert degrees to radians */
 export const degToRad = (deg: number) => (deg * Math.PI) / 180
 
-/** Convert radians to degrees */
-export const radToDeg = (rad: number) => (rad * 180) / Math.PI
-
 const dirToUnit = (deg: number) => {
   const rad = degToRad(deg)
   return { x: Math.sin(rad), y: -Math.cos(rad) }
@@ -642,23 +639,6 @@ export const stepRaceState = (
 // ============================================================================
 // TACTICAL CALCULATIONS
 // ============================================================================
-
-/**
- * Calculate relative bearing from one boat to another
- * Used for right-of-way rules and tactical display
- *
- * @returns Angle in degrees: 0° = dead ahead, 90° = starboard beam, -90° = port beam
- */
-export const computeRelativeBearing = (headingDeg: number, otherHeadingDeg: number) => {
-  return angleDiff(otherHeadingDeg, headingDeg)
-}
-
-/**
- * Calculate absolute angular distance between two angles
- * Always returns positive value (unlike angleDiff which is signed)
- */
-export const degreesBetween = (a: number, b: number) =>
-  Math.abs(radToDeg(Math.atan2(Math.sin(degToRad(a - b)), Math.cos(degToRad(a - b)))))
 
 /**
  * Compute optimal VMG (Velocity Made Good) angles for current wind speed

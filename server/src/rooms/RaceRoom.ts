@@ -370,6 +370,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   private normalizeRoomName(value: unknown) {
     if (typeof value !== 'string') return undefined
     const cleaned = value
+      // eslint-disable-next-line no-control-regex -- strip control chars for safety
       .replace(/[\u0000-\u001f\u007f]+/g, '')
       .trim()
       .replace(/\s+/g, ' ')
@@ -380,6 +381,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   private normalizeRoomDescription(value: unknown) {
     if (typeof value !== 'string') return ''
     const cleaned = value
+      // eslint-disable-next-line no-control-regex -- strip control chars for safety
       .replace(/[\u0000-\u001f\u007f]+/g, '')
       .trim()
       .replace(/\s+/g, ' ')

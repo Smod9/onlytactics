@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '@/state/authStore'
-import { setGuestMode } from './AuthGatePage'
+import { setGuestMode } from './guestMode'
 
 export function LoginPage() {
   const { login, isLoading, error, clearError } = useAuth()

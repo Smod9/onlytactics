@@ -35,6 +35,7 @@ export function useFrameDropStats(options?: Options) {
 
   useEffect(() => {
     if (!enabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset stats when disabled
       setDroppedPct(0)
       setFps(0)
       return

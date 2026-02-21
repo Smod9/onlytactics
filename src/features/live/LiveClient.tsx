@@ -415,6 +415,7 @@ export const LiveClient = () => {
       setEditingPositionIdx(null)
       leaderboardDirty.current = false
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- editableLeaderboard derived from leaderboard
   }, [showResultsOverlay, race.leaderboard])
 
   const replaySavedRef = useRef(false)
