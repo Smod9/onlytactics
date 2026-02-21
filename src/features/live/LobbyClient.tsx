@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { roomService, type RoomInfo, type CreateRoomRequest } from '@/net/roomService'
+import { regattaService, type Regatta, type RegattaDetail } from '@/net/regattaService'
 import { identity } from '@/net/identity'
 import { removeKey } from '@/utils/storage'
 import { appEnv } from '@/config/env'
@@ -42,7 +43,21 @@ export const LobbyClient = () => {
   const [showControls, setShowControls] = useState(false)
   const [lbEntries, setLbEntries] = useState<LeaderboardEntry[]>([])
   const [lbLoading, setLbLoading] = useState(true)
-  const { user } = useAuth()
+  const { user, getAccessToken } = useAuth()
+
+  // Regatta state
+  const [regattas, setRegattas] = useState<Regatta[]>([])
+  const [regattasLoading, setRegattasLoading] = useState(true)
+  const [showCreateRegattaModal, setShowCreateRegattaModal] = useState(false)
+  const [regattaName, setRegattaName] = useState('')
+  const [regattaDescription, setRegattaDescription] = useState('')
+  const [regattaNumRaces, setRegattaNumRaces] = useState(3)
+  const [regattaThrowoutCount, setRegattaThrowoutCount] = useState(0)
+  const [creatingRegatta, setCreatingRegatta] = useState(false)
+  const [selectedRegattaId, setSelectedRegattaId] = useState('')
+  const [expandedRegattaId, setExpandedRegattaId] = useState<string | null>(null)
+  const [expandedRegattaDetail, setExpandedRegattaDetail] = useState<RegattaDetail | null>(null)
+  const [regattaDetailLoading, setRegattaDetailLoading] = useState(false)
   const emojiOptions = [
     '⛵',
     '🌊',
@@ -138,6 +153,67 @@ export const LobbyClient = () => {
     load()
   }, [])
 
+  const refreshRegattas = async () => {
+    try {
+      const list = await regattaService.listRegattas()
+      setRegattas(list)
+    } catch {
+      /* non-critical */
+    } finally {
+      setRegattasLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void refreshRegattas()
+  }, [])
+
+  const handleCreateRegatta = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!regattaName.trim()) return
+    setCreatingRegatta(true)
+    setError(null)
+    try {
+      await regattaService.createRegatta(
+        {
+          name: regattaName.trim(),
+          description: regattaDescription.trim(),
+          numRaces: regattaNumRaces,
+          throwoutCount: regattaThrowoutCount,
+        },
+        getAccessToken(),
+      )
+      setShowCreateRegattaModal(false)
+      setRegattaName('')
+      setRegattaDescription('')
+      setRegattaNumRaces(3)
+      setRegattaThrowoutCount(0)
+      void refreshRegattas()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create regatta')
+    } finally {
+      setCreatingRegatta(false)
+    }
+  }
+
+  const toggleRegattaDetail = async (regattaId: string) => {
+    if (expandedRegattaId === regattaId) {
+      setExpandedRegattaId(null)
+      setExpandedRegattaDetail(null)
+      return
+    }
+    setExpandedRegattaId(regattaId)
+    setRegattaDetailLoading(true)
+    try {
+      const detail = await regattaService.getRegatta(regattaId)
+      setExpandedRegattaDetail(detail)
+    } catch {
+      setExpandedRegattaDetail(null)
+    } finally {
+      setRegattaDetailLoading(false)
+    }
+  }
+
   const handleCreateRoom = async (event: FormEvent) => {
     event.preventDefault()
     const trimmedName = roomName.trim()
@@ -153,6 +229,7 @@ export const LobbyClient = () => {
         roomName: displayName,
         description: roomDescription.trim() || undefined,
         createdBy: identity.clientId,
+        regattaId: selectedRegattaId || undefined,
       }
       const response = await roomService.createRoom(request)
       // Navigate to the new room
@@ -213,6 +290,21 @@ export const LobbyClient = () => {
               </svg>
               Create Race
             </button>
+            {user && (
+              <button
+                type="button"
+                className="start-sequence"
+                onClick={() => setShowCreateRegattaModal(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="9" y1="3" x2="9" y2="21" />
+                </svg>
+                Create Regatta
+              </button>
+            )}
             <button
               type="button"
               className="start-sequence"
@@ -369,6 +461,32 @@ export const LobbyClient = () => {
                   fontFamily: 'inherit',
                 }}
               />
+              {regattas.length > 0 && (
+                <div>
+                  <label style={{ fontSize: '0.85rem', opacity: 0.8, marginBottom: '0.25rem', display: 'block' }}>
+                    Regatta (optional)
+                  </label>
+                  <select
+                    value={selectedRegattaId}
+                    onChange={(event) => setSelectedRegattaId(event.target.value)}
+                    disabled={creating}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      color: 'inherit',
+                      borderRadius: '4px',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <option value="">None</option>
+                    {regattas.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
@@ -378,6 +496,7 @@ export const LobbyClient = () => {
                     setRoomEmoji('⛵')
                     setRoomName('')
                     setRoomDescription('')
+                    setSelectedRegattaId('')
                     setError(null)
                   }}
                   disabled={creating}
@@ -389,6 +508,215 @@ export const LobbyClient = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showCreateRegattaModal && (
+        <div
+          className="username-gate"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div className="username-card" style={{ maxWidth: '500px', width: '90%' }}>
+            <h2>Create Regatta</h2>
+            <form className="username-form" onSubmit={handleCreateRegatta}>
+              <input
+                value={regattaName}
+                onChange={(event) => setRegattaName(event.target.value)}
+                placeholder="Regatta Name"
+                maxLength={80}
+                autoFocus
+                disabled={creatingRegatta}
+              />
+              <textarea
+                value={regattaDescription}
+                onChange={(event) => setRegattaDescription(event.target.value)}
+                placeholder="Description (optional)"
+                maxLength={300}
+                rows={2}
+                disabled={creatingRegatta}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: 'inherit',
+                  borderRadius: '4px',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.85rem', opacity: 0.8, display: 'block', marginBottom: '0.25rem' }}>
+                    Number of Races
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={regattaNumRaces}
+                    onChange={(event) => setRegattaNumRaces(Math.max(1, Number(event.target.value)))}
+                    disabled={creatingRegatta}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.85rem', opacity: 0.8, display: 'block', marginBottom: '0.25rem' }}>
+                    Throwouts
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={regattaNumRaces - 1}
+                    value={regattaThrowoutCount}
+                    onChange={(event) => setRegattaThrowoutCount(Math.max(0, Number(event.target.value)))}
+                    disabled={creatingRegatta}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+              <p style={{ fontSize: '0.8rem', opacity: 0.55, margin: '0.25rem 0 0' }}>
+                Throwouts = worst results discarded from the series total.
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="username-form-cancel"
+                  onClick={() => {
+                    setShowCreateRegattaModal(false)
+                    setRegattaName('')
+                    setRegattaDescription('')
+                    setRegattaNumRaces(3)
+                    setRegattaThrowoutCount(0)
+                    setError(null)
+                  }}
+                  disabled={creatingRegatta}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={!regattaName.trim() || creatingRegatta}>
+                  {creatingRegatta ? 'Creating...' : 'Create Regatta'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {!regattasLoading && regattas.length > 0 && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>Regattas</h2>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            {regattas.map((regatta) => (
+              <div key={regatta.id}>
+                <div
+                  onClick={() => void toggleRegattaDetail(regatta.id)}
+                  style={{
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    borderRadius: expandedRegattaId === regatta.id ? '12px 12px 0 0' : '12px',
+                    padding: '1rem 1.25rem',
+                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{regatta.name}</h3>
+                    {regatta.description && (
+                      <p style={{ margin: '0.2rem 0 0', opacity: 0.7, fontSize: '0.85rem' }}>
+                        {regatta.description}
+                      </p>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+                    <span style={{ fontSize: '0.85rem', opacity: 0.7 }}>
+                      {regatta.numRaces} race{regatta.numRaces !== 1 ? 's' : ''}
+                      {regatta.throwoutCount > 0 && ` / ${regatta.throwoutCount} throwout${regatta.throwoutCount !== 1 ? 's' : ''}`}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>
+                      {expandedRegattaId === regatta.id ? '\u25B2' : '\u25BC'}
+                    </span>
+                  </div>
+                </div>
+                {expandedRegattaId === regatta.id && (
+                  <div
+                    style={{
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderTop: 'none',
+                      borderRadius: '0 0 12px 12px',
+                      padding: '1rem 1.25rem',
+                      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    }}
+                  >
+                    {regattaDetailLoading ? (
+                      <p style={{ opacity: 0.6, fontSize: '0.9rem' }}>Loading...</p>
+                    ) : !expandedRegattaDetail ? (
+                      <p style={{ opacity: 0.6, fontSize: '0.9rem' }}>Could not load regatta details.</p>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: '0.85rem', opacity: 0.7, margin: '0 0 0.75rem' }}>
+                          {expandedRegattaDetail.completedRaceCount} of {expandedRegattaDetail.numRaces} races completed
+                        </p>
+                        {expandedRegattaDetail.standings.length > 0 ? (
+                          <table className="stats-table" style={{ fontSize: '0.82rem', width: '100%' }}>
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>Sailor</th>
+                                {expandedRegattaDetail.races.map((race, i) => (
+                                  <th key={race.raceId} style={{ textAlign: 'center' }}>R{i + 1}</th>
+                                ))}
+                                <th style={{ textAlign: 'right' }}>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {expandedRegattaDetail.standings.map((entry, rank) => {
+                                const isMe = user?.id === entry.userId
+                                return (
+                                  <tr key={entry.userId} className={isMe ? 'stats-row-me' : ''}>
+                                    <td>{rank + 1}</td>
+                                    <td>{entry.displayName}{isMe && <span className="stats-you-badge">you</span>}</td>
+                                    {entry.racePoints.map((pts, i) => {
+                                      const dropped = entry.droppedIndices.includes(i)
+                                      return (
+                                        <td key={i} style={{
+                                          textAlign: 'center',
+                                          opacity: dropped ? 0.4 : 1,
+                                          textDecoration: dropped ? 'line-through' : 'none',
+                                        }}>
+                                          {pts !== null ? pts : '\u2014'}
+                                        </td>
+                                      )
+                                    })}
+                                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{entry.totalPoints}</td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p style={{ opacity: 0.5, fontSize: '0.85rem' }}>No results yet.</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

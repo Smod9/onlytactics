@@ -3,6 +3,8 @@ import { WebSocketTransport } from '@colyseus/ws-transport'
 import express from 'express'
 import { createServer } from 'http'
 import { performance } from 'node:perf_hooks'
+import path from 'node:path'
+import fs from 'node:fs'
 import { env } from './lib/env'
 import { runMigrations } from './db'
 import { getRace, getRecentRaces, queryRaces } from './db/raceStorage'
@@ -10,6 +12,7 @@ import { RaceRoom } from './rooms/RaceRoom'
 import authRoutes from './routes/authRoutes'
 import adminRoutes from './routes/adminRoutes'
 import statsRoutes from './routes/statsRoutes'
+import regattaRoutes from './routes/regattaRoutes'
 
 const attachGlobalPolyfills = () => {
   const globalAny = globalThis as typeof globalThis & {
@@ -64,17 +67,20 @@ expressApp.use(express.json())
 expressApp.use('/api/auth', authRoutes)
 expressApp.use('/api/admin', adminRoutes)
 expressApp.use('/api/stats', statsRoutes)
-
-expressApp.get('/', (_req, res) => {
-  res.json({
-    service: 'Only Tactics Colyseus Server',
-    status: 'ok',
-  })
-})
+expressApp.use('/api/regattas', regattaRoutes)
 
 expressApp.get('/health', (_req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() })
 })
+
+// Serve the client SPA from the public directory (built client assets).
+const clientDir = path.resolve(__dirname, '../../public')
+const clientIndexPath = path.join(clientDir, 'index.html')
+const hasClientBuild = fs.existsSync(clientIndexPath)
+
+if (hasClientBuild) {
+  expressApp.use(express.static(clientDir))
+}
 
 expressApp.get('/api/replays/:raceId', async (req, res) => {
   try {
@@ -150,6 +156,7 @@ expressApp.get('/api/rooms', async (_req, res) => {
               description: string
               createdAt: number
               createdBy: string
+              regattaId: string
               status: 'waiting' | 'in-progress' | 'finished'
               phase: 'prestart' | 'running' | 'finished' | 'results'
               timeToStartSeconds: number
@@ -166,6 +173,7 @@ expressApp.get('/api/rooms', async (_req, res) => {
             timeToStartSeconds:
               raceRoom?.getTimeToStartSeconds?.() ?? metadata.timeToStartSeconds ?? null,
             phase: metadata.phase ?? 'prestart',
+            regattaId: raceRoom?.regattaId ?? metadata.regattaId ?? undefined,
           }
         } catch (err) {
           console.warn('[API] error getting room details', roomInfo.roomId, err)
@@ -190,11 +198,12 @@ expressApp.get('/api/rooms', async (_req, res) => {
 
 expressApp.post('/api/rooms', async (req, res) => {
   try {
-    const { roomName, description, createdBy } = req.body
+    const { roomName, description, createdBy, regattaId } = req.body
     const options: Record<string, unknown> = {
       roomName: typeof roomName === 'string' ? roomName.trim() : undefined,
       description: typeof description === 'string' ? description.trim() : undefined,
       createdBy: typeof createdBy === 'string' ? createdBy : undefined,
+      regattaId: typeof regattaId === 'string' && regattaId ? regattaId : undefined,
     }
     const room = await matchMaker.createRoom('race_room', options)
     res.json({ roomId: room.roomId })
@@ -221,6 +230,7 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
         description: string
         createdAt: number
         createdBy: string
+        regattaId: string
         status: 'waiting' | 'in-progress' | 'finished'
         timeToStartSeconds: number
         phase: string
@@ -237,12 +247,20 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
       timeToStartSeconds:
         raceRoom?.getTimeToStartSeconds?.() ?? metadata.timeToStartSeconds ?? null,
       phase: metadata.phase ?? 'prestart',
+      regattaId: raceRoom?.regattaId ?? metadata.regattaId ?? undefined,
     })
   } catch (error) {
     console.error('[API] error getting room', error)
     res.status(500).json({ error: 'Failed to get room' })
   }
 })
+
+// SPA fallback: serve index.html for any non-API, non-file request.
+if (hasClientBuild) {
+  expressApp.get('*', (_req, res) => {
+    res.sendFile(clientIndexPath)
+  })
+}
 
 const start = async () => {
   try {

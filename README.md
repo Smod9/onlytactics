@@ -60,7 +60,7 @@ fly secrets set DATABASE_URL="postgresql://fly-user:<PASSWORD>@pgbouncer.z23750v
 - `DATABASE_URL` – Postgres connection string (use your pg role, not Fly account login)
 - `JWT_SECRET` – Secret for signing JWTs (auth)
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE` – Email for password reset
-- `APP_URL` – Base URL for email links (e.g. `https://onlytactics.surge.sh`)
+- `APP_URL` – Base URL for email links (e.g. `https://onlytactics-server.fly.dev`)
 
 Keep real secrets out of the repo. Use `env.example` as a template; copy to `.env` for local dev.
 
@@ -152,7 +152,7 @@ In Colyseus mode, the **server is authoritative**. To ensure puffs stay enabled 
 - `npm run lint` – ESLint
 - `npm run format` – Prettier
 - `npm run preview` – preview the production build locally
-- `npm run deploy` – build and push the contents of `dist/` to [Only Tactics on Surge](https://onlytactics.surge.sh)
+- `npm run deploy` – deploy the client and server to [Fly.io](https://onlytactics-server.fly.dev)
 
 ## Commit guidelines
 

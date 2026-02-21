@@ -27,15 +27,18 @@ const normalizeWsUrl = (value: string) => {
   return trimmed
 }
 
-const defaultColyseusEndpoint =
-  rawEnv.MODE === 'development' || rawEnv.NODE_ENV === 'development'
-    ? 'ws://localhost:2567'
-    : 'wss://onlytactics-server.fly.dev'
+const isDev = rawEnv.MODE === 'development' || rawEnv.NODE_ENV === 'development'
 
-const defaultApiUrl =
-  rawEnv.MODE === 'development' || rawEnv.NODE_ENV === 'development'
-    ? 'http://localhost:2567'
-    : 'https://onlytactics-server.fly.dev'
+const inferredWsEndpoint = typeof window !== 'undefined'
+  ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`
+  : 'wss://onlytactics-server.fly.dev'
+
+const inferredApiUrl = typeof window !== 'undefined'
+  ? window.location.origin
+  : 'https://onlytactics-server.fly.dev'
+
+const defaultColyseusEndpoint = isDev ? 'ws://localhost:2567' : inferredWsEndpoint
+const defaultApiUrl = isDev ? 'http://localhost:2567' : inferredApiUrl
 
 export const appEnv = {
   apiUrl: stripInlineComment(rawEnv.VITE_API_URL ?? defaultApiUrl),

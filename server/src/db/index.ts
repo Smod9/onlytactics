@@ -67,6 +67,7 @@ const MIGRATIONS = [
   { filename: '003_race_stats.sql' },
   { filename: '004_drop_fk_constraints.sql' },
   { filename: '005_seed_bigint.sql' },
+  { filename: '006_regattas.sql' },
 ]
 
 const MIGRATION_LOCK_ID = 839_201_741
