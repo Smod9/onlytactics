@@ -6,5 +6,5 @@ import { mockAuthService } from './mockAuthService'
 export const auth = appEnv.mockAuth ? mockAuthService : authService
 
 export * from './authTypes'
-export { authService } from './authService'
+export { authService, type AdminRaceEntry, listRaces, setTrainingApproved, getTrainingStats } from './authService'
 export { mockAuthService } from './mockAuthService'

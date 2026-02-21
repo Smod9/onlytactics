@@ -74,7 +74,7 @@ export function AuthGatePage({ onAuthenticated }: { onAuthenticated: () => void 
     <div className="auth-page">
       <div className="auth-gate-wrapper">
       <div className="auth-card">
-        <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>
+        <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>
           Only Tactics
         </a>
 

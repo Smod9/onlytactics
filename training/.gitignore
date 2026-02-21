@@ -1,0 +1,4 @@
+data/*.csv
+checkpoints/
+__pycache__/
+*.pyc

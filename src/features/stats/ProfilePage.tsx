@@ -293,26 +293,7 @@ export function ProfilePage() {
             )}
           </>
         )}
-        <div className="stats-nav">
-          <a
-            href="/leaderboard"
-            onClick={(e) => {
-              e.preventDefault()
-              window.location.href = '/leaderboard'
-            }}
-          >
-            Leaderboard
-          </a>
-          <a
-            href="/lobby"
-            onClick={(e) => {
-              e.preventDefault()
-              window.location.href = '/lobby'
-            }}
-          >
-            Back to Lobby
-          </a>
-        </div>
+      
       </div>
     </div>
   )

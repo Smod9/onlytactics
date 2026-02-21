@@ -33,7 +33,7 @@ export function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
+        <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>Only Tactics</a>
         <h1>Welcome Back</h1>
         <p className="auth-subtitle">Sign in to your Only Tactics account</p>
 

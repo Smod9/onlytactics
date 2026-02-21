@@ -143,10 +143,7 @@ export function App() {
   if (mode === 'register') return <RegisterPage />
   if (mode === 'forgot-password') return <ForgotPasswordPage />
   if (mode === 'reset-password') return <ResetPasswordPage />
-  if (mode === 'admin') return <AdminDashboard />
-  if (mode === 'regattas') return <RegattasPage />
-  if (mode === 'leaderboard') return <LeaderboardPage />
-  if (mode === 'profile') return <ProfilePage />
+  // Admin, leaderboard, profile, regattas render inside the app shell below
 
   // Auth gate: require login/register or guest opt-in before lobby/game
   const needsGate = (mode === 'lobby' || mode === 'live') && !isAuthenticated && !isGuestMode() && !gatePassedThisSession
@@ -248,13 +245,14 @@ export function App() {
         </div>
       </header>
       <main className="app-main">
-        {mode === 'lobby' ? (
-          <LobbyClient />
-        ) : mode === 'live' ? (
-          <LiveClient />
-        ) : (
-          <ReplayClient />
-        )}
+        {mode === 'lobby' ? <LobbyClient />
+          : mode === 'live' ? <LiveClient />
+          : mode === 'replay' ? <ReplayClient />
+          : mode === 'admin' ? <AdminDashboard />
+          : mode === 'leaderboard' ? <LeaderboardPage />
+          : mode === 'profile' ? <ProfilePage />
+          : mode === 'regattas' ? <RegattasPage />
+          : null}
       </main>
     </div>
   )

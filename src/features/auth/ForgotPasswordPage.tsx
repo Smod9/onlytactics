@@ -31,7 +31,7 @@ export function ForgotPasswordPage() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
+          <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>Only Tactics</a>
           <h1>Check Your Email</h1>
           <p className="auth-subtitle">
             If an account exists for <strong>{email}</strong>, we've sent a password reset link.
@@ -56,7 +56,7 @@ export function ForgotPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
+        <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>Only Tactics</a>
         <h1>Reset Password</h1>
         <p className="auth-subtitle">Enter your email and we'll send you a reset link</p>
 

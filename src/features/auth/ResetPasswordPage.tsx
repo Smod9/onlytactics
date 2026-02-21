@@ -58,7 +58,7 @@ export function ResetPasswordPage() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
+          <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>Only Tactics</a>
           <h1>Password Reset</h1>
           <p className="auth-subtitle">
             Your password has been successfully reset. You can now sign in with your new password.
@@ -81,7 +81,7 @@ export function ResetPasswordPage() {
     return (
       <div className="auth-page">
         <div className="auth-card">
-          <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
+          <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>Only Tactics</a>
           <h1>Invalid Link</h1>
           <p className="auth-subtitle">
             This password reset link is invalid or has expired.
@@ -103,7 +103,7 @@ export function ResetPasswordPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
+        <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>Only Tactics</a>
         <h1>Set New Password</h1>
         <p className="auth-subtitle">Enter your new password below</p>
 

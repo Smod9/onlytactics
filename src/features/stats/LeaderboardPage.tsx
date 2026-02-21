@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { appEnv } from '@/config/env'
 import { useAuth } from '@/state/authStore'
-import { LobbyIcon, ReplayIcon } from '@/view/icons'
 
 const apiBase = appEnv.apiUrl.replace(/\/$/, '')
 
@@ -104,26 +103,7 @@ export function LeaderboardPage() {
             </tbody>
           </table>
         )}
-        <div className="stats-nav">
-          <a
-            href="/lobby"
-            onClick={(e) => {
-              e.preventDefault()
-              window.location.href = '/lobby'
-            }}
-          >
-            <LobbyIcon /> Lobby
-          </a>
-          <a
-            href="/replay"
-            onClick={(e) => {
-              e.preventDefault()
-              window.location.href = '/replay'
-            }}
-          >
-            <ReplayIcon /> Replays
-          </a>
-        </div>
+      
       </div>
     </div>
   )
