@@ -1,3 +1,10 @@
+## [1.39.1](https://github.com/Smod9/onlytactics/compare/v1.39.0...v1.39.1) (2026-02-21)
+
+
+### Bug Fixes
+
+* clear guest mode on landing page so auth gate always shows ([ec7f7ac](https://github.com/Smod9/onlytactics/commit/ec7f7acb63ecf70a3e696092b1e7ba44affc10bd))
+
 # [1.39.0](https://github.com/Smod9/onlytactics/compare/v1.38.5...v1.39.0) (2026-02-21)
 
 
