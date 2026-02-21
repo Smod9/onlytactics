@@ -256,8 +256,9 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
 })
 
 // SPA fallback: serve index.html for any non-API, non-file request.
+// Express 5's path-to-regexp requires named wildcards: use /{*splat} instead of *.
 if (hasClientBuild) {
-  expressApp.get('*', (_req, res) => {
+  expressApp.get('/{*splat}', (_req, res) => {
     res.sendFile(clientIndexPath)
   })
 }
