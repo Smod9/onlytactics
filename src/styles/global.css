@@ -746,8 +746,13 @@ button {
   border-radius: 1rem;
   overflow: hidden;
   position: relative;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   display: flex;
+}
+
+.app-main:has(.stats-page),
+.app-main:has(.admin-page) {
+  overflow-y: auto;
 }
 
 .placeholder {
@@ -3235,12 +3240,12 @@ kbd {
   pointer-events: auto;
 }
 
-/* Stats pages (leaderboard, profile) */
+/* Stats pages (leaderboard, profile, regattas) */
 .stats-page {
   display: flex;
   justify-content: center;
   padding: 2rem 1rem;
-  min-height: 100vh;
+  min-height: 100%;
   background: var(--bg-primary);
   color: var(--text-primary);
 }
@@ -3250,7 +3255,7 @@ kbd {
   border: 1px solid var(--border-strong);
   border-radius: 1rem;
   padding: 2rem;
-  max-width: 700px;
+  max-width: 960px;
   width: 100%;
 }
 

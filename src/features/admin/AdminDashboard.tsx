@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRequireAdmin, useAuth } from '@/state/authStore'
 import { auth, type User, type AdminRaceEntry, listRaces, setTrainingApproved, getTrainingStats } from '@/features/auth'
 
+type AdminTab = 'users' | 'training'
 type TrainingFilter = 'all' | 'approved' | 'unapproved'
 
 const formatDuration = (seconds: number) => {
@@ -19,6 +20,7 @@ export function AdminDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
+  const [activeTab, setActiveTab] = useState<AdminTab>('users')
   const [page, setPage] = useState(0)
   const limit = 20
 
@@ -205,217 +207,237 @@ export function AdminDashboard() {
         <p className="admin-subtitle">Logged in as {currentUser?.displayName}</p>
       </div>
 
-      <div className="admin-section">
-        <div className="admin-section-header">
-          <h2>User Management</h2>
-          <span className="admin-count">{total} users</span>
-        </div>
-
-        {error && <div className="admin-error">{error}</div>}
-
-        {isLoading ? (
-          <div className="admin-loading">Loading users...</div>
-        ) : (
-          <>
-            <div className="admin-table-container">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className={user.id === currentUser?.id ? 'current-user' : ''}>
-                      <td className="user-name">{user.displayName}</td>
-                      <td className="user-email">{user.email}</td>
-                      <td>
-                        <select
-                          value={user.role}
-                          onChange={(e) => handleRoleChange(user.id, e.target.value as 'admin' | 'player')}
-                          disabled={user.id === currentUser?.id || actionLoading}
-                          className="role-select"
-                        >
-                          <option value="player">Player</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </td>
-                      <td className="user-date">
-                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
-                      </td>
-                      <td className="user-actions">
-                        <button
-                          onClick={() => handleResetPassword(user.id)}
-                          disabled={actionLoading}
-                          className="action-btn reset"
-                          title="Reset password"
-                        >
-                          Reset PW
-                        </button>
-                        {user.id !== currentUser?.id && (
-                          <button
-                            onClick={() => handleDeleteUser(user.id, user.displayName)}
-                            disabled={actionLoading}
-                            className="action-btn delete"
-                            title="Delete user"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="admin-pagination">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                >
-                  Previous
-                </button>
-                <span>
-                  Page {page + 1} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
-        )}
+      <div className="admin-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'users'}
+          className={`admin-tab${activeTab === 'users' ? ' active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          Users <span className="admin-tab-count">{total}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'training'}
+          className={`admin-tab${activeTab === 'training' ? ' active' : ''}`}
+          onClick={() => setActiveTab('training')}
+        >
+          Training Data
+          {trainingStats && (
+            <span className="admin-tab-count">{trainingStats.approvedRaces} approved</span>
+          )}
+        </button>
       </div>
 
       <div className="admin-section">
-        <div className="admin-section-header">
-          <h2>Race Training Data</h2>
-          {trainingStats && (
-            <span className="admin-count">
-              {trainingStats.approvedRaces} approved ({trainingStats.totalFrames.toLocaleString()} frames)
-            </span>
-          )}
-        </div>
-
-        <div className="admin-training-controls">
-          <div className="admin-filter-group">
-            <label>Filter:</label>
-            <select
-              value={trainingFilter}
-              onChange={(e) => { setTrainingFilter(e.target.value as TrainingFilter); setRacePage(0) }}
-              className="role-select"
-            >
-              <option value="all">All races</option>
-              <option value="approved">Approved only</option>
-              <option value="unapproved">Unapproved only</option>
-            </select>
-          </div>
-          <div className="admin-bulk-actions">
-            <button
-              className="action-btn reset"
-              onClick={() => handleBulkApprove(true)}
-            >
-              Approve visible
-            </button>
-            <button
-              className="action-btn delete"
-              onClick={() => handleBulkApprove(false)}
-            >
-              Reject visible
-            </button>
-          </div>
-        </div>
-
-        {racesError && <div className="admin-error">{racesError}</div>}
-
-        {racesLoading ? (
-          <div className="admin-loading">Loading races...</div>
-        ) : races.length === 0 ? (
-          <div className="admin-loading">No races found.</div>
-        ) : (
+        {activeTab === 'users' && (
           <>
-            <div className="admin-table-container">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Course</th>
-                    <th>Fleet</th>
-                    <th>Humans</th>
-                    <th>Finished</th>
-                    <th>Duration</th>
-                    <th>Wind</th>
-                    <th>Penalties</th>
-                    <th>Approved</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {races.map((race) => (
-                    <tr key={race.raceId} className={race.trainingApproved ? 'training-approved' : ''}>
-                      <td className="user-date">
-                        {new Date(race.finishedAt).toLocaleDateString()}
-                      </td>
-                      <td>{race.courseName ?? '-'}</td>
-                      <td>{race.fleetSize}</td>
-                      <td className={race.humanPlayerCount === 0 ? 'admin-warning-cell' : ''}>
-                        {race.humanPlayerCount}
-                      </td>
-                      <td>{race.finisherCount}/{race.fleetSize}</td>
-                      <td>
-                        {race.raceDurationSeconds
-                          ? formatDuration(race.raceDurationSeconds)
-                          : '-'}
-                      </td>
-                      <td>
-                        {race.avgWindSpeedKts
-                          ? `${race.avgWindSpeedKts.toFixed(1)} kts`
-                          : '-'}
-                      </td>
-                      <td className={race.totalPenalties > 3 ? 'admin-warning-cell' : ''}>
-                        {race.totalPenalties}
-                      </td>
-                      <td>
-                        <button
-                          className={`training-toggle ${race.trainingApproved ? 'approved' : 'rejected'}`}
-                          onClick={() => handleToggleTraining(race.raceId, race.trainingApproved)}
-                          title={race.trainingApproved ? 'Click to reject' : 'Click to approve'}
-                        >
-                          {race.trainingApproved ? 'Yes' : 'No'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {error && <div className="admin-error">{error}</div>}
+            {isLoading ? (
+              <div className="admin-loading">Loading users...</div>
+            ) : (
+              <>
+                <div className="admin-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <tr key={user.id} className={user.id === currentUser?.id ? 'current-user' : ''}>
+                          <td className="user-name">{user.displayName}</td>
+                          <td className="user-email">{user.email}</td>
+                          <td>
+                            <select
+                              value={user.role}
+                              onChange={(e) => handleRoleChange(user.id, e.target.value as 'admin' | 'player')}
+                              disabled={user.id === currentUser?.id || actionLoading}
+                              className="role-select"
+                            >
+                              <option value="player">Player</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </td>
+                          <td className="user-date">
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
+                          </td>
+                          <td className="user-actions">
+                            <button
+                              onClick={() => handleResetPassword(user.id)}
+                              disabled={actionLoading}
+                              className="action-btn reset"
+                              title="Reset password"
+                            >
+                              Reset PW
+                            </button>
+                            {user.id !== currentUser?.id && (
+                              <button
+                                onClick={() => handleDeleteUser(user.id, user.displayName)}
+                                disabled={actionLoading}
+                                className="action-btn delete"
+                                title="Delete user"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
-            {raceTotalPages > 1 && (
-              <div className="admin-pagination">
-                <button
-                  onClick={() => setRacePage((p) => Math.max(0, p - 1))}
-                  disabled={racePage === 0}
+                {totalPages > 1 && (
+                  <div className="admin-pagination">
+                    <button
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                    >
+                      Previous
+                    </button>
+                    <span>
+                      Page {page + 1} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      disabled={page >= totalPages - 1}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {activeTab === 'training' && (
+          <>
+            <div className="admin-training-controls">
+              <div className="admin-filter-group">
+                <label>Filter:</label>
+                <select
+                  value={trainingFilter}
+                  onChange={(e) => { setTrainingFilter(e.target.value as TrainingFilter); setRacePage(0) }}
+                  className="role-select"
                 >
-                  Previous
-                </button>
-                <span>
-                  Page {racePage + 1} of {raceTotalPages}
+                  <option value="all">All races</option>
+                  <option value="approved">Approved only</option>
+                  <option value="unapproved">Unapproved only</option>
+                </select>
+              </div>
+              {trainingStats && (
+                <span className="admin-count">
+                  {trainingStats.totalFrames.toLocaleString()} frames &middot; ~{trainingStats.estimatedRows.toLocaleString()} training rows
                 </span>
+              )}
+              <div className="admin-bulk-actions">
                 <button
-                  onClick={() => setRacePage((p) => Math.min(raceTotalPages - 1, p + 1))}
-                  disabled={racePage >= raceTotalPages - 1}
+                  className="action-btn reset"
+                  onClick={() => handleBulkApprove(true)}
                 >
-                  Next
+                  Approve visible
+                </button>
+                <button
+                  className="action-btn delete"
+                  onClick={() => handleBulkApprove(false)}
+                >
+                  Reject visible
                 </button>
               </div>
+            </div>
+
+            {racesError && <div className="admin-error">{racesError}</div>}
+
+            {racesLoading ? (
+              <div className="admin-loading">Loading races...</div>
+            ) : races.length === 0 ? (
+              <div className="admin-loading">No races found.</div>
+            ) : (
+              <>
+                <div className="admin-table-container">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Course</th>
+                        <th>Fleet</th>
+                        <th>Humans</th>
+                        <th>Finished</th>
+                        <th>Duration</th>
+                        <th>Wind</th>
+                        <th>Penalties</th>
+                        <th>Approved</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {races.map((race) => (
+                        <tr key={race.raceId} className={race.trainingApproved ? 'training-approved' : ''}>
+                          <td className="user-date">
+                            {new Date(race.finishedAt).toLocaleDateString()}
+                          </td>
+                          <td>{race.courseName ?? '-'}</td>
+                          <td>{race.fleetSize}</td>
+                          <td className={race.humanPlayerCount === 0 ? 'admin-warning-cell' : ''}>
+                            {race.humanPlayerCount}
+                          </td>
+                          <td>{race.finisherCount}/{race.fleetSize}</td>
+                          <td>
+                            {race.raceDurationSeconds
+                              ? formatDuration(race.raceDurationSeconds)
+                              : '-'}
+                          </td>
+                          <td>
+                            {race.avgWindSpeedKts
+                              ? `${race.avgWindSpeedKts.toFixed(1)} kts`
+                              : '-'}
+                          </td>
+                          <td className={race.totalPenalties > 3 ? 'admin-warning-cell' : ''}>
+                            {race.totalPenalties}
+                          </td>
+                          <td>
+                            <button
+                              className={`training-toggle ${race.trainingApproved ? 'approved' : 'rejected'}`}
+                              onClick={() => handleToggleTraining(race.raceId, race.trainingApproved)}
+                              title={race.trainingApproved ? 'Click to reject' : 'Click to approve'}
+                            >
+                              {race.trainingApproved ? 'Yes' : 'No'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {raceTotalPages > 1 && (
+                  <div className="admin-pagination">
+                    <button
+                      onClick={() => setRacePage((p) => Math.max(0, p - 1))}
+                      disabled={racePage === 0}
+                    >
+                      Previous
+                    </button>
+                    <span>
+                      Page {racePage + 1} of {raceTotalPages}
+                    </span>
+                    <button
+                      onClick={() => setRacePage((p) => Math.min(raceTotalPages - 1, p + 1))}
+                      disabled={racePage >= raceTotalPages - 1}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

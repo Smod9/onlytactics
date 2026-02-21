@@ -176,26 +176,73 @@
 
 /* Admin Dashboard */
 .admin-page {
-  min-height: 100vh;
+  min-height: 100%;
   padding: 2rem;
-  background: var(--landing-bg);
+  background: var(--bg-primary);
   color: var(--text-primary);
 }
 
 .admin-header {
   max-width: 1200px;
-  margin: 0 auto 2rem;
+  margin: 0 auto 1.5rem;
 }
 
 .admin-header h1 {
-  margin: 0 0 0.5rem;
-  font-size: 2rem;
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
 }
 
 .admin-subtitle {
   color: var(--text-dim);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   margin: 0;
+}
+
+.admin-tabs {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border-subtle);
+  margin-bottom: 0;
+}
+
+.admin-tab {
+  padding: 0.7rem 1.25rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.admin-tab:hover {
+  color: var(--text-secondary);
+}
+
+.admin-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+.admin-tab-count {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-dim);
+}
+
+.admin-tab.active .admin-tab-count {
+  background: rgba(79, 125, 255, 0.12);
+  color: var(--accent-primary);
 }
 
 .admin-section {
@@ -203,21 +250,9 @@
   margin: 0 auto;
   background: var(--bg-card-translucent);
   border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
+  border-top: none;
+  border-radius: 0 0 1rem 1rem;
   padding: 1.5rem;
-}
-
-.admin-section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.admin-section-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  color: var(--text-muted);
 }
 
 .admin-count {

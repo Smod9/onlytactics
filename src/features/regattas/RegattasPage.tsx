@@ -145,7 +145,7 @@ export function RegattasPage() {
 
   return (
     <div className="stats-page">
-      <div className="stats-card" style={{ maxWidth: 900 }}>
+      <div className="stats-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>Regattas</h2>
           {isAuthenticated && (
