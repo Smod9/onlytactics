@@ -95,6 +95,7 @@ router.post('/register', registerLimiter, async (req, res) => {
         email: user.email,
         displayName: user.displayName,
         role: user.role,
+        themePreference: user.themePreference,
       },
       ...tokens,
     })
@@ -139,6 +140,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         email: user.email,
         displayName: user.displayName,
         role: user.role,
+        themePreference: user.themePreference,
       },
       ...tokens,
     })
@@ -185,6 +187,7 @@ router.post('/refresh', async (req, res) => {
         email: user.email,
         displayName: user.displayName,
         role: user.role,
+        themePreference: user.themePreference,
       },
       ...tokens,
     })
@@ -231,6 +234,7 @@ router.get('/me', authenticate, async (req, res) => {
       email: user.email,
       displayName: user.displayName,
       role: user.role,
+      themePreference: user.themePreference,
       createdAt: user.createdAt,
     })
   } catch (error) {
@@ -245,7 +249,7 @@ router.get('/me', authenticate, async (req, res) => {
  */
 router.patch('/profile', authenticate, async (req, res) => {
   try {
-    const { displayName } = req.body
+    const { displayName, themePreference } = req.body
 
     if (displayName !== undefined) {
       if (typeof displayName !== 'string' || displayName.trim().length < 2 || displayName.trim().length > 50) {
@@ -254,7 +258,18 @@ router.patch('/profile', authenticate, async (req, res) => {
       }
     }
 
-    const user = await updateUser(req.user!.sub, { displayName: displayName?.trim() })
+    if (themePreference !== undefined) {
+      if (!['light', 'dark', 'auto'].includes(themePreference)) {
+        res.status(400).json({ error: 'validation_error', message: 'Theme must be light, dark, or auto' })
+        return
+      }
+    }
+
+    const updates: Record<string, string> = {}
+    if (displayName !== undefined) updates.displayName = displayName.trim()
+    if (themePreference !== undefined) updates.themePreference = themePreference
+
+    const user = await updateUser(req.user!.sub, updates)
     if (!user) {
       res.status(404).json({ error: 'user_not_found', message: 'User not found' })
       return
@@ -265,6 +280,7 @@ router.patch('/profile', authenticate, async (req, res) => {
       email: user.email,
       displayName: user.displayName,
       role: user.role,
+      themePreference: user.themePreference,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     })

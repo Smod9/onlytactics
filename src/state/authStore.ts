@@ -1,4 +1,5 @@
 import { auth, type User, type AuthState, type LoginCredentials, type RegisterCredentials } from '@/features/auth'
+import { themeStore, type ThemePreference } from '@/state/themeStore'
 
 const AUTH_STORAGE_KEY = 'auth_state'
 
@@ -38,6 +39,7 @@ class AuthStore {
           refreshToken: parsed.refreshToken,
           isLoading: false,
         }
+        this.syncThemeFromUser(parsed.user)
       } else {
         this.state.isLoading = false
       }
@@ -58,6 +60,14 @@ class AuthStore {
 
   private clearStorage() {
     localStorage.removeItem(AUTH_STORAGE_KEY)
+  }
+
+  private syncThemeFromUser(user: User | null) {
+    if (user?.themePreference) {
+      themeStore.setPreference(user.themePreference)
+    } else {
+      themeStore.setPreference('auto')
+    }
   }
 
   private notify() {
@@ -90,6 +100,7 @@ class AuthStore {
         error: null,
       })
       this.saveToStorage()
+      this.syncThemeFromUser(response.user)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed'
       this.setState({ isLoading: false, error: message })
@@ -109,6 +120,7 @@ class AuthStore {
         error: null,
       })
       this.saveToStorage()
+      this.syncThemeFromUser(response.user)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registration failed'
       this.setState({ isLoading: false, error: message })
@@ -132,6 +144,7 @@ class AuthStore {
       error: null,
     })
     this.clearStorage()
+    this.syncThemeFromUser(null)
   }
 
   async refreshSession(): Promise<boolean> {
@@ -168,13 +181,14 @@ class AuthStore {
       const user = await auth.getMe(token)
       this.setState({ user })
       this.saveToStorage()
+      this.syncThemeFromUser(user)
     } catch {
       this.setState({ user: null, accessToken: null, refreshToken: null })
       this.clearStorage()
     }
   }
 
-  async updateProfile(updates: { displayName?: string }): Promise<void> {
+  async updateProfile(updates: { displayName?: string; themePreference?: ThemePreference }): Promise<void> {
     const token = await this.getFreshAccessToken()
     if (!token) throw new Error('Not authenticated')
 
@@ -183,6 +197,7 @@ class AuthStore {
       user: { ...this.state.user!, ...updatedUser },
     })
     this.saveToStorage()
+    this.syncThemeFromUser(this.state.user)
   }
 
   clearError() {

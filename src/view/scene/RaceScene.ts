@@ -4,6 +4,8 @@ import type { BoatState, RaceState, Vec2, WindFieldConfig } from '@/types/race'
 import { identity } from '@/net/identity'
 import { angleDiff } from '@/logic/physics'
 import { getWindFieldConfig, sampleWindDeltaKts } from '@/logic/windField'
+import { getSceneColors, type ScenePalette } from './sceneColors'
+import { getResolvedTheme } from '@/state/themeStore'
 import {
   BOAT_BOW_OFFSET,
   BOAT_BOW_RADIUS,
@@ -62,6 +64,8 @@ const MARK_ZONE_RADIUS = 4 * BOAT_LENGTH
 
 export type CameraMode = 'follow' | 'birdseye'
 
+let activePalette: ScenePalette = getSceneColors(getResolvedTheme())
+
 class BoatView {
   container = new Container()
   hull = new Graphics()
@@ -72,7 +76,7 @@ class BoatView {
   wakeLabel = new Text({
     text: '',
     style: {
-      fill: '#ffcf70',
+      fill: activePalette.wakeLabelFill,
       fontSize: 10,
       align: 'center',
       fontFamily: 'IBM Plex Mono, monospace',
@@ -81,14 +85,14 @@ class BoatView {
   nameTag = new Text({
     text: '',
     style: {
-      fill: '#ffffff',
+      fill: activePalette.boatNameDefault,
       fontSize: 12,
       align: 'center',
     },
   })
   private lastLeewardSign: 1 | -1 = 1
   private lastNameText = ''
-  private lastNameFill = '#ffffff'
+  private lastNameFill = activePalette.boatNameDefault
   private lastProjectionLen = NaN
 
   constructor(private color: number) {
@@ -130,15 +134,15 @@ class BoatView {
     this.hull.poly(hullPoints)
     this.hull.fill()
     // Port/starboard edge colors
-    this.hull.setStrokeStyle({ width: 3, color: 0x00c389 })
+    this.hull.setStrokeStyle({ width: 3, color: activePalette.boatPortEdge })
     this.hull.moveTo(0, -20)
     this.hull.lineTo(10, 10)
     this.hull.stroke()
-    this.hull.setStrokeStyle({ width: 3, color: 0xff5e5e })
+    this.hull.setStrokeStyle({ width: 3, color: activePalette.boatStarboardEdge })
     this.hull.moveTo(-10, 10)
     this.hull.lineTo(0, -20)
     this.hull.stroke()
-    this.hull.setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.4 })
+    this.hull.setStrokeStyle({ width: 2, color: activePalette.boatHullOutline, alpha: activePalette.boatHullOutlineAlpha })
     this.hull.moveTo(-10, 10)
     this.hull.lineTo(10, 10)
     this.hull.stroke()
@@ -151,7 +155,7 @@ class BoatView {
 
   private drawSailShape() {
     this.sail.clear()
-    this.sail.fill({ color: 0xffffff, alpha: 0.65 })
+    this.sail.fill({ color: activePalette.boatSailFill, alpha: activePalette.boatSailAlpha })
     // Bow tack
     this.sail.moveTo(0, 0)
 
@@ -232,7 +236,7 @@ class BoatView {
     }
     const showFouled = beforeStart ? boat.overEarly : boat.fouled
     const nextFill =
-      showFouled || boat.penalties > 0 ? '#ff6b6b' : '#ffffff'
+      showFouled || boat.penalties > 0 ? activePalette.boatNameFouled : activePalette.boatNameDefault
     if (nextFill !== this.lastNameFill) {
       this.nameTag.style.fill = nextFill
       this.lastNameFill = nextFill
@@ -288,7 +292,7 @@ class BoatView {
 
       // Update label text
       this.wakeLabel.text = `Wake -${slowdownPercent}%`
-      this.wakeLabel.style.fill = '#ffcf70'
+      this.wakeLabel.style.fill = activePalette.wakeLabelFill
       this.wakeLabel.alpha = 0.8 + intensity * 0.2
     }
   }
@@ -310,7 +314,7 @@ class BoatView {
 
     this.projection.clear()
     this.projection
-      .setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.3 })
+      .setStrokeStyle({ width: 2, color: activePalette.boatProjection, alpha: activePalette.boatProjectionAlpha })
       .moveTo(0, -10)
       .lineTo(0, -10 - length)
       .stroke()
@@ -331,23 +335,23 @@ export class RaceScene {
   private windArrowFill = new Graphics()
   private windText = new Text({
     text: '',
-    style: { fill: '#ffffff', fontSize: 16, fontWeight: '600' },
+    style: { fill: activePalette.hudTextFill, fontSize: 16, fontWeight: '600' },
   })
   private timerText = new Text({
     text: '',
-    style: { fill: '#ffffff', fontSize: 14, fontWeight: 'bold' },
+    style: { fill: activePalette.hudTextFill, fontSize: 14, fontWeight: 'bold' },
   })
   private countdownContainer = new Container()
   private countdownBg = new Graphics()
   private countdownFill = new Graphics()
   private countdownLabel = new Text({
     text: 'START IN',
-    style: { fill: '#f7d19f', fontSize: 12, letterSpacing: 2, fontWeight: '600' },
+    style: { fill: activePalette.countdownLabelFill, fontSize: 12, letterSpacing: 2, fontWeight: '600' },
   })
   private countdownTime = new Text({
     text: '',
     style: {
-      fill: '#ffffff',
+      fill: activePalette.countdownTimeFill,
       fontSize: 48,
       fontWeight: '700',
       fontFamily: 'IBM Plex Mono, monospace',
@@ -441,10 +445,20 @@ export class RaceScene {
     this.windArrowFill.visible = false
     this.timerText.visible = false
 
+    this.palette = getSceneColors(getResolvedTheme())
+    activePalette = this.palette
+
     this.drawWater()
   }
 
   static currentWindDeg = 0
+  private palette: ScenePalette = activePalette
+
+  setTheme(theme: 'light' | 'dark') {
+    this.palette = getSceneColors(theme)
+    activePalette = this.palette
+    this.drawWater()
+  }
 
   setCameraMode(mode: CameraMode) {
     this.cameraMode = mode
@@ -529,7 +543,7 @@ export class RaceScene {
   private drawWater() {
     const { width, height } = this.app.canvas
     this.waterLayer.clear()
-    this.waterLayer.fill({ color: 0x021428 })
+    this.waterLayer.fill({ color: this.palette.water })
     this.waterLayer.rect(0, 0, width, height)
     this.waterLayer.fill()
   }
@@ -746,8 +760,8 @@ export class RaceScene {
       }
     }
 
-    const puffColor = 0x19d3c5 // teal
-    const lullColor = 0xb07aa1 // deep blue
+    const puffColor = this.palette.windPuff
+    const lullColor = this.palette.windLull
     const maxAlpha = 0.24
 
     for (let b = 0; b < buckets; b += 1) {
@@ -848,7 +862,7 @@ export class RaceScene {
     const endOffsetWorld = 10 * pxToWorld
 
     // Use a distinct accent color so this doesn't read like zone outlines.
-    this.contextLayer.fill({ color: 0x70d6ff, alpha: 0.42 })
+    this.contextLayer.fill({ color: this.palette.contextLine, alpha: this.palette.contextLineAlpha })
     this.drawDottedLine(
       this.contextLayer,
       boat.pos,
@@ -914,7 +928,7 @@ export class RaceScene {
   }
 
   private drawMarks(state: RaceState) {
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0x5174b3, alpha: 0.6 })
+    this.courseLayer.setStrokeStyle({ width: 2, color: this.palette.markZone, alpha: this.palette.markZoneAlpha })
     // Gate marks (indices 3 and 4) are drawn separately in drawLeewardGate
     // Pin (index 2) and committee (index 1) don't get zone circles
     const gateMarkIndices = new Set([3, 4])
@@ -922,12 +936,12 @@ export class RaceScene {
     state.marks.forEach((mark, index) => {
       const x = mark.x
       const y = mark.y
-      this.courseLayer.fill({ color: 0xffff00, alpha: 0.8 })
+      this.courseLayer.fill({ color: this.palette.mark, alpha: this.palette.markAlpha })
       this.courseLayer.circle(x, y, 6)
       this.courseLayer.fill()
       // Skip zone circles for gate marks and start line marks
       if (!gateMarkIndices.has(index) && !startLineMarkIndices.has(index)) {
-        this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.4 })
+        this.courseLayer.setStrokeStyle({ width: 1, color: this.palette.markZone, alpha: this.palette.markZoneAlpha })
         this.drawZoneCircle({ x, y }, MARK_ZONE_RADIUS)
       }
     })
@@ -1100,7 +1114,7 @@ export class RaceScene {
           }
 
           const alpha = baseAlpha * featherAlpha[s] * fade + 0.01
-          this.windShadowLayer.fill({ color: 0x6aaeff, alpha })
+          this.windShadowLayer.fill({ color: this.palette.windShadow, alpha })
           this.windShadowLayer.moveTo(startLeft.x, startLeft.y)
           this.windShadowLayer.lineTo(endLeft.x, endLeft.y)
           this.windShadowLayer.lineTo(endRight.x, endRight.y)
@@ -1743,13 +1757,13 @@ export class RaceScene {
     // Always draw the full start line in world space. Dashes can look “short” when zoomed,
     // so we use opacity (prestart) instead of a dashed pattern.
     const alpha = state.t < 0 ? 0.4 : 0.9
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0xffffff, alpha })
+    this.courseLayer.setStrokeStyle({ width: 2, color: this.palette.startLine, alpha })
     this.courseLayer.moveTo(pin.x, pin.y)
     this.courseLayer.lineTo(committee.x, committee.y)
     this.courseLayer.stroke()
 
     // Pin mark
-    this.courseLayer.fill({ color: 0xffd166, alpha: 0.9 })
+    this.courseLayer.fill({ color: this.palette.pinMark, alpha: 0.9 })
     this.courseLayer.circle(pin.x, pin.y, 6)
     this.courseLayer.fill()
 
@@ -1771,7 +1785,7 @@ export class RaceScene {
       y: committee.y + x * sin + y * cos,
     }))
 
-    this.courseLayer.fill({ color: 0x5cc8ff, alpha: 0.95 })
+    this.courseLayer.fill({ color: this.palette.committeBoat, alpha: 0.95 })
     this.courseLayer.poly([
       hull[0].x,
       hull[0].y,
@@ -1788,7 +1802,7 @@ export class RaceScene {
     ])
     this.courseLayer.fill()
     // Add a mast
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.8 })
+    this.courseLayer.setStrokeStyle({ width: 2, color: this.palette.startLine, alpha: 0.8 })
     this.courseLayer.moveTo(committee.x, committee.y - 8 * s)
     this.courseLayer.lineTo(committee.x, committee.y + 8 * s)
     this.courseLayer.stroke()
@@ -1815,11 +1829,11 @@ export class RaceScene {
   private drawLeewardGate(state: RaceState) {
     const left = state.leewardGate.left
     const right = state.leewardGate.right
-    this.courseLayer.setStrokeStyle({ width: 2, color: 0xff6b6b, alpha: 0.8 })
+    this.courseLayer.setStrokeStyle({ width: 2, color: this.palette.leewardGate, alpha: 0.8 })
     this.courseLayer.moveTo(left.x, left.y)
     this.courseLayer.lineTo(right.x, right.y)
     ;[left, right].forEach((gateMark) => {
-      this.courseLayer.fill({ color: 0xff6b6b, alpha: 0.9 })
+      this.courseLayer.fill({ color: this.palette.leewardGate, alpha: 0.9 })
       this.courseLayer.circle(gateMark.x, gateMark.y, 7)
       this.courseLayer.fill()
       this.drawZoneCircle(gateMark, MARK_ZONE_RADIUS)
@@ -1891,7 +1905,7 @@ export class RaceScene {
       const sy = center.y + Math.sin(startAngle) * radius
       const ex = center.x + Math.cos(endAngle) * radius
       const ey = center.y + Math.sin(endAngle) * radius
-      this.courseLayer.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.2 })
+      this.courseLayer.setStrokeStyle({ width: 1, color: this.palette.markZone, alpha: this.palette.markZoneAlpha })
       this.courseLayer.moveTo(sx, sy)
       this.courseLayer.lineTo(ex, ey)
       angle += step
@@ -1942,7 +1956,7 @@ export class RaceScene {
     const tipY = center.y - length * Math.cos(heading)
 
     const arrowShift = state.wind.directionDeg - state.baselineWindDeg
-    const shiftColor = arrowShift > 1 ? 0xff8f70 : arrowShift < -1 ? 0x70d6ff : 0xffffff
+    const shiftColor = arrowShift > 1 ? this.palette.windArrowRight : arrowShift < -1 ? this.palette.windArrowLeft : this.palette.windArrowDefault
 
     if (this.windArrow.visible) {
       this.windArrow.clear()
@@ -1995,10 +2009,10 @@ export class RaceScene {
     const barX = overlayX + barPadding
     const barY = overlayY + overlayHeight - barPadding - barHeight
 
-    const fillColor = finalWarning ? 0xff8f70 : 0x53e0ff
+    const fillColor = finalWarning ? this.palette.countdownFillWarning : this.palette.countdownFill
 
     this.countdownBg.clear()
-    this.countdownBg.fill({ color: 0x050a1a, alpha: 0.85 })
+    this.countdownBg.fill({ color: this.palette.countdownBg, alpha: this.palette.countdownBgAlpha })
     this.countdownBg.roundRect(overlayX, overlayY, overlayWidth, overlayHeight, 24)
     this.countdownBg.fill()
 
@@ -2019,7 +2033,9 @@ export class RaceScene {
     this.countdownFill.stroke()
 
     const centerX = overlayX + overlayWidth / 2
+    this.countdownLabel.style.fill = this.palette.countdownLabelFill
     this.countdownLabel.position.set(centerX, overlayY + 28)
+    this.countdownTime.style.fill = this.palette.countdownTimeFill
     this.countdownTime.position.set(centerX, overlayY + overlayHeight / 2)
     this.countdownTime.text = timeText
   }

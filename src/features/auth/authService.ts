@@ -101,7 +101,7 @@ export const authService = {
     return handleResponse<{ success: boolean; message: string }>(response)
   },
 
-  async updateProfile(accessToken: string, updates: { displayName?: string }): Promise<User> {
+  async updateProfile(accessToken: string, updates: { displayName?: string; themePreference?: string }): Promise<User> {
     const response = await fetch(`${API_BASE}/api/auth/profile`, {
       method: 'PATCH',
       headers: getAuthHeaders(accessToken),

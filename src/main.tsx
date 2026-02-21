@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './styles/global.css'
 import { App } from './App'
 import { LandingPage } from './LandingPage'
+import '@/state/themeStore'
 
 const APP_ROUTES = [
   '/app', '/lobby', '/replay',

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Application } from 'pixi.js'
 import { useRaceState } from '@/state/hooks'
+import { useTheme } from '@/state/themeStore'
 import { RaceScene, type CameraMode } from './scene/RaceScene'
 
 type Props = {
@@ -31,6 +32,7 @@ export const PixiStage = ({
   const onDragBoatRef = useRef<Props['onDragBoat']>(onDragBoat)
   const godDragEnabledRef = useRef<boolean>(Boolean(godDragEnabled))
   const scrollZoomRef = useRef<boolean>(Boolean(scrollZoom))
+  const { resolved: resolvedTheme } = useTheme()
 
   useEffect(() => {
     raceStateRef.current = raceState
@@ -215,6 +217,11 @@ export const PixiStage = ({
     sceneRef.current?.setFollowBoatId(followBoatId ?? null)
     sceneRef.current?.update(raceStateRef.current)
   }, [followBoatId])
+
+  useEffect(() => {
+    sceneRef.current?.setTheme(resolvedTheme)
+    sceneRef.current?.update(raceStateRef.current)
+  }, [resolvedTheme])
 
   return <div className="pixi-stage" ref={mountRef} />
 }

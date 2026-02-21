@@ -1,6 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { appEnv } from '@/config/env'
 import { useAuth } from '@/state/authStore'
+import { useTheme } from '@/state/themeStore'
+import { SunIcon, MoonIcon, MonitorIcon } from '@/view/icons'
 
 const apiBase = appEnv.apiUrl.replace(/\/$/, '')
 
@@ -47,6 +49,7 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user, updateProfile } = useAuth()
+  const { preference, setPreference } = useTheme()
   const [editName, setEditName] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editFeedback, setEditFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -145,6 +148,47 @@ export function ProfilePage() {
                 {editFeedback.message}
               </p>
             )}
+          </div>
+        )}
+
+        {isOwnProfile && user && (
+          <div className="profile-edit-section">
+            <h3>Theme</h3>
+            <div className="theme-toggle">
+              <button
+                type="button"
+                className={`theme-toggle-option ${preference === 'light' ? 'active' : ''}`}
+                onClick={() => {
+                  setPreference('light')
+                  updateProfile({ themePreference: 'light' })
+                }}
+              >
+                <SunIcon />
+                Light
+              </button>
+              <button
+                type="button"
+                className={`theme-toggle-option ${preference === 'dark' ? 'active' : ''}`}
+                onClick={() => {
+                  setPreference('dark')
+                  updateProfile({ themePreference: 'dark' })
+                }}
+              >
+                <MoonIcon />
+                Dark
+              </button>
+              <button
+                type="button"
+                className={`theme-toggle-option ${preference === 'auto' ? 'active' : ''}`}
+                onClick={() => {
+                  setPreference('auto')
+                  updateProfile({ themePreference: 'auto' })
+                }}
+              >
+                <MonitorIcon />
+                Auto
+              </button>
+            </div>
           </div>
         )}
 
