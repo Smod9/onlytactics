@@ -15,7 +15,7 @@ type Runtime = {
 
 export class AiManager {
   private runtimes = new Map<string, Runtime>()
-  private timer?: number
+  private timer?: ReturnType<typeof setInterval>
 
   constructor(
     private store: RaceStore,
@@ -25,12 +25,12 @@ export class AiManager {
 
   start(intervalMs = 150) {
     if (this.timer) return
-    this.timer = window.setInterval(() => this.update(), intervalMs)
+    this.timer = setInterval(() => this.update(), intervalMs)
   }
 
   stop() {
     if (!this.timer) return
-    window.clearInterval(this.timer)
+    clearInterval(this.timer)
     this.timer = undefined
   }
 

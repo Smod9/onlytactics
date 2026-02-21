@@ -70,6 +70,7 @@ const MIGRATIONS = [
   { filename: '006_regattas.sql' },
   { filename: '007_user_theme.sql' },
   { filename: '008_regatta_status.sql' },
+  { filename: '009_training_flag.sql' },
 ]
 
 const MIGRATION_LOCK_ID = 839_201_741

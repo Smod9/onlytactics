@@ -39,6 +39,19 @@ const getAuthHeaders = (token?: string | null): HeadersInit => {
   return headers
 }
 
+export type AdminRaceEntry = {
+  raceId: string
+  finishedAt: string
+  courseName: string | null
+  fleetSize: number
+  humanPlayerCount: number
+  finisherCount: number
+  totalPenalties: number
+  raceDurationSeconds: number | null
+  avgWindSpeedKts: number | null
+  trainingApproved: boolean
+}
+
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await fetch(`${API_BASE}/api/auth/login`, {
@@ -163,4 +176,44 @@ export const authService = {
     })
     return handleResponse<{ success: boolean; message: string }>(response)
   },
+}
+
+export async function listRaces(
+  accessToken: string,
+  options: { limit?: number; offset?: number; trainingApproved?: boolean; courseName?: string } = {},
+): Promise<{ races: AdminRaceEntry[]; total: number; limit: number; offset: number }> {
+  const params = new URLSearchParams()
+  if (options.limit) params.set('limit', String(options.limit))
+  if (options.offset) params.set('offset', String(options.offset))
+  if (options.trainingApproved !== undefined) params.set('trainingApproved', String(options.trainingApproved))
+  if (options.courseName) params.set('courseName', options.courseName)
+
+  const response = await fetch(`${API_BASE}/api/admin/races?${params}`, {
+    method: 'GET',
+    headers: getAuthHeaders(accessToken),
+  })
+  return handleResponse<{ races: AdminRaceEntry[]; total: number; limit: number; offset: number }>(response)
+}
+
+export async function setTrainingApproved(
+  accessToken: string,
+  raceId: string,
+  trainingApproved: boolean,
+): Promise<{ success: boolean; raceId: string; trainingApproved: boolean }> {
+  const response = await fetch(`${API_BASE}/api/admin/races/${raceId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(accessToken),
+    body: JSON.stringify({ trainingApproved }),
+  })
+  return handleResponse<{ success: boolean; raceId: string; trainingApproved: boolean }>(response)
+}
+
+export async function getTrainingStats(
+  accessToken: string,
+): Promise<{ approvedRaces: number; totalFrames: number; estimatedRows: number }> {
+  const response = await fetch(`${API_BASE}/api/admin/races/training-stats`, {
+    method: 'GET',
+    headers: getAuthHeaders(accessToken),
+  })
+  return handleResponse<{ approvedRaces: number; totalFrames: number; estimatedRows: number }>(response)
 }

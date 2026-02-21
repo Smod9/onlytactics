@@ -57,7 +57,7 @@ export function RegisterPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <a href="/" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/' }}>Only Tactics</a>
+        <a href="/lobby" className="auth-brand" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>Only Tactics</a>
         <h1>Create Account</h1>
         <p className="auth-subtitle">Join Only Tactics and start racing</p>
 

@@ -34,6 +34,8 @@
     "../src/state/factories.ts",
     "../src/utils/**/*",
     "../src/ai/profiles.ts",
+    "../src/ai/features.ts",
+    "../src/ai/mlController.ts",
     "../src/host/loop.ts",
     "../src/config/course.ts"
   ],

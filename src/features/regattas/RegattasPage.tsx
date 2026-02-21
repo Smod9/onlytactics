@@ -1,7 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { regattaService, type Regatta, type RegattaDetail, type RegattaStatus } from '@/net/regattaService'
 import { useAuth } from '@/state/authStore'
-import { LobbyIcon } from '@/view/icons'
 
 type Tab = 'active' | 'past'
 
@@ -289,11 +288,7 @@ export function RegattasPage() {
           </div>
         )}
 
-        <div className="stats-nav">
-          <a href="/lobby" onClick={(e) => { e.preventDefault(); window.location.href = '/lobby' }}>
-            <LobbyIcon /> Lobby
-          </a>
-        </div>
+      
       </div>
 
       {showCreateModal && (

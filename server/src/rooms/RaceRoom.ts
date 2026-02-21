@@ -30,6 +30,8 @@ import { applyRaceStateToSchema } from '../state/schema/applyRaceState'
 import { saveRace } from '../db/raceStorage'
 import { saveRaceStats } from '../db/statsStorage'
 import { addRaceToRegatta, getNextRaceNumber } from '../db/regattaStorage'
+import { MlAiController } from '@/ai/mlController'
+import { AiManager } from '@/ai/manager'
 
 const roomDebug = (...args: unknown[]) => {
   if (!appEnv.debugNetLogs) return
@@ -119,6 +121,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
   public regattaId?: string
   private lastPlayerLeaveTime?: number
   private cleanupTimer?: NodeJS.Timeout
+  private aiController?: MlAiController | AiManager
 
   onCreate(options: Record<string, unknown>) {
     // Disable auto-dispose so rooms stay alive during reconnection windows.
@@ -217,6 +220,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
       },
     })
     this.loop.start()
+    this.initAiController()
     this.state.setReady()
 
     this.onMessage<HelloMessage>('hello', (client, message) => {
@@ -536,10 +540,50 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     })
     void this.persistReplay('room_dispose')
     this.loop?.stop()
+    this.aiController?.stop()
     // Clean up any active spins when room is disposed
     this.activeSpins.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)))
     this.activeSpins.clear()
     this.cancelCleanup()
+  }
+
+  private initAiController() {
+    if (!appEnv.aiEnabled || !this.raceStore) return
+
+    const sendInput = (boatId: string, update: { absoluteHeadingDeg?: number }) => {
+      if (!this.raceStore) return
+      this.raceStore.upsertInput({
+        boatId,
+        seq: 0,
+        absoluteHeadingDeg: update.absoluteHeadingDeg,
+        tClient: Date.now(),
+      })
+    }
+
+    const requestSpin = (boatId: string) => {
+      this.queueSpin(boatId)
+    }
+
+    if (appEnv.aiMode === 'ml' && appEnv.aiModelPath) {
+      const mlCtrl = new MlAiController(this.raceStore, sendInput, requestSpin)
+      mlCtrl.loadModel(appEnv.aiModelPath).then((loaded) => {
+        if (loaded) {
+          mlCtrl.start()
+          this.aiController = mlCtrl
+          console.info('[RaceRoom] ML AI controller started')
+        } else {
+          console.info('[RaceRoom] ML model failed to load, falling back to rule-based AI')
+          const fallback = new AiManager(this.raceStore!, sendInput, requestSpin)
+          fallback.start()
+          this.aiController = fallback
+        }
+      })
+    } else {
+      const ruleAi = new AiManager(this.raceStore, sendInput, requestSpin)
+      ruleAi.start()
+      this.aiController = ruleAi
+      console.info('[RaceRoom] Rule-based AI controller started')
+    }
   }
 
   private handleTimeout() {

@@ -11,6 +11,11 @@ import {
 import { revokeAllUserRefreshTokens } from '@/auth/tokenService'
 import { sendAdminPasswordResetEmail } from '@/auth/emailService'
 import { authenticate, requireRole } from '@/auth/authMiddleware'
+import {
+  getAdminRaceList,
+  setTrainingApproved,
+  getTrainingStats,
+} from '@/db/raceStorage'
 
 const router = Router()
 
@@ -195,6 +200,67 @@ router.post('/users/:id/revoke-sessions', async (req, res) => {
   } catch (error) {
     console.error('[admin] Revoke sessions error:', error)
     res.status(500).json({ error: 'revoke_failed', message: 'Failed to revoke sessions' })
+  }
+})
+
+/**
+ * GET /api/admin/races
+ * List races with training-relevant stats
+ */
+router.get('/races', async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 25, 1), 100)
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0)
+    const courseName = req.query.courseName as string | undefined
+
+    let trainingApproved: boolean | undefined
+    if (req.query.trainingApproved === 'true') trainingApproved = true
+    else if (req.query.trainingApproved === 'false') trainingApproved = false
+
+    const result = await getAdminRaceList({ trainingApproved, courseName, limit, offset })
+    res.json({ ...result, limit, offset })
+  } catch (error) {
+    console.error('[admin] List races error:', error)
+    res.status(500).json({ error: 'fetch_failed', message: 'Failed to fetch races' })
+  }
+})
+
+/**
+ * GET /api/admin/races/training-stats
+ * Summary stats for the training dataset
+ */
+router.get('/races/training-stats', async (_req, res) => {
+  try {
+    const stats = await getTrainingStats()
+    res.json(stats)
+  } catch (error) {
+    console.error('[admin] Training stats error:', error)
+    res.status(500).json({ error: 'fetch_failed', message: 'Failed to fetch training stats' })
+  }
+})
+
+/**
+ * PATCH /api/admin/races/:raceId
+ * Toggle training approval for a race
+ */
+router.patch('/races/:raceId', async (req, res) => {
+  try {
+    const { trainingApproved } = req.body
+    if (typeof trainingApproved !== 'boolean') {
+      res.status(400).json({ error: 'validation_error', message: 'trainingApproved must be a boolean' })
+      return
+    }
+
+    const updated = await setTrainingApproved(req.params.raceId, trainingApproved)
+    if (!updated) {
+      res.status(404).json({ error: 'not_found', message: 'Race not found' })
+      return
+    }
+
+    res.json({ success: true, raceId: req.params.raceId, trainingApproved })
+  } catch (error) {
+    console.error('[admin] Update race error:', error)
+    res.status(500).json({ error: 'update_failed', message: 'Failed to update race' })
   }
 })
 

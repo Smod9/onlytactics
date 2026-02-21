@@ -81,17 +81,17 @@ test.describe('Auth page cross-navigation', () => {
     await expect(page.locator('h1')).toContainText('Welcome Back')
   })
 
-  test('login page brand link navigates to landing', async ({ page }) => {
+  test('login page brand link navigates to lobby', async ({ page }) => {
     await page.goto('/login')
     const brand = page.locator('.auth-brand')
     await expect(brand).toBeVisible()
-    await expect(brand).toHaveAttribute('href', '/')
+    await expect(brand).toHaveAttribute('href', '/lobby')
   })
 
-  test('register page brand link navigates to landing', async ({ page }) => {
+  test('register page brand link navigates to lobby', async ({ page }) => {
     await page.goto('/register')
     const brand = page.locator('.auth-brand')
     await expect(brand).toBeVisible()
-    await expect(brand).toHaveAttribute('href', '/')
+    await expect(brand).toHaveAttribute('href', '/lobby')
   })
 })

@@ -387,6 +387,65 @@
   text-decoration: underline;
 }
 
+.admin-training-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-filter-group label {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.admin-bulk-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-warning-cell {
+  color: var(--accent-warning-text);
+}
+
+.training-toggle {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.training-toggle.approved {
+  background: var(--accent-danger-bg);
+  border-color: var(--accent-success);
+  color: var(--accent-success);
+}
+
+.training-toggle.rejected {
+  background: var(--bg-subtle);
+  border-color: var(--border-default);
+  color: var(--text-dim);
+}
+
+.training-toggle:hover {
+  opacity: 0.8;
+}
+
+.training-approved {
+  background: var(--bg-subtle);
+}
+
 /* Auth Gate Layout */
 .auth-gate-wrapper {
   position: relative;

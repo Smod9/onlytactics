@@ -2877,7 +2877,7 @@ kbd {
   padding: 0.75rem 1rem;
   border: 1px solid var(--hud-border);
   border-radius: 0.9rem;
-  background: rgba(8, 12, 26, 0.65);
+  background: var(--bg-card-translucent);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -2910,7 +2910,7 @@ kbd {
 }
 
 .landing-actions .secondary {
-  border: 1px solid #36405f;
+  border: 1px solid var(--border-default);
   color: var(--text-muted);
 }
 
@@ -2918,7 +2918,7 @@ kbd {
   text-transform: uppercase;
   letter-spacing: 0.2em;
   font-size: 0.75rem;
-  color: #91a7ff;
+  color: var(--text-muted);
 }
 
 .testimonials {
@@ -2928,26 +2928,26 @@ kbd {
 }
 
 .testimonial {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-subtle);
   border-radius: 0.9rem;
   padding: 1rem;
-  background: rgba(10, 14, 26, 0.7);
+  background: var(--bg-card-translucent);
 }
 
 .testimonial blockquote {
   font-size: 1rem;
   line-height: 1.5;
-  color: #f8f9ff;
+  color: var(--text-primary);
 }
 
 .testimonial figcaption {
   margin-top: 0.6rem;
   font-size: 0.85rem;
-  color: #9db2ff;
+  color: var(--text-muted);
 }
 
 .landing-footer {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-subtle);
   padding-top: 1rem;
   color: var(--text-dim);
 }
@@ -3478,7 +3478,7 @@ kbd {
   border-radius: 8px;
   border: 1px solid var(--hud-border);
   background: var(--bg-subtle);
-  color: #c0d0ff;
+  color: var(--text-secondary);
   font-size: 0.88rem;
   font-weight: 500;
   text-decoration: none;
@@ -3487,8 +3487,8 @@ kbd {
 
 .lobby-quick-nav-link:hover {
   background: var(--bg-hover);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: #e0e8ff;
+  border-color: var(--border-hover);
+  color: var(--text-primary);
   text-decoration: none;
 }
 

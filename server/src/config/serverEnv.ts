@@ -37,6 +37,8 @@ export const appEnv = {
     360,
   ),
   aiEnabled: toBool(rawEnv.AI_ENABLED ?? rawEnv.VITE_AI_ENABLED, false),
+  aiMode: (rawEnv.AI_MODE ?? 'rule') as 'rule' | 'ml',
+  aiModelPath: rawEnv.AI_MODEL_PATH ?? '',
   raceTimeoutMinutes: toNumber(
     rawEnv.RACE_TIMEOUT_MINUTES ?? rawEnv.VITE_RACE_TIMEOUT_MINUTES,
     25,
