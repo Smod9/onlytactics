@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/Smod9/onlytactics/compare/v1.41.1...v1.42.0) (2026-02-21)
+
+
+### Features
+
+* ML AI training pipeline, race curation, nav & light mode fixes ([#140](https://github.com/Smod9/onlytactics/issues/140)) ([18ae746](https://github.com/Smod9/onlytactics/commit/18ae7464e538145e1f9746efc9d6418e30c20f96))
+
 ## [1.41.1](https://github.com/Smod9/onlytactics/compare/v1.41.0...v1.41.1) (2026-02-21)
 
 
