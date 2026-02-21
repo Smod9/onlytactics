@@ -1,41 +1,43 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('In-page navigation links', () => {
-  test('leaderboard page has Lobby link', async ({ page }) => {
+  test('leaderboard page has header menu with Lobby', async ({ page }) => {
     await page.goto('/leaderboard')
     await expect(page.locator('.stats-page')).toBeVisible()
 
-    const lobbyLink = page.locator('.stats-nav a[href="/lobby"]')
-    await expect(lobbyLink).toBeVisible()
-    await expect(lobbyLink).toContainText('Lobby')
+    await page.locator('.header-hamburger').click()
+    const lobbyItem = page.locator('.header-menu-item', { hasText: 'Lobby' })
+    await expect(lobbyItem).toBeVisible()
   })
 
-  test('leaderboard page has Replays link', async ({ page }) => {
+  test('leaderboard page has header menu with Replays', async ({ page }) => {
     await page.goto('/leaderboard')
     await expect(page.locator('.stats-page')).toBeVisible()
 
-    const replayLink = page.locator('.stats-nav a[href="/replay"]')
-    await expect(replayLink).toBeVisible()
-    await expect(replayLink).toContainText('Replays')
+    await page.locator('.header-hamburger').click()
+    const replayItem = page.locator('.header-menu-item', { hasText: 'Replays' })
+    await expect(replayItem).toBeVisible()
   })
 
-  test('leaderboard Lobby link navigates to auth gate', async ({ page }) => {
+  test('leaderboard Lobby menu item navigates to auth gate', async ({ page }) => {
     await page.goto('/leaderboard')
     await expect(page.locator('.stats-page')).toBeVisible()
 
-    const lobbyLink = page.locator('.stats-nav a[href="/lobby"]')
-    await lobbyLink.click()
+    await page.locator('.header-hamburger').click()
+    const lobbyItem = page.locator('.header-menu-item', { hasText: 'Lobby' })
+    await lobbyItem.click()
 
     await page.waitForURL('**/lobby')
     await expect(page.locator('.auth-page')).toBeVisible()
   })
 
-  test('leaderboard Replays link navigates to replay', async ({ page }) => {
+  test('leaderboard Replays menu item navigates to replay', async ({ page }) => {
     await page.goto('/leaderboard')
     await expect(page.locator('.stats-page')).toBeVisible()
 
-    const replayLink = page.locator('.stats-nav a[href="/replay"]')
-    await replayLink.click()
+    await page.locator('.header-hamburger').click()
+    const replayItem = page.locator('.header-menu-item', { hasText: 'Replays' })
+    await replayItem.click()
 
     await page.waitForURL('**/replay')
     await expect(page.locator('.app-shell')).toBeVisible()
