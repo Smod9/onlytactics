@@ -1,3 +1,10 @@
+## [1.41.1](https://github.com/Smod9/onlytactics/compare/v1.41.0...v1.41.1) (2026-02-21)
+
+
+### Bug Fixes
+
+* register migrations 007-008 and auto-deploy on merge to main ([#139](https://github.com/Smod9/onlytactics/issues/139)) ([04f11aa](https://github.com/Smod9/onlytactics/commit/04f11aad07ed20ee71fe3c2e4b62c4c78f43ef39))
+
 # [1.41.0](https://github.com/Smod9/onlytactics/compare/v1.40.0...v1.41.0) (2026-02-21)
 
 
