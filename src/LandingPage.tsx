@@ -1,3 +1,4 @@
+import { clearGuestMode } from './features/auth/guestMode'
 import './styles/global.css'
 
 const TESTIMONIALS = [
@@ -20,6 +21,8 @@ const TESTIMONIALS = [
 const isMobile = () => window.matchMedia('(max-width: 768px)').matches
 
 export const LandingPage = () => {
+  clearGuestMode()
+
   const handleLaunch = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (isMobile()) {
       event.preventDefault()
