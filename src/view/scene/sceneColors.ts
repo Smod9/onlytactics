@@ -81,9 +81,9 @@ const darkPalette: ScenePalette = {
 }
 
 const lightPalette: ScenePalette = {
-  water: 0x4a90d9,
-  windPuff: 0x0a8f84,
-  windLull: 0x8b5a7a,
+  water: 0x7db8e8,
+  windPuff: 0x0dab7a,
+  windLull: 0xa85a8a,
   windShadow: 0x3366aa,
   windArrowDefault: 0x1a1d2e,
   windArrowRight: 0xcc5533,
