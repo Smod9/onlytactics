@@ -1,3 +1,10 @@
+## [1.42.2](https://github.com/Smod9/onlytactics/compare/v1.42.1...v1.42.2) (2026-02-22)
+
+
+### Bug Fixes
+
+* lighten light-mode water, strengthen puff/lull colors, theme-aware wind HUD text ([#142](https://github.com/Smod9/onlytactics/issues/142)) ([ee0a882](https://github.com/Smod9/onlytactics/commit/ee0a882013e02cd30d416776c51c69a62c615dd5))
+
 ## [1.42.1](https://github.com/Smod9/onlytactics/compare/v1.42.0...v1.42.1) (2026-02-21)
 
 
