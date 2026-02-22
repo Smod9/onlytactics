@@ -1122,7 +1122,7 @@ button {
 }
 
 .speed-heading-overlay .hud-metric-windspd .hud-value {
-  color: #ffffff;
+  color: var(--text-primary);
   display: inline-block;
   min-width: 8ch;
   text-align: right;
@@ -1149,7 +1149,7 @@ button {
 }
 
 .speed-heading-overlay .hud-metric-winddir .hud-value {
-  color: #ffffff;
+  color: var(--text-primary);
   display: inline-block;
   min-width: 5ch;
   text-align: right;
