@@ -1,3 +1,10 @@
+## [1.42.3](https://github.com/Smod9/onlytactics/compare/v1.42.2...v1.42.3) (2026-02-26)
+
+
+### Bug Fixes
+
+* use subtle pale blue for light-mode water color ([#143](https://github.com/Smod9/onlytactics/issues/143)) ([1e047ba](https://github.com/Smod9/onlytactics/commit/1e047badbe4535164f4fd55cfe2106b9b9a7a308)), closes [#7db8e8](https://github.com/Smod9/onlytactics/issues/7db8e8) [#e8f0f8](https://github.com/Smod9/onlytactics/issues/e8f0f8)
+
 ## [1.42.2](https://github.com/Smod9/onlytactics/compare/v1.42.1...v1.42.2) (2026-02-22)
 
 
