@@ -2687,18 +2687,47 @@ kbd {
   gap: 0.4rem;
 }
 
-.replay-list button {
-  text-align: left;
+.replay-list-item {
+  display: flex;
+  align-items: stretch;
   border-radius: 0.5rem;
-  border: 1px solid #2b3146;
+  border: 1px solid var(--border-panel);
+  overflow: hidden;
+}
+
+.replay-list-item.active {
+  border-color: var(--accent-primary);
+  background: rgba(91, 137, 255, 0.1);
+}
+
+.replay-list-select {
+  flex: 1;
+  text-align: left;
   padding: 0.5rem;
   background: transparent;
   color: inherit;
+  border: none;
+  cursor: pointer;
+  min-width: 0;
 }
 
-.replay-list button.active {
-  border-color: #5b89ff;
-  background: rgba(91, 137, 255, 0.1);
+.replay-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  border: none;
+  border-left: 1px solid var(--border-panel);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.replay-share-btn:hover {
+  background: rgba(91, 137, 255, 0.15);
 }
 
 .replay-stage {
@@ -2708,11 +2737,13 @@ kbd {
   position: relative;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: var(--bg-primary);
 }
 
 .replay-stage .pixi-stage {
   flex: 1;
+  min-height: 0;
 }
 
 .replay-controls {
@@ -2722,6 +2753,7 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 .playback-controls {

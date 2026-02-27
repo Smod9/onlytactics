@@ -19,6 +19,11 @@ import './styles/auth.css'
 
 type AppMode = 'live' | 'replay' | 'lobby' | 'login' | 'register' | 'forgot-password' | 'reset-password' | 'admin' | 'leaderboard' | 'profile' | 'regattas'
 
+const extractReplayId = (): string | undefined => {
+  const match = window.location.pathname.match(/^\/replay\/(.+)/)
+  return match ? decodeURIComponent(match[1]) : undefined
+}
+
 const getInitialMode = (): AppMode => {
   if (typeof window === 'undefined') return 'live'
   const path = window.location.pathname
@@ -245,7 +250,7 @@ export function App() {
       <main className="app-main">
         {mode === 'lobby' ? <LobbyClient />
           : mode === 'live' ? <LiveClient />
-          : mode === 'replay' ? <ReplayClient />
+          : mode === 'replay' ? <ReplayClient initialRaceId={extractReplayId()} />
           : mode === 'admin' ? <AdminDashboard />
           : mode === 'leaderboard' ? <LeaderboardPage />
           : mode === 'profile' ? <ProfilePage />

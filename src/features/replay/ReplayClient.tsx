@@ -23,7 +23,7 @@ const findFrame = (frames: ReplayFrame[], t: number) => {
   return candidate
 }
 
-export const ReplayClient = () => {
+export const ReplayClient = ({ initialRaceId }: { initialRaceId?: string }) => {
   const [index, setIndex] = useState<ReplayIndexEntry[]>(() => listReplayIndex())
   const [selected, setSelected] = useState<string | null>(null)
   const [recording, setRecording] = useState<ReplayRecording | null>(null)
@@ -38,6 +38,10 @@ export const ReplayClient = () => {
     setSelected(raceId)
     setPlaying(false)
     setStatus('Loading replay…')
+    const replayPath = `/replay/${encodeURIComponent(raceId)}`
+    if (window.location.pathname !== replayPath) {
+      window.history.replaceState(null, '', replayPath)
+    }
     try {
       const data = await loadRecording(raceId)
       if (!data) {
@@ -58,10 +62,24 @@ export const ReplayClient = () => {
     }
   }
 
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopyLink = (raceId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const url = `${window.location.origin}/replay/${encodeURIComponent(raceId)}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(raceId)
+      setTimeout(() => setCopiedId(null), 2000)
+    }).catch(() => {})
+  }
+
   useEffect(() => {
     void (async () => {
       const merged = await refreshReplayIndex()
       setIndex(merged)
+      if (initialRaceId && !selected) {
+        void handleSelect(initialRaceId)
+      }
     })()
   }, [])
 
@@ -160,17 +178,29 @@ export const ReplayClient = () => {
         </button>
         <div className="replay-list">
           {index.map((entry) => (
-            <button
-              type="button"
+            <div
               key={entry.raceId}
-              className={entry.raceId === selected ? 'active' : ''}
-              onClick={() => {
-                void handleSelect(entry.raceId)
-              }}
+              className={`replay-list-item${entry.raceId === selected ? ' active' : ''}`}
             >
-              <span>{entry.courseName}</span>
-              <small>{new Date(entry.savedAt).toLocaleString()}</small>
-            </button>
+              <button
+                type="button"
+                className="replay-list-select"
+                onClick={() => {
+                  void handleSelect(entry.raceId)
+                }}
+              >
+                <span>{entry.courseName}</span>
+                <small>{new Date(entry.savedAt).toLocaleString()}</small>
+              </button>
+              <button
+                type="button"
+                className="replay-share-btn"
+                title="Copy share link"
+                onClick={(e) => handleCopyLink(entry.raceId, e)}
+              >
+                {copiedId === entry.raceId ? '✓' : '🔗'}
+              </button>
+            </div>
           ))}
           {!index.length && <p>No recordings saved yet.</p>}
         </div>
