@@ -1,3 +1,10 @@
+## [1.42.4](https://github.com/Smod9/onlytactics/compare/v1.42.3...v1.42.4) (2026-02-27)
+
+
+### Bug Fixes
+
+* prevent PgBouncer connection drops from crashing the server ([#144](https://github.com/Smod9/onlytactics/issues/144)) ([d8e8910](https://github.com/Smod9/onlytactics/commit/d8e89102d6a19836dd504f6becb08af060c948f3))
+
 ## [1.42.3](https://github.com/Smod9/onlytactics/compare/v1.42.2...v1.42.3) (2026-02-26)
 
 
