@@ -178,7 +178,14 @@ export const PixiStage = ({
       canvas.addEventListener('pointerup', stopDrag)
       canvas.addEventListener('pointercancel', stopDrag)
       canvas.addEventListener('wheel', handleWheel, { passive: false })
+
+      const ro = new ResizeObserver(() => {
+        if (!disposed) app.resize()
+      })
+      if (mountRef.current) ro.observe(mountRef.current)
+
       return () => {
+        ro.disconnect()
         canvas.removeEventListener('pointerdown', handlePointerDown)
         canvas.removeEventListener('pointermove', handlePointerMove)
         canvas.removeEventListener('pointerup', stopDrag)
