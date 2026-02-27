@@ -1,3 +1,10 @@
+## [1.43.2](https://github.com/Smod9/onlytactics/compare/v1.43.1...v1.43.2) (2026-02-27)
+
+
+### Bug Fixes
+
+* replay sidebar list scrolls instead of squishing items ([#146](https://github.com/Smod9/onlytactics/issues/146)) ([54513af](https://github.com/Smod9/onlytactics/commit/54513af14439d9be6ffd84c0f6d28b65770598af))
+
 ## [1.43.1](https://github.com/Smod9/onlytactics/compare/v1.43.0...v1.43.1) (2026-02-27)
 
 
