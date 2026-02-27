@@ -1,3 +1,10 @@
+## [1.43.1](https://github.com/Smod9/onlytactics/compare/v1.43.0...v1.43.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* replay sidebar scrolls when race list overflows ([9b126b6](https://github.com/Smod9/onlytactics/commit/9b126b6fc71274f4dbba1f5fae3bbe17df8b112f))
+
 # [1.43.0](https://github.com/Smod9/onlytactics/compare/v1.42.4...v1.43.0) (2026-02-27)
 
 
