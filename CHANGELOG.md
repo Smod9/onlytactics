@@ -1,3 +1,10 @@
+# [1.44.0](https://github.com/Smod9/onlytactics/compare/v1.43.2...v1.44.0) (2026-02-27)
+
+
+### Features
+
+* share replay links with timestamp, gitignore .cursor ([#147](https://github.com/Smod9/onlytactics/issues/147)) ([f9af14a](https://github.com/Smod9/onlytactics/commit/f9af14a12201a97a2a8401e9dab5a8f31359c79b))
+
 ## [1.43.2](https://github.com/Smod9/onlytactics/compare/v1.43.1...v1.43.2) (2026-02-27)
 
 
