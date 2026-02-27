@@ -34,7 +34,7 @@ export const ReplayClient = ({ initialRaceId }: { initialRaceId?: string }) => {
   const [followBoatId, setFollowBoatId] = useState<string | null>(null)
   const duration = recording?.frames.at(-1)?.t ?? 0
 
-  const handleSelect = async (raceId: string) => {
+  const handleSelect = async (raceId: string, seekTo?: number) => {
     setSelected(raceId)
     setPlaying(false)
     setStatus('Loading replay…')
@@ -50,12 +50,12 @@ export const ReplayClient = ({ initialRaceId }: { initialRaceId?: string }) => {
       }
       setRecording(data)
       setIndex(listReplayIndex())
-      const firstFrame = data.frames[0]
-      if (firstFrame) {
-        raceStore.reset(cloneRaceState(firstFrame.state))
-        raceStore.setEvents(firstFrame.events)
-        setTime(firstFrame.t)
-      }
+      const maxT = data.frames.at(-1)?.t ?? 0
+      const startT = seekTo != null ? Math.min(seekTo, maxT) : (data.frames[0]?.t ?? 0)
+      const frame = findFrame(data.frames, startT)
+      raceStore.reset(cloneRaceState(frame.state))
+      raceStore.setEvents(frame.events)
+      setTime(startT)
       setStatus(null)
     } catch {
       setStatus('Failed to load replay.')
@@ -64,12 +64,28 @@ export const ReplayClient = ({ initialRaceId }: { initialRaceId?: string }) => {
 
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
+  const buildReplayUrl = (raceId: string, t?: number) => {
+    const base = `${window.location.origin}/replay/${encodeURIComponent(raceId)}`
+    return t != null && t > 0 ? `${base}?t=${t.toFixed(1)}` : base
+  }
+
   const handleCopyLink = (raceId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    const url = `${window.location.origin}/replay/${encodeURIComponent(raceId)}`
+    const url = buildReplayUrl(raceId)
     navigator.clipboard.writeText(url).then(() => {
       setCopiedId(raceId)
       setTimeout(() => setCopiedId(null), 2000)
+    }).catch(() => {})
+  }
+
+  const [momentCopied, setMomentCopied] = useState(false)
+
+  const handleCopyMoment = () => {
+    if (!selected) return
+    const url = buildReplayUrl(selected, time)
+    navigator.clipboard.writeText(url).then(() => {
+      setMomentCopied(true)
+      setTimeout(() => setMomentCopied(false), 2000)
     }).catch(() => {})
   }
 
@@ -78,7 +94,10 @@ export const ReplayClient = ({ initialRaceId }: { initialRaceId?: string }) => {
       const merged = await refreshReplayIndex()
       setIndex(merged)
       if (initialRaceId && !selected) {
-        void handleSelect(initialRaceId)
+        const params = new URLSearchParams(window.location.search)
+        const tParam = params.get('t')
+        const seekTo = tParam != null ? parseFloat(tParam) : undefined
+        void handleSelect(initialRaceId, Number.isFinite(seekTo) ? seekTo : undefined)
       }
     })()
   }, [])
@@ -271,6 +290,15 @@ export const ReplayClient = ({ initialRaceId }: { initialRaceId?: string }) => {
             <span className="playback-time">
               {time.toFixed(1)}s / {duration.toFixed(1)}s
             </span>
+            <button
+              type="button"
+              className="playback-btn"
+              disabled={!selected}
+              onClick={handleCopyMoment}
+              title="Copy link to this moment"
+            >
+              {momentCopied ? '✓ Copied!' : '🔗 Share moment'}
+            </button>
           </div>
           {!followBoatId && recording && (
             <div className="replay-hint">Click a boat to follow it. Scroll to zoom.</div>
