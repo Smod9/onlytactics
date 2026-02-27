@@ -32,17 +32,47 @@ const pool = new Pool({
   connectionTimeoutMillis: appEnv.databaseConnectTimeoutMs,
   idleTimeoutMillis: appEnv.databaseIdleTimeoutMs,
   ssl: appEnv.databaseSsl ? { rejectUnauthorized: false } : undefined,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+})
+
+pool.on('error', (err) => {
+  const pgErr = err as Error & { code?: string }
+  console.warn('[db] idle pool client error (non-fatal)', { message: pgErr.message, code: pgErr.code })
 })
 
 export const getPool = () => pool
 
+const TRANSIENT_CODES = new Set(['08P01', '08006', '08001', '08003', '57P01', 'ECONNRESET'])
+const MAX_RETRIES = 2
+const RETRY_DELAY_MS = 500
+
+const isTransient = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false
+  const code = (err as Error & { code?: string }).code
+  if (code && TRANSIENT_CODES.has(code)) return true
+  return /connection terminated|ECONNRESET/i.test(err.message)
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
 export const withClient = async <T>(fn: (client: PoolClient) => Promise<T>) => {
-  const client = await pool.connect()
-  try {
-    return await fn(client)
-  } finally {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const client = await pool.connect()
+    try {
+      return await fn(client)
+    } catch (err) {
+      lastError = err
+      client.release(err instanceof Error ? err : true)
+      if (!isTransient(err) || attempt === MAX_RETRIES) throw err
+      console.warn('[db] transient error, retrying', { attempt: attempt + 1, message: (err as Error).message })
+      await sleep(RETRY_DELAY_MS * (attempt + 1))
+      continue
+    }
     client.release()
   }
+  throw lastError
 }
 
 const readMigration = (filename: string, fallback?: string) => {
