@@ -1,3 +1,10 @@
+# [1.43.0](https://github.com/Smod9/onlytactics/compare/v1.42.4...v1.43.0) (2026-02-27)
+
+
+### Features
+
+* shareable replay links, copy-link button, and canvas sizing fix ([#145](https://github.com/Smod9/onlytactics/issues/145)) ([6dae5cd](https://github.com/Smod9/onlytactics/commit/6dae5cdc826e06c9153bfd8ac690c9f8de985a50))
+
 ## [1.42.4](https://github.com/Smod9/onlytactics/compare/v1.42.3...v1.42.4) (2026-02-27)
 
 
