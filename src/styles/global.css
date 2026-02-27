@@ -2670,6 +2670,7 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-height: 0;
   background: var(--bg-card-translucent);
 }
 
