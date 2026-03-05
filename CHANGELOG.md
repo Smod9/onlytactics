@@ -1,3 +1,10 @@
+## [1.44.1](https://github.com/Smod9/onlytactics/compare/v1.44.0...v1.44.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* regatta standings peek, wind shadow rendering, and db connection handling ([#148](https://github.com/Smod9/onlytactics/issues/148)) ([db756de](https://github.com/Smod9/onlytactics/commit/db756de105a6931de6c55627fd4407d6cda492ff))
+
 # [1.44.0](https://github.com/Smod9/onlytactics/compare/v1.43.2...v1.44.0) (2026-02-27)
 
 
