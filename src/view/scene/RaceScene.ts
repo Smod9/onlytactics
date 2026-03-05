@@ -369,9 +369,8 @@ export class RaceScene {
   private boats = new Map<string, BoatView>()
   private lastCourseKey: string | null = null
   private lastCourseWasDebug = false
-  private windFieldTick = 0
+  private sceneTick = 0
   private windFieldWasEnabled = false
-  private gridHeatmapTick = 0
   private windShadowLeewardBlend = 0
   private windShadowLastMs = 0
   private readonly windFieldBuckets = 6
@@ -514,20 +513,22 @@ export class RaceScene {
   update(state: RaceState) {
     RaceScene.currentWindDeg = state.wind.directionDeg
     this.applyCameraTransform(state)
-    // Wind field is visually "slow moving"; redraw every 3rd update to reduce CPU/GPU churn.
+
+    // Throttle all visual redraws to every 3rd state update to reduce CPU/GPU churn.
+    // Camera transform above runs every update for responsive viewport tracking.
+    const isDrawFrame = this.sceneTick % 3 === 0
+    this.sceneTick += 1
+    if (!isDrawFrame) return
+
     const windCfg = getWindFieldConfig(state)
     if (!windCfg) {
       if (this.windFieldWasEnabled) {
         this.windFieldLayer.clear()
       }
       this.windFieldWasEnabled = false
-      this.windFieldTick = 0
     } else {
       this.windFieldWasEnabled = true
-      if (this.windFieldTick % 3 === 0) {
-        this.drawWindField(state, windCfg)
-      }
-      this.windFieldTick += 1
+      this.drawWindField(state, windCfg)
     }
     this.drawPlayerWindShadow(state)
     this.drawCourse(state)
@@ -802,13 +803,8 @@ export class RaceScene {
   private drawCourse(state: RaceState) {
     const debug = appEnv.debugHud
 
-    // Always draw wind shadow (player's own in normal mode, all boats in debug mode)
-    // Throttle to every 3rd update (same cadence as wind field) to reduce GPU churn.
     if (WAKE_GRID_ENABLED) {
-      if (this.gridHeatmapTick % 3 === 0) {
-        this.drawWindShadowGridHeatmap(state)
-      }
-      this.gridHeatmapTick += 1
+      this.drawWindShadowGridHeatmap(state)
     }
 
     if (!debug) {
@@ -1359,50 +1355,36 @@ export class RaceScene {
       blitStamp(grid, stamp, boat.pos.x, boat.pos.y, flipHorizontal)
     })
 
-    // Draw heatmap - only cells with significant shadow
+    // Draw heatmap - only cells with significant shadow within the viewport
     const minIntensity = 0.01 // Skip very faint cells
     const g = this.windShadowGridLayer
+    const cellSize = grid.cellSize
 
-    // Down-sample visualization if grid is too large (prevents Pixi.js overload)
-    // Aim for max ~10000 cells drawn
-    const totalCells = grid.width * grid.height
-    const maxDrawnCells = 10000
-    const skipFactor = totalCells > maxDrawnCells ? Math.ceil(Math.sqrt(totalCells / maxDrawnCells)) : 1
-    const drawCellSize = grid.cellSize * skipFactor
+    // Viewport culling: only draw cells visible on screen
+    const vb = this.getVisibleWorldBounds(state)
+    const cxMin = Math.max(0, Math.floor((vb.minX - grid.originX) / cellSize))
+    const cxMax = Math.min(grid.width - 1, Math.ceil((vb.maxX - grid.originX) / cellSize))
+    const cyMin = Math.max(0, Math.floor((vb.minY - grid.originY) / cellSize))
+    const cyMax = Math.min(grid.height - 1, Math.ceil((vb.maxY - grid.originY) / cellSize))
 
-    for (let cy = 0; cy < grid.height; cy += skipFactor) {
-      for (let cx = 0; cx < grid.width; cx += skipFactor) {
-        // Sample the center of the drawn cell (or average nearby cells)
-        let intensity = 0
-        let samples = 0
-        for (let sy = 0; sy < skipFactor && cy + sy < grid.height; sy++) {
-          for (let sx = 0; sx < skipFactor && cx + sx < grid.width; sx++) {
-            intensity += grid.data[(cy + sy) * grid.width + (cx + sx)]
-            samples++
-          }
-        }
-        intensity = samples > 0 ? intensity / samples : 0
-
+    for (let cy = cyMin; cy <= cyMax; cy++) {
+      for (let cx = cxMin; cx <= cxMax; cx++) {
+        const intensity = grid.data[cy * grid.width + cx]
         if (intensity < minIntensity) continue
 
-        // World position of cell
-        const worldX = grid.originX + cx * grid.cellSize
-        const worldY = grid.originY + cy * grid.cellSize
+        const worldX = grid.originX + cx * cellSize
+        const worldY = grid.originY + cy * cellSize
 
-        // Color: blue to red based on intensity
-        // Normalize intensity to 0-1 range based on max slowdown
         const normalizedIntensity = Math.min(1, intensity / WAKE_MAX_SLOWDOWN)
 
-        // Interpolate from blue (low) to red (high)
         const r = Math.floor(normalizedIntensity * 255)
         const b = Math.floor((1 - normalizedIntensity) * 255)
         const color = (r << 16) | b
 
-        // Alpha increases with intensity for better visibility
         const alpha = 0.1 + normalizedIntensity * 0.4
 
         g.fill({ color, alpha })
-        g.rect(worldX, worldY, drawCellSize, drawCellSize)
+        g.rect(worldX, worldY, cellSize, cellSize)
         g.fill()
       }
     }

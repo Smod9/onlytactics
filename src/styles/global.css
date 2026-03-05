@@ -541,10 +541,96 @@ button {
   background: var(--bg-subtle);
 }
 
+.header-room-group-clickable {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.header-room-group-clickable:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
 .header-room-name {
   font-size: 0.9rem;
   opacity: 0.9;
-  pointer-events: none;
+}
+
+.header-regatta-indicator {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.5;
+  margin-left: -0.15rem;
+}
+
+.header-room-group-clickable:hover .header-regatta-indicator {
+  opacity: 0.8;
+}
+
+/* Regatta peek modal */
+
+.regatta-peek-card {
+  max-width: 560px;
+}
+
+.regatta-peek-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.regatta-peek-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.regatta-peek-close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.regatta-peek-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.regatta-peek-subtitle {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin: 0 0 0.75rem;
+}
+
+.regatta-peek-empty {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  margin: 0.5rem 0 0;
+}
+
+.regatta-peek-loading {
+  font-size: 0.85rem;
+  opacity: 0.5;
+  margin: 0.5rem 0 0;
+}
+
+.regatta-peek-table-wrap {
+  overflow-x: auto;
+  margin: 0 -0.5rem;
+  padding: 0 0.5rem;
+}
+
+.regatta-peek-table {
+  font-size: 0.8rem;
+  width: 100%;
 }
 
 .header-name:hover {

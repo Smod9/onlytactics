@@ -1443,9 +1443,8 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
         const userBoatMap = this.buildUserBoatMap()
         void this.persistStats(recording, snapshot, userBoatMap, command.dnfMode, hostSessionId)
       }
-    } else if (hostSessionId) {
-      const hostClient = this.clients.find((c) => c.sessionId === hostSessionId)
-      hostClient?.send('stats_saved', { success: true, scored: false })
+    } else {
+      this.broadcast('stats_saved', { success: true, scored: false })
     }
 
     this.resetRaceState()
@@ -1473,10 +1472,7 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
         }
       }
 
-      if (hostSessionId) {
-        const hostClient = this.clients.find((c) => c.sessionId === hostSessionId)
-        hostClient?.send('stats_saved', { success: true, raceId })
-      }
+      this.broadcast('stats_saved', { success: true, raceId })
     } catch (error) {
       console.error('[RaceRoom] failed to save race stats', { raceId, error })
       if (hostSessionId) {
