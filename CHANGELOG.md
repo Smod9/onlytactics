@@ -1,3 +1,11 @@
+## [1.44.3](https://github.com/Smod9/onlytactics/compare/v1.44.2...v1.44.3) (2026-03-05)
+
+
+### Bug Fixes
+
+* resolves db issue on admin race view ([fbedf81](https://github.com/Smod9/onlytactics/commit/fbedf81c126c7a07025db52de6aeef3c609cdab5))
+* wake_grid_env var ([ce5be7d](https://github.com/Smod9/onlytactics/commit/ce5be7db36f8beb9eae187d33d0afd284f67f145))
+
 ## [1.44.2](https://github.com/Smod9/onlytactics/compare/v1.44.1...v1.44.2) (2026-03-05)
 
 
