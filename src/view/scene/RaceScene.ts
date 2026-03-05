@@ -1359,50 +1359,36 @@ export class RaceScene {
       blitStamp(grid, stamp, boat.pos.x, boat.pos.y, flipHorizontal)
     })
 
-    // Draw heatmap - only cells with significant shadow
+    // Draw heatmap - only cells with significant shadow within the viewport
     const minIntensity = 0.01 // Skip very faint cells
     const g = this.windShadowGridLayer
+    const cellSize = grid.cellSize
 
-    // Down-sample visualization if grid is too large (prevents Pixi.js overload)
-    // Aim for max ~10000 cells drawn
-    const totalCells = grid.width * grid.height
-    const maxDrawnCells = 10000
-    const skipFactor = totalCells > maxDrawnCells ? Math.ceil(Math.sqrt(totalCells / maxDrawnCells)) : 1
-    const drawCellSize = grid.cellSize * skipFactor
+    // Viewport culling: only draw cells visible on screen
+    const vb = this.getVisibleWorldBounds(state)
+    const cxMin = Math.max(0, Math.floor((vb.minX - grid.originX) / cellSize))
+    const cxMax = Math.min(grid.width - 1, Math.ceil((vb.maxX - grid.originX) / cellSize))
+    const cyMin = Math.max(0, Math.floor((vb.minY - grid.originY) / cellSize))
+    const cyMax = Math.min(grid.height - 1, Math.ceil((vb.maxY - grid.originY) / cellSize))
 
-    for (let cy = 0; cy < grid.height; cy += skipFactor) {
-      for (let cx = 0; cx < grid.width; cx += skipFactor) {
-        // Sample the center of the drawn cell (or average nearby cells)
-        let intensity = 0
-        let samples = 0
-        for (let sy = 0; sy < skipFactor && cy + sy < grid.height; sy++) {
-          for (let sx = 0; sx < skipFactor && cx + sx < grid.width; sx++) {
-            intensity += grid.data[(cy + sy) * grid.width + (cx + sx)]
-            samples++
-          }
-        }
-        intensity = samples > 0 ? intensity / samples : 0
-
+    for (let cy = cyMin; cy <= cyMax; cy++) {
+      for (let cx = cxMin; cx <= cxMax; cx++) {
+        const intensity = grid.data[cy * grid.width + cx]
         if (intensity < minIntensity) continue
 
-        // World position of cell
-        const worldX = grid.originX + cx * grid.cellSize
-        const worldY = grid.originY + cy * grid.cellSize
+        const worldX = grid.originX + cx * cellSize
+        const worldY = grid.originY + cy * cellSize
 
-        // Color: blue to red based on intensity
-        // Normalize intensity to 0-1 range based on max slowdown
         const normalizedIntensity = Math.min(1, intensity / WAKE_MAX_SLOWDOWN)
 
-        // Interpolate from blue (low) to red (high)
         const r = Math.floor(normalizedIntensity * 255)
         const b = Math.floor((1 - normalizedIntensity) * 255)
         const color = (r << 16) | b
 
-        // Alpha increases with intensity for better visibility
         const alpha = 0.1 + normalizedIntensity * 0.4
 
         g.fill({ color, alpha })
-        g.rect(worldX, worldY, drawCellSize, drawCellSize)
+        g.rect(worldX, worldY, cellSize, cellSize)
         g.fill()
       }
     }
