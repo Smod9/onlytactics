@@ -1,3 +1,10 @@
+## [1.44.2](https://github.com/Smod9/onlytactics/compare/v1.44.1...v1.44.2) (2026-03-05)
+
+
+### Bug Fixes
+
+* default theme is dark mode now ([4e0b9b1](https://github.com/Smod9/onlytactics/commit/4e0b9b100798261294c57d06fe00f073ed2ce71c))
+
 ## [1.44.1](https://github.com/Smod9/onlytactics/compare/v1.44.0...v1.44.1) (2026-03-05)
 
 
