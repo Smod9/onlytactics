@@ -215,7 +215,7 @@ export const getAdminRaceList = async (
         r.finished_at,
         r.course_name,
         r.training_approved,
-        COALESCE(rc.fleet_size, jsonb_array_length(r.leaderboard)) AS fleet_size,
+        COALESCE(rc.fleet_size, CASE WHEN jsonb_typeof(r.leaderboard) = 'array' THEN jsonb_array_length(r.leaderboard) ELSE 0 END) AS fleet_size,
         COALESCE(rc.race_duration_seconds, 0) AS race_duration_seconds,
         rc.avg_wind_speed_kts,
         COALESCE(rr_agg.finisher_count, 0) AS finisher_count,
