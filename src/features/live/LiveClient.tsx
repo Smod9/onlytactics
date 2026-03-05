@@ -101,6 +101,10 @@ export const LiveClient = () => {
   const [roomDisplayName, setRoomDisplayName] = useState<string | null>(null)
   const [roomRegattaId, setRoomRegattaId] = useState<string | undefined>(undefined)
   const [roomResolved, setRoomResolved] = useState(!roomId)
+  const [showRegattaPeek, setShowRegattaPeek] = useState(false)
+  const [regattaPeekData, setRegattaPeekData] = useState<RegattaDetail | null>(null)
+  const [regattaPeekLoading, setRegattaPeekLoading] = useState(false)
+  const [regattaPeekError, setRegattaPeekError] = useState(false)
   const dragRafRef = useRef<number | null>(null)
   const pendingDragRef = useRef<{ boatId: string; pos: { x: number; y: number } } | null>(
     null,
@@ -565,6 +569,18 @@ export const LiveClient = () => {
       ? `${roomDisplayName.slice(0, 14)}...`
       : roomDisplayName
 
+  const openRegattaPeek = () => {
+    setShowRegattaPeek(true)
+    if (roomRegattaId) {
+      setRegattaPeekLoading(true)
+      setRegattaPeekError(false)
+      regattaService.getRegatta(roomRegattaId)
+        .then((detail) => setRegattaPeekData(detail))
+        .catch(() => { setRegattaPeekData(null); setRegattaPeekError(true) })
+        .finally(() => setRegattaPeekLoading(false))
+    }
+  }
+
   const headerPortal = headerCtaEl
     ? createPortal(
         <div
@@ -572,11 +588,23 @@ export const LiveClient = () => {
           style={{ display: 'flex', gap: 10, alignItems: 'center' }}
         >
           {!needsName && truncatedRoomName && (
-            <div className="header-room-group">
-              <span className="header-room-name" title={roomDisplayName ?? 'Race'}>
+            <button
+              type="button"
+              className="header-room-group header-room-group-clickable"
+              onClick={openRegattaPeek}
+              title={roomRegattaId ? 'View regatta standings' : 'Race info'}
+            >
+              <span className="header-room-name">
                 {truncatedRoomName}
               </span>
-            </div>
+              {roomRegattaId && (
+                <span className="header-regatta-indicator" aria-hidden="true">
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                    <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+              )}
+            </button>
           )}
           <div style={{ display: 'none' }}>
             <ReplaySaveButton />
@@ -636,9 +664,84 @@ export const LiveClient = () => {
       )
     : null
 
+  const regattaPeekModal = showRegattaPeek && (
+    <div className="modal-backdrop" onClick={() => setShowRegattaPeek(false)}>
+      <div className="modal-card regatta-peek-card" onClick={(e) => e.stopPropagation()}>
+        <div className="regatta-peek-header">
+          <h2>{roomRegattaId ? 'Regatta Standings' : 'Race Info'}</h2>
+          <button
+            type="button"
+            className="regatta-peek-close"
+            onClick={() => setShowRegattaPeek(false)}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        {!roomRegattaId ? (
+          <p className="regatta-peek-empty">This race is not connected to any regatta.</p>
+        ) : regattaPeekLoading ? (
+          <p className="regatta-peek-loading">Loading standings...</p>
+        ) : regattaPeekError ? (
+          <p className="regatta-peek-empty">Failed to load regatta standings.</p>
+        ) : regattaPeekData ? (
+          <>
+            <p className="regatta-peek-subtitle">
+              {regattaPeekData.name} &mdash; {regattaPeekData.completedRaceCount} of {regattaPeekData.numRaces} races
+            </p>
+            {regattaPeekData.standings.length > 0 ? (
+              <div className="regatta-peek-table-wrap">
+                <table className="stats-table regatta-peek-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Sailor</th>
+                      {regattaPeekData.races.map((r, i) => (
+                        <th key={r.raceId} style={{ textAlign: 'center' }}>R{i + 1}</th>
+                      ))}
+                      <th style={{ textAlign: 'right' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {regattaPeekData.standings.map((entry, rank) => {
+                      const isMe = authUser?.id === entry.userId
+                      return (
+                        <tr key={entry.userId} className={isMe ? 'stats-row-me' : ''}>
+                          <td>{rank + 1}</td>
+                          <td>{entry.displayName}{isMe && <span className="stats-you-badge">you</span>}</td>
+                          {entry.racePoints.map((pts, i) => {
+                            const dropped = entry.droppedIndices.includes(i)
+                            return (
+                              <td key={i} style={{
+                                textAlign: 'center',
+                                opacity: dropped ? 0.4 : 1,
+                                textDecoration: dropped ? 'line-through' : 'none',
+                              }}>
+                                {pts !== null ? pts : '\u2014'}
+                              </td>
+                            )
+                          })}
+                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{entry.totalPoints}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="regatta-peek-empty">No standings yet.</p>
+            )}
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+
   return (
     <div className="live-client">
       {headerPortal}
+      {regattaPeekModal}
       <ProgressStepper boat={playerBoat} />
       {needsName && (
         <div className="username-gate">

@@ -61,16 +61,16 @@ export const withClient = async <T>(fn: (client: PoolClient) => Promise<T>) => {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const client = await pool.connect()
     try {
-      return await fn(client)
+      const result = await fn(client)
+      client.release()
+      return result
     } catch (err) {
       lastError = err
       client.release(err instanceof Error ? err : true)
       if (!isTransient(err) || attempt === MAX_RETRIES) throw err
       console.warn('[db] transient error, retrying', { attempt: attempt + 1, message: (err as Error).message })
       await sleep(RETRY_DELAY_MS * (attempt + 1))
-      continue
     }
-    client.release()
   }
   throw lastError
 }

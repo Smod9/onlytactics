@@ -369,9 +369,8 @@ export class RaceScene {
   private boats = new Map<string, BoatView>()
   private lastCourseKey: string | null = null
   private lastCourseWasDebug = false
-  private windFieldTick = 0
+  private sceneTick = 0
   private windFieldWasEnabled = false
-  private gridHeatmapTick = 0
   private windShadowLeewardBlend = 0
   private windShadowLastMs = 0
   private readonly windFieldBuckets = 6
@@ -514,20 +513,22 @@ export class RaceScene {
   update(state: RaceState) {
     RaceScene.currentWindDeg = state.wind.directionDeg
     this.applyCameraTransform(state)
-    // Wind field is visually "slow moving"; redraw every 3rd update to reduce CPU/GPU churn.
+
+    // Throttle all visual redraws to every 3rd state update to reduce CPU/GPU churn.
+    // Camera transform above runs every update for responsive viewport tracking.
+    const isDrawFrame = this.sceneTick % 3 === 0
+    this.sceneTick += 1
+    if (!isDrawFrame) return
+
     const windCfg = getWindFieldConfig(state)
     if (!windCfg) {
       if (this.windFieldWasEnabled) {
         this.windFieldLayer.clear()
       }
       this.windFieldWasEnabled = false
-      this.windFieldTick = 0
     } else {
       this.windFieldWasEnabled = true
-      if (this.windFieldTick % 3 === 0) {
-        this.drawWindField(state, windCfg)
-      }
-      this.windFieldTick += 1
+      this.drawWindField(state, windCfg)
     }
     this.drawPlayerWindShadow(state)
     this.drawCourse(state)
@@ -802,13 +803,8 @@ export class RaceScene {
   private drawCourse(state: RaceState) {
     const debug = appEnv.debugHud
 
-    // Always draw wind shadow (player's own in normal mode, all boats in debug mode)
-    // Throttle to every 3rd update (same cadence as wind field) to reduce GPU churn.
     if (WAKE_GRID_ENABLED) {
-      if (this.gridHeatmapTick % 3 === 0) {
-        this.drawWindShadowGridHeatmap(state)
-      }
-      this.gridHeatmapTick += 1
+      this.drawWindShadowGridHeatmap(state)
     }
 
     if (!debug) {
