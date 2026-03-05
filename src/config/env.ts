@@ -80,6 +80,7 @@ export const appEnv = {
   windFieldAdvectionFactor: toNumber(rawEnv.VITE_WIND_FIELD_ADVECTION_FACTOR, 0.6),
   windFieldTileSizeWorld: toNumber(rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD, 36),
   chatEnabled: toBool(rawEnv.VITE_CHAT_ENABLED, false),
+  wakeGridCellSize: toNumber(rawEnv.VITE_WAKE_GRID_CELL_SIZE, 10),
 }
 
 export type AppEnv = typeof appEnv

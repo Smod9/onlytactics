@@ -1,3 +1,5 @@
+import { appEnv } from '@/config/env'
+
 export const KNOTS_TO_MS = 0.514444 * 2 //How fast a boat moves in meters per second (on the screen)
 export const MAX_SPEED_KTS = 30
 export const TURN_RATE_DEG = 90 //How fast a boat turns in degrees per second
@@ -59,6 +61,6 @@ export const WAKE_TURB_MAX_SLOWDOWN = 0.25 // Turbulent zone max slowdown
 export const WAKE_MIN_STRENGTH = 0.015 // Ignore negligible contributions
 
 // Grid-based wind shadow parameters
-export const WAKE_GRID_CELL_SIZE = 5 // World units per grid cell (~half boat width)
+export const WAKE_GRID_CELL_SIZE = appEnv.wakeGridCellSize
 export const SHADOW_STAMP_ANGLE_STEP = 5 // Degrees between pre-computed stamps (72 total)
 export const WAKE_GRID_ENABLED = true // Feature flag for grid-based wind shadow

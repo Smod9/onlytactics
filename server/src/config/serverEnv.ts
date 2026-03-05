@@ -86,6 +86,10 @@ export const appEnv = {
     rawEnv.WIND_FIELD_TILE_SIZE_WORLD ?? rawEnv.VITE_WIND_FIELD_TILE_SIZE_WORLD,
     36,
   ),
+  wakeGridCellSize: toNumber(
+    rawEnv.WAKE_GRID_CELL_SIZE ?? rawEnv.VITE_WAKE_GRID_CELL_SIZE,
+    10,
+  ),
 
   // Authentication
   jwtSecret: rawEnv.JWT_SECRET ?? 'dev-jwt-secret-change-in-production',
