@@ -6,7 +6,7 @@ export type ResolvedTheme = 'light' | 'dark'
 type Listener = () => void
 
 class ThemeStore {
-  private preference: ThemePreference = 'auto'
+  private preference: ThemePreference = 'dark'
   private resolved: ResolvedTheme = 'dark'
   private listeners = new Set<Listener>()
   private mediaQuery: MediaQueryList | null = null
