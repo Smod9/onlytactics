@@ -514,8 +514,10 @@ export class RaceScene {
     RaceScene.currentWindDeg = state.wind.directionDeg
     this.applyCameraTransform(state)
 
-    // Throttle all visual redraws to every 3rd state update to reduce CPU/GPU churn.
-    // Camera transform above runs every update for responsive viewport tracking.
+    // Boats update every tick for smooth movement.
+    this.drawBoats(state)
+
+    // Throttle heavier visual redraws to every 3rd state update.
     const isDrawFrame = this.sceneTick % 3 === 0
     this.sceneTick += 1
     if (!isDrawFrame) return
@@ -533,7 +535,6 @@ export class RaceScene {
     this.drawPlayerWindShadow(state)
     this.drawCourse(state)
     this.drawFollowContext(state)
-    this.drawBoats(state)
     this.drawHud(state)
   }
 
@@ -1362,7 +1363,7 @@ export class RaceScene {
 
     // Fixed visual downsample: draw every Nth cell as a larger rectangle.
     // Grid data stays at full resolution; only the rendering is coarser.
-    const skipFactor = 3
+    const skipFactor = 2
     const drawCellSize = cellSize * skipFactor
 
     // Viewport culling: only draw cells visible on screen (aligned to skip grid)
