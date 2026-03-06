@@ -370,6 +370,7 @@ export class RaceScene {
   private lastCourseKey: string | null = null
   private lastCourseWasDebug = false
   private sceneTick = 0
+  private windFieldTick = 0
   private windFieldWasEnabled = false
   private windShadowLeewardBlend = 0
   private windShadowLastMs = 0
@@ -522,15 +523,20 @@ export class RaceScene {
     this.sceneTick += 1
     if (!isDrawFrame) return
 
-    const windCfg = getWindFieldConfig(state)
-    if (!windCfg) {
-      if (this.windFieldWasEnabled) {
-        this.windFieldLayer.clear()
+    // Wind field redraws at ~2Hz (every 15th tick) since advection is slow.
+    const isWindFieldFrame = this.windFieldTick % 5 === 0
+    this.windFieldTick += 1
+    if (isWindFieldFrame) {
+      const windCfg = getWindFieldConfig(state)
+      if (!windCfg) {
+        if (this.windFieldWasEnabled) {
+          this.windFieldLayer.clear()
+        }
+        this.windFieldWasEnabled = false
+      } else {
+        this.windFieldWasEnabled = true
+        this.drawWindField(state, windCfg)
       }
-      this.windFieldWasEnabled = false
-    } else {
-      this.windFieldWasEnabled = true
-      this.drawWindField(state, windCfg)
     }
     this.drawPlayerWindShadow(state)
     this.drawCourse(state)
