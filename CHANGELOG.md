@@ -1,3 +1,10 @@
+## [1.44.5](https://github.com/Smod9/onlytactics/compare/v1.44.4...v1.44.5) (2026-03-06)
+
+
+### Bug Fixes
+
+* tries reducing windfield redraws ([91b68c1](https://github.com/Smod9/onlytactics/commit/91b68c1e54fe8b31a1d5afb9af224d8cc8e8d3b7))
+
 ## [1.44.4](https://github.com/Smod9/onlytactics/compare/v1.44.3...v1.44.4) (2026-03-06)
 
 
