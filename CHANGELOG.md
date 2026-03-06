@@ -1,3 +1,10 @@
+## [1.44.4](https://github.com/Smod9/onlytactics/compare/v1.44.3...v1.44.4) (2026-03-06)
+
+
+### Bug Fixes
+
+* increase wake grid size ([8531b91](https://github.com/Smod9/onlytactics/commit/8531b916de2c25e67fa8274e85fa3c6bcd343ad4))
+
 ## [1.44.3](https://github.com/Smod9/onlytactics/compare/v1.44.2...v1.44.3) (2026-03-05)
 
 
