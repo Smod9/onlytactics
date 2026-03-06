@@ -1360,16 +1360,29 @@ export class RaceScene {
     const g = this.windShadowGridLayer
     const cellSize = grid.cellSize
 
-    // Viewport culling: only draw cells visible on screen
+    // Fixed visual downsample: draw every Nth cell as a larger rectangle.
+    // Grid data stays at full resolution; only the rendering is coarser.
+    const skipFactor = 3
+    const drawCellSize = cellSize * skipFactor
+
+    // Viewport culling: only draw cells visible on screen (aligned to skip grid)
     const vb = this.getVisibleWorldBounds(state)
-    const cxMin = Math.max(0, Math.floor((vb.minX - grid.originX) / cellSize))
+    const cxMin = Math.max(0, Math.floor((vb.minX - grid.originX) / cellSize / skipFactor) * skipFactor)
     const cxMax = Math.min(grid.width - 1, Math.ceil((vb.maxX - grid.originX) / cellSize))
-    const cyMin = Math.max(0, Math.floor((vb.minY - grid.originY) / cellSize))
+    const cyMin = Math.max(0, Math.floor((vb.minY - grid.originY) / cellSize / skipFactor) * skipFactor)
     const cyMax = Math.min(grid.height - 1, Math.ceil((vb.maxY - grid.originY) / cellSize))
 
-    for (let cy = cyMin; cy <= cyMax; cy++) {
-      for (let cx = cxMin; cx <= cxMax; cx++) {
-        const intensity = grid.data[cy * grid.width + cx]
+    for (let cy = cyMin; cy <= cyMax; cy += skipFactor) {
+      for (let cx = cxMin; cx <= cxMax; cx += skipFactor) {
+        let intensity = 0
+        let samples = 0
+        for (let sy = 0; sy < skipFactor && cy + sy < grid.height; sy++) {
+          for (let sx = 0; sx < skipFactor && cx + sx < grid.width; sx++) {
+            intensity += grid.data[(cy + sy) * grid.width + (cx + sx)]
+            samples++
+          }
+        }
+        intensity = samples > 0 ? intensity / samples : 0
         if (intensity < minIntensity) continue
 
         const worldX = grid.originX + cx * cellSize
@@ -1384,7 +1397,7 @@ export class RaceScene {
         const alpha = 0.1 + normalizedIntensity * 0.4
 
         g.fill({ color, alpha })
-        g.rect(worldX, worldY, cellSize, cellSize)
+        g.rect(worldX, worldY, drawCellSize, drawCellSize)
         g.fill()
       }
     }

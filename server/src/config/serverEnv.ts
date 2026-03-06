@@ -88,7 +88,7 @@ export const appEnv = {
   ),
   wakeGridCellSize: toNumber(
     rawEnv.WAKE_GRID_CELL_SIZE ?? rawEnv.VITE_WAKE_GRID_CELL_SIZE,
-    20,
+    5,
   ),
 
   // Authentication
