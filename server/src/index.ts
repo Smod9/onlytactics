@@ -9,6 +9,7 @@ import { env } from './lib/env'
 import { runMigrations } from './db'
 import { getRace, getRecentRaces, queryRaces } from './db/raceStorage'
 import { RaceRoom } from './rooms/RaceRoom'
+import { authenticate } from './auth/authMiddleware'
 import authRoutes from './routes/authRoutes'
 import adminRoutes from './routes/adminRoutes'
 import statsRoutes from './routes/statsRoutes'
@@ -174,6 +175,7 @@ expressApp.get('/api/rooms', async (_req, res) => {
               raceRoom?.getTimeToStartSeconds?.() ?? metadata.timeToStartSeconds ?? null,
             phase: metadata.phase ?? 'prestart',
             regattaId: raceRoom?.regattaId ?? metadata.regattaId ?? undefined,
+            createdBy: raceRoom?.createdBy ?? metadata.createdBy ?? undefined,
           }
         } catch (err) {
           console.warn('[API] error getting room details', roomInfo.roomId, err)
@@ -185,6 +187,7 @@ expressApp.get('/api/rooms', async (_req, res) => {
             maxClients: roomInfo.maxClients,
             status: 'waiting' as const,
             createdAt: Date.now(),
+            createdBy: undefined,
           }
         }
       }),
@@ -248,10 +251,72 @@ expressApp.get('/api/rooms/:roomId', async (req, res) => {
         raceRoom?.getTimeToStartSeconds?.() ?? metadata.timeToStartSeconds ?? null,
       phase: metadata.phase ?? 'prestart',
       regattaId: raceRoom?.regattaId ?? metadata.regattaId ?? undefined,
+      createdBy: raceRoom?.createdBy ?? metadata.createdBy ?? undefined,
     })
   } catch (error) {
     console.error('[API] error getting room', error)
     res.status(500).json({ error: 'Failed to get room' })
+  }
+})
+
+expressApp.delete('/api/rooms/:roomId', authenticate, async (req, res) => {
+  try {
+    const roomId = req.params.roomId as string
+    const rooms = await matchMaker.query({ roomId })
+    if (rooms.length === 0) {
+      res.status(404).json({ error: 'Room not found' })
+      return
+    }
+    const metadata = (rooms[0].metadata ?? {}) as Partial<{ createdBy: string }>
+    const isCreator = req.user?.sub && metadata.createdBy === req.user.sub
+    const isAdmin = req.user?.role === 'admin'
+    if (!isCreator && !isAdmin) {
+      res.status(403).json({ error: 'forbidden', message: 'Only the room creator or an admin can delete this room' })
+      return
+    }
+    await matchMaker.remoteRoomCall(roomId, 'disconnect')
+    res.status(204).end()
+  } catch (error) {
+    console.error('[API] error deleting room', error)
+    res.status(500).json({ error: 'Failed to delete room' })
+  }
+})
+
+expressApp.patch('/api/rooms/:roomId', authenticate, async (req, res) => {
+  try {
+    const roomId = req.params.roomId as string
+    const rooms = await matchMaker.query({ roomId })
+    if (rooms.length === 0) {
+      res.status(404).json({ error: 'Room not found' })
+      return
+    }
+    const metadata = (rooms[0].metadata ?? {}) as Partial<{ createdBy: string; status: string }>
+    const isCreator = req.user?.sub && metadata.createdBy === req.user.sub
+    const isAdmin = req.user?.role === 'admin'
+    if (!isCreator && !isAdmin) {
+      res.status(403).json({ error: 'forbidden', message: 'Only the room creator or an admin can edit this room' })
+      return
+    }
+    const room = await matchMaker.getRoomById(roomId)
+    const raceRoom = room as unknown as InstanceType<typeof RaceRoom> | undefined
+    if (!raceRoom) {
+      res.status(404).json({ error: 'Room not found' })
+      return
+    }
+    if (raceRoom.getStatus() !== 'waiting') {
+      res.status(409).json({ error: 'conflict', message: 'Room can only be edited before the race starts' })
+      return
+    }
+    const { roomName, description, regattaId } = req.body
+    raceRoom.applyPatch({
+      roomName: typeof roomName === 'string' ? roomName : undefined,
+      description: typeof description === 'string' ? description : undefined,
+      regattaId: regattaId === null ? null : typeof regattaId === 'string' ? regattaId : undefined,
+    })
+    res.json({ ok: true })
+  } catch (error) {
+    console.error('[API] error updating room', error)
+    res.status(500).json({ error: 'Failed to update room' })
   }
 })
 

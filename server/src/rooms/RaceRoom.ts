@@ -672,6 +672,30 @@ export class RaceRoom extends Room<{ state: RaceRoomState }> {
     return this.clientNameMap.get(this.hostSessionId)
   }
 
+  applyPatch(patch: { roomName?: string; description?: string; regattaId?: string | null }) {
+    if (patch.roomName !== undefined) {
+      const normalized = this.normalizeRoomName(patch.roomName)
+      if (normalized) this.metadataRoomName = normalized
+    }
+    if (patch.description !== undefined) {
+      this.description = this.normalizeRoomDescription(patch.description)
+    }
+    if (patch.regattaId !== undefined) {
+      this.regattaId = patch.regattaId && typeof patch.regattaId === 'string' ? patch.regattaId : undefined
+    }
+    this.lastLobbyStatus = undefined
+    void this.setMetadata({
+      roomName: this.metadataRoomName,
+      description: this.description,
+      createdAt: this.createdAt,
+      createdBy: this.createdBy ?? '',
+      regattaId: this.regattaId ?? '',
+      status: this.getStatus(),
+      phase: 'prestart',
+      timeToStartSeconds: this.getTimeToStartSeconds(),
+    })
+  }
+
   /**
    * Schedule cleanup timer for empty room (5 minutes)
    */

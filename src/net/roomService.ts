@@ -14,6 +14,7 @@ export type RoomInfo = {
   timeToStartSeconds?: number | null
   phase?: 'prestart' | 'running' | 'finished' | 'results'
   regattaId?: string
+  createdBy?: string
 }
 
 export type CreateRoomRequest = {
@@ -46,6 +47,9 @@ const getApiBaseUrl = () => {
   }
   return endpoint
 }
+
+const authHeaders = (token: string | null): Record<string, string> =>
+  token ? { Authorization: `Bearer ${token}` } : {}
 
 export const roomService = {
   /**
@@ -93,5 +97,34 @@ export const roomService = {
       throw new Error(`Failed to get room details: ${response.statusText}`)
     }
     return response.json()
+  },
+
+  async deleteRoom(roomId: string, token: string | null): Promise<void> {
+    const baseUrl = getApiBaseUrl()
+    const response = await fetch(`${baseUrl}/api/rooms/${encodeURIComponent(roomId)}`, {
+      method: 'DELETE',
+      headers: authHeaders(token),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: response.statusText }))
+      throw new Error(err.message ?? err.error ?? 'Failed to delete room')
+    }
+  },
+
+  async editRoom(
+    roomId: string,
+    updates: { roomName?: string; description?: string; regattaId?: string | null },
+    token: string | null,
+  ): Promise<void> {
+    const baseUrl = getApiBaseUrl()
+    const response = await fetch(`${baseUrl}/api/rooms/${encodeURIComponent(roomId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+      body: JSON.stringify(updates),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: response.statusText }))
+      throw new Error(err.message ?? err.error ?? 'Failed to edit room')
+    }
   },
 }
