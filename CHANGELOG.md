@@ -1,3 +1,10 @@
+## [1.44.5](https://github.com/Smod9/onlytactics/compare/v1.44.4...v1.44.5) (2026-03-12)
+
+
+### Bug Fixes
+
+* wake tweaks to make the bow count as 'in the wake' ([#149](https://github.com/Smod9/onlytactics/issues/149)) ([f616dba](https://github.com/Smod9/onlytactics/commit/f616dba45a78ce24f5db917669fecc26ac7522a1))
+
 ## [1.44.4](https://github.com/Smod9/onlytactics/compare/v1.44.3...v1.44.4) (2026-03-06)
 
 
