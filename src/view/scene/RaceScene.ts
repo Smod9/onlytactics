@@ -514,10 +514,12 @@ export class RaceScene {
     RaceScene.currentWindDeg = state.wind.directionDeg
     this.applyCameraTransform(state)
 
-    // Boats update every tick for smooth movement.
+    // Responsive elements update every tick.
     this.drawBoats(state)
+    this.drawFollowContext(state)
+    this.drawHud(state)
 
-    // Throttle heavier visual redraws to every 3rd state update.
+    // Throttle expensive redraws (wind field, shadow, course) to every 3rd tick.
     const isDrawFrame = this.sceneTick % 3 === 0
     this.sceneTick += 1
     if (!isDrawFrame) return
@@ -534,8 +536,6 @@ export class RaceScene {
     }
     this.drawPlayerWindShadow(state)
     this.drawCourse(state)
-    this.drawFollowContext(state)
-    this.drawHud(state)
   }
 
   resize() {
@@ -1342,15 +1342,11 @@ export class RaceScene {
     const stamp = getStampForWindDir(this.shadowStampAtlas, state.wind.directionDeg)
     const windDirDeg = state.wind.directionDeg
 
-    // In debug mode, show all boats' shadows
-    // In normal mode, only show the local player's shadow
+    // Show all boats' shadows so the visualization matches the physics
     const allBoats = Object.values(state.boats)
-    const boatsToShow = appEnv.debugHud
-      ? allBoats
-      : allBoats.filter((b) => b.id === identity.boatId)
 
     // Blit shadow for each boat, flipping based on their tack
-    boatsToShow.forEach((boat) => {
+    allBoats.forEach((boat) => {
       // Flip if leeward is on port side (template has leeward on right/starboard)
       const flipHorizontal = isLeewardOnPort(boat.headingDeg, windDirDeg)
       blitStamp(grid, stamp, boat.pos.x, boat.pos.y, flipHorizontal)
