@@ -76,11 +76,10 @@ const boatOverStartLine = (
       pin,
       courseSideSign,
     )
-    const overlapsCourseSide = signedDistanceCourse > -r
-    return (
-      overlapsCourseSide &&
-      circleBetweenMarks({ x, y }, r, committee, pin, courseSideSign)
-    )
+    // Start-line OCS uses the infinite extension of the line.
+    // If any part of the hull is on/over the course-side half-plane,
+    // the boat is considered over the line.
+    return signedDistanceCourse > -r
   })
 }
 
@@ -542,7 +541,8 @@ export class HostLoop {
 
   /**
    * Handle start line crossing.
-   * Boat must cross between committee and pin marks (from pre-start side to course side).
+   * Boat crosses from pre-start side to course side of the infinite
+   * committee-pin line extension.
    */
   private advanceStartLeg(
     boat: BoatState,

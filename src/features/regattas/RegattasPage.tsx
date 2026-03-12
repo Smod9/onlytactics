@@ -5,7 +5,7 @@ import { useAuth } from '@/state/authStore'
 type Tab = 'active' | 'past'
 
 export function RegattasPage() {
-  const { user, isAdmin, isAuthenticated, getAccessToken } = useAuth()
+  const { user, isAdmin, isAuthenticated, getFreshAccessToken } = useAuth()
   const [tab, setTab] = useState<Tab>('active')
   const [regattas, setRegattas] = useState<Regatta[]>([])
   const [loading, setLoading] = useState(true)
@@ -100,7 +100,7 @@ export function RegattasPage() {
     if (!formName.trim()) return
     setSubmitting(true)
     try {
-      const token = await getAccessToken()
+      const token = await getFreshAccessToken()
       if (editingRegatta) {
         await regattaService.updateRegatta(
           editingRegatta.id,
@@ -125,7 +125,7 @@ export function RegattasPage() {
   const handleDelete = async (regatta: Regatta) => {
     if (!confirm(`Delete "${regatta.name}"? This cannot be undone.`)) return
     try {
-      const token = await getAccessToken()
+      const token = await getFreshAccessToken()
       await regattaService.deleteRegatta(regatta.id, token)
       await loadRegattas()
       if (expandedId === regatta.id) {

@@ -43,7 +43,7 @@ export const LobbyClient = () => {
   const [showControls, setShowControls] = useState(false)
   const [lbEntries, setLbEntries] = useState<LeaderboardEntry[]>([])
   const [lbLoading, setLbLoading] = useState(true)
-  const { user, getAccessToken } = useAuth()
+  const { user, isAdmin, getFreshAccessToken } = useAuth()
 
   // Regatta state
   const [regattas, setRegattas] = useState<Regatta[]>([])
@@ -58,6 +58,12 @@ export const LobbyClient = () => {
   const [expandedRegattaId, setExpandedRegattaId] = useState<string | null>(null)
   const [expandedRegattaDetail, setExpandedRegattaDetail] = useState<RegattaDetail | null>(null)
   const [regattaDetailLoading, setRegattaDetailLoading] = useState(false)
+  const [editingRoom, setEditingRoom] = useState<RoomInfo | null>(null)
+  const [editRoomName, setEditRoomName] = useState('')
+  const [editRoomDescription, setEditRoomDescription] = useState('')
+  const [editRoomRegattaId, setEditRoomRegattaId] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null)
   const emojiOptions = [
     '⛵',
     '🌊',
@@ -174,6 +180,7 @@ export const LobbyClient = () => {
     setCreatingRegatta(true)
     setError(null)
     try {
+      const token = await getFreshAccessToken()
       await regattaService.createRegatta(
         {
           name: regattaName.trim(),
@@ -181,7 +188,7 @@ export const LobbyClient = () => {
           numRaces: regattaNumRaces,
           throwoutCount: regattaThrowoutCount,
         },
-        getAccessToken(),
+        token,
       )
       setShowCreateRegattaModal(false)
       setRegattaName('')
@@ -243,6 +250,56 @@ export const LobbyClient = () => {
 
   const handleJoinRoom = (roomId: string) => {
     window.location.href = `/app?roomId=${encodeURIComponent(roomId)}`
+  }
+
+  const canEditRoom = (room: RoomInfo) =>
+    room.status === 'waiting' &&
+    (isAdmin || (room.createdBy && room.createdBy === identity.clientId))
+
+  const handleDeleteRoom = async (roomId: string) => {
+    try {
+      setDeletingRoomId(roomId)
+      const token = await getFreshAccessToken()
+      await roomService.deleteRoom(roomId, token)
+      void refreshRooms()
+    } catch (err) {
+      console.error('[LobbyClient] error deleting room', err)
+      setError(err instanceof Error ? err.message : 'Failed to delete room')
+    } finally {
+      setDeletingRoomId(null)
+    }
+  }
+
+  const openEditModal = (room: RoomInfo) => {
+    setEditingRoom(room)
+    setEditRoomName(room.roomName)
+    setEditRoomDescription(room.description)
+    setEditRoomRegattaId(room.regattaId ?? '')
+  }
+
+  const handleEditRoom = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editingRoom) return
+    try {
+      setEditSaving(true)
+      const token = await getFreshAccessToken()
+      await roomService.editRoom(
+        editingRoom.roomId,
+        {
+          roomName: editRoomName.trim() || undefined,
+          description: editRoomDescription.trim(),
+          regattaId: editRoomRegattaId || null,
+        },
+        token,
+      )
+      setEditingRoom(null)
+      void refreshRooms()
+    } catch (err) {
+      console.error('[LobbyClient] error editing room', err)
+      setError(err instanceof Error ? err.message : 'Failed to edit room')
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const formatDate = (timestamp: number) => {
@@ -614,6 +671,94 @@ export const LobbyClient = () => {
         </div>
       )}
 
+      {editingRoom && (
+        <div
+          className="username-gate"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div className="username-card" style={{ maxWidth: '500px', width: '90%' }}>
+            <h2>Edit Room</h2>
+            <form className="username-form" onSubmit={handleEditRoom}>
+              <input
+                value={editRoomName}
+                onChange={(e) => setEditRoomName(e.target.value)}
+                placeholder="Room Name"
+                maxLength={50}
+                autoFocus
+                disabled={editSaving}
+              />
+              <textarea
+                value={editRoomDescription}
+                onChange={(e) => setEditRoomDescription(e.target.value)}
+                placeholder="Description (optional)"
+                maxLength={200}
+                rows={3}
+                disabled={editSaving}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid var(--border-hover)',
+                  backgroundColor: 'var(--bg-hover)',
+                  color: 'inherit',
+                  borderRadius: '4px',
+                  fontFamily: 'inherit',
+                }}
+              />
+              {regattas.length > 0 && (
+                <div>
+                  <label style={{ fontSize: '0.85rem', opacity: 0.8, marginBottom: '0.25rem', display: 'block' }}>
+                    Regatta
+                  </label>
+                  <select
+                    value={editRoomRegattaId}
+                    onChange={(e) => setEditRoomRegattaId(e.target.value)}
+                    disabled={editSaving}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid var(--border-hover)',
+                      backgroundColor: 'var(--bg-hover)',
+                      color: 'inherit',
+                      borderRadius: '4px',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <option value="">None</option>
+                    {regattas.map((r) => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="username-form-cancel"
+                  onClick={() => setEditingRoom(null)}
+                  disabled={editSaving}
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={!editRoomName.trim() || editSaving}>
+                  {editSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {!regattasLoading && regattas.length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>Regattas</h2>
@@ -822,7 +967,7 @@ export const LobbyClient = () => {
                 {room.hostName && <div>Host: {room.hostName}</div>}
                 <div>Created: {formatDate(room.createdAt)}</div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   type="button"
                   className="start-sequence"
@@ -873,6 +1018,55 @@ export const LobbyClient = () => {
                   <span style={{ fontSize: 12, opacity: 0.8, alignSelf: 'center' }}>
                     Link copied
                   </span>
+                )}
+                {canEditRoom(room) && (
+                  <>
+                    <button
+                      type="button"
+                      title="Edit room"
+                      onClick={() => openEditModal(room)}
+                      style={{
+                        borderRadius: 999,
+                        border: '1px solid var(--border-hover)',
+                        padding: '0.3rem 0.5rem',
+                        background: 'transparent',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      title="Delete room"
+                      disabled={deletingRoomId === room.roomId}
+                      onClick={() => {
+                        if (confirm(`Delete room "${room.roomName}"?`)) {
+                          void handleDeleteRoom(room.roomId)
+                        }
+                      }}
+                      style={{
+                        borderRadius: 999,
+                        border: '1px solid var(--border-hover)',
+                        padding: '0.3rem 0.5rem',
+                        background: 'transparent',
+                        color: '#e55',
+                        cursor: 'pointer',
+                        opacity: deletingRoomId === room.roomId ? 0.5 : 1,
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6" />
+                        <path d="M14 11v6" />
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
