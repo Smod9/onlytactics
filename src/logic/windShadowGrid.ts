@@ -12,6 +12,7 @@ import {
   WAKE_LENGTH,
   WAKE_HALF_WIDTH_START,
   WAKE_LEEWARD_WIDTH_MULT,
+  BOAT_BOW_OFFSET,
 } from './constants'
 
 export type WindShadowGrid = {
@@ -270,8 +271,18 @@ export const computeWakeFactorsFromGrid = (
       blitStamp(grid, stamp, sourceBoat.pos.x, sourceBoat.pos.y, flipHorizontal)
     }
 
-    // Sample at target boat's position
-    const shadowIntensity = sampleGridSmooth(grid, targetBoat.pos)
+    // Sample at multiple points along the boat hull and take the max.
+    // This way the effect begins as soon as the bow enters the shadow zone.
+    const headingRad = targetBoat.headingDeg * (Math.PI / 180)
+    const hx = Math.sin(headingRad)
+    const hy = -Math.cos(headingRad)
+    const bowOffset = BOAT_BOW_OFFSET * 0.8
+    const centerIntensity = sampleGridSmooth(grid, targetBoat.pos)
+    const bowIntensity = sampleGridSmooth(grid, {
+      x: targetBoat.pos.x + hx * bowOffset,
+      y: targetBoat.pos.y + hy * bowOffset,
+    })
+    const shadowIntensity = Math.max(centerIntensity, bowIntensity)
 
     // Convert to wake factor (1 = no slowdown, lower = more slowdown)
     const clampedIntensity = Math.min(shadowIntensity, WAKE_MAX_SLOWDOWN)
